@@ -1143,6 +1143,38 @@ body {
     color: #4b5563;
 }
 
+/* エクスポートオプションボタン */
+.export-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+    width: 100%;
+}
+
+.export-option-btn:hover {
+    border-color: var(--primary-color);
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.export-option-btn .material-icons-round {
+    font-size: 2rem;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.export-option-btn div {
+    flex: 1;
+}
+
 /* レスポンシブ調整 */
 @media (max-width: 1024px) {
     .rewrite-container {

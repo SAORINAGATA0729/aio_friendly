@@ -293,6 +293,40 @@ class RewriteSystem {
                 await this.saveArticle();
             });
         }
+
+        // エクスポートボタン
+        const exportBtn = document.getElementById('exportBtn');
+        const exportModal = document.getElementById('exportModal');
+        const closeExportModal = document.getElementById('closeExportModal');
+        
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                if (exportModal) exportModal.classList.add('active');
+            });
+        }
+
+        if (closeExportModal) {
+            closeExportModal.addEventListener('click', () => {
+                if (exportModal) exportModal.classList.remove('active');
+            });
+        }
+
+        if (exportModal) {
+            exportModal.addEventListener('click', (e) => {
+                if (e.target === exportModal) {
+                    exportModal.classList.remove('active');
+                }
+            });
+        }
+
+        // エクスポートオプションボタン
+        document.querySelectorAll('.export-option-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const format = btn.dataset.format;
+                await this.exportArticle(format);
+                if (exportModal) exportModal.classList.remove('active');
+            });
+        });
     }
 
     switchEditorMode(mode) {

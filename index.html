@@ -12,6 +12,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- docx.js for Word export -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -412,6 +415,10 @@
                                 </button>
                             </div>
                             <div style="flex: 1;"></div>
+                            <button class="toolbar-btn" data-action="export" id="exportBtn" style="background: white; color: var(--text-primary); border-color: var(--border-color);">
+                                <span class="material-icons-round">download</span>
+                                エクスポート
+                            </button>
                             <button class="toolbar-btn" data-action="save">
                                 <span class="material-icons-round">save</span>
                                 保存して完了
