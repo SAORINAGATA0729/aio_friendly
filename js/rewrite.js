@@ -762,24 +762,37 @@ ${article.keyword}について、重要なポイントをまとめました。
         let htmlContent;
         let title;
         
-        if (isVisualMode && this.quill) {
-            htmlContent = this.quill.root.innerHTML;
-            title = this.currentArticle.title;
-        } else {
-            const htmlEditor = document.getElementById('htmlEditor');
-            if (htmlEditor && htmlEditor.value) {
-                htmlContent = htmlEditor.value;
-                title = this.currentArticle.title;
-            } else {
-                alert('エクスポートするコンテンツがありません。');
-                return;
-            }
-        }
-
-        const slug = this.getSlugFromUrl(this.currentArticle.url);
-        const filename = `${slug || 'article'}`;
-
         try {
+            if (isVisualMode && this.quill) {
+                // Quillエディタから直接取得（.ql-editorの内容）
+                const quillEditor = this.quill.root.querySelector('.ql-editor');
+                htmlContent = quillEditor ? quillEditor.innerHTML : this.quill.root.innerHTML;
+                title = this.currentArticle.title;
+                
+                // 空のコンテンツチェック
+                if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>') {
+                    alert('エクスポートするコンテンツがありません。');
+                    return;
+                }
+            } else {
+                const htmlEditor = document.getElementById('htmlEditor');
+                if (htmlEditor && htmlEditor.value) {
+                    htmlContent = htmlEditor.value.trim();
+                    title = this.currentArticle.title;
+                    
+                    if (!htmlContent) {
+                        alert('エクスポートするコンテンツがありません。');
+                        return;
+                    }
+                } else {
+                    alert('エクスポートするコンテンツがありません。');
+                    return;
+                }
+            }
+
+            const slug = this.getSlugFromUrl(this.currentArticle.url);
+            const filename = `${slug || 'article'}`;
+
             switch (format) {
                 case 'pdf':
                     await this.exportToPDF(htmlContent, title, filename);
