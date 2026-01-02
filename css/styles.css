@@ -1021,8 +1021,9 @@ body {
 .editor-mode-container.active {
     display: flex;
     flex-direction: column;
+    flex: 1;
     min-height: 0;
-    height: 100%; /* 親要素の高さいっぱいに */
+    overflow: hidden;
 }
 
 /* HTMLエディタコンテナ */
