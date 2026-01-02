@@ -441,6 +441,24 @@
                                 </button>
                             </div>
                             <div style="flex: 1;"></div>
+                            <!-- 検索バー -->
+                            <div id="searchBar" class="search-bar" style="display: none;">
+                                <input type="text" id="searchInput" class="search-input" placeholder="検索...">
+                                <button id="searchPrevBtn" class="search-nav-btn" title="前へ">
+                                    <span class="material-icons-round">arrow_upward</span>
+                                </button>
+                                <button id="searchNextBtn" class="search-nav-btn" title="次へ">
+                                    <span class="material-icons-round">arrow_downward</span>
+                                </button>
+                                <span id="searchCount" class="search-count"></span>
+                                <button id="searchCloseBtn" class="search-close-btn" title="閉じる">
+                                    <span class="material-icons-round">close</span>
+                                </button>
+                            </div>
+                            <button class="toolbar-btn" id="searchToggleBtn" style="background: white; color: var(--text-primary); border-color: var(--border-color);" title="検索 (⌘F)">
+                                <span class="material-icons-round">search</span>
+                                検索
+                            </button>
                             <button class="toolbar-btn" data-action="export" id="rewriteExportBtn" style="background: white; color: var(--text-primary); border-color: var(--border-color);">
                                 <span class="material-icons-round">download</span>
                                 エクスポート
@@ -499,6 +517,13 @@
                         <div>
                             <div style="font-weight: 600;">HTML形式</div>
                             <div style="font-size: 0.85rem; color: #6b7280;">Googleドキュメントにインポート可能</div>
+                        </div>
+                    </button>
+                    <button class="export-option-btn" data-format="md">
+                        <span class="material-icons-round">article</span>
+                        <div>
+                            <div style="font-weight: 600;">Markdown形式 (.md)</div>
+                            <div style="font-size: 0.85rem; color: #6b7280;">Markdownファイルとしてダウンロード</div>
                         </div>
                     </button>
                 </div>

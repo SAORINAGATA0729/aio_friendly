@@ -401,9 +401,7 @@ class Dashboard {
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                 <span class="material-icons-round" style="font-size: 16px; color: var(--primary-color);">auto_awesome</span>
-                <input type="number" class="article-citation-input" data-article-id="${article.id}" 
-                    value="${article.citationCount || 0}" 
-                    min="0" 
+                <span class="article-citation-display" data-article-id="${article.id}" 
                     style="
                         width: 60px;
                         padding: 0.3rem 0.5rem;
@@ -411,25 +409,15 @@ class Dashboard {
                         border-radius: 0.4rem;
                         font-size: 0.85rem;
                         text-align: center;
-                        background: white;
-                    "
-                    title="AIO引用数をクリックして編集">
+                        background: #f3f4f6;
+                        color: var(--text-primary);
+                        font-weight: 600;
+                        display: inline-block;
+                    ">
+                    ${article.citationCount || 0}
+                </span>
             </div>
-            <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                <input type="number" class="article-score-input" data-article-id="${article.id}" 
-                    value="${score.total || 0}" 
-                    min="0" 
-                    max="100"
-                    style="
-                        width: 50px;
-                        padding: 0.3rem 0.5rem;
-                        border: 1px solid var(--border-color);
-                        border-radius: 0.4rem;
-                        font-size: 0.85rem;
-                        text-align: center;
-                        background: white;
-                    "
-                    title="スコアをクリックして編集">
+            <div style="display: flex; justify-content: center; align-items: center;">
                 <select class="article-score-level-select" data-article-id="${article.id}" 
                     style="
                         padding: 0.3rem 0.5rem;
@@ -451,47 +439,67 @@ class Dashboard {
             </div>
         `;
 
-        item.style.cursor = 'pointer';
-        item.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            console.log('記事がクリックされました:', article.title);
-            console.log('rewriteSystem:', typeof rewriteSystem);
-            
-            
-            // rewriteSystemが初期化されるまで最大3秒待つ
-            let retryCount = 0;
-            const maxRetries = 30; // 3秒間（100ms * 30回）
-            
-            const waitForRewriteSystem = async () => {
-                if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && typeof window.rewriteSystem.openUrlModal === 'function') {
-                    console.log('✅ rewriteSystemが利用可能です');
-                    try {
-                        console.log('openUrlModalを呼び出します');
-                        await window.rewriteSystem.openUrlModal(article);
-                        console.log('openUrlModalが完了しました');
-                    } catch (error) {
-                        console.error('記事を開く際にエラーが発生しました:', error);
-                        alert('記事を開く際にエラーが発生しました: ' + error.message);
-                    }
-                    return true;
-                } else {
-                    retryCount++;
-                    if (retryCount < maxRetries) {
-                        console.log(`rewriteSystemの初期化を待機中... (${retryCount}/${maxRetries})`);
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        return waitForRewriteSystem();
+        // 記事情報部分のみクリック可能にする
+        const articleInfo = item.querySelector('.article-info');
+        if (articleInfo) {
+            articleInfo.style.cursor = 'pointer';
+            articleInfo.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('記事がクリックされました:', article.title);
+                console.log('rewriteSystem:', typeof rewriteSystem);
+                
+                
+                // rewriteSystemが初期化されるまで最大3秒待つ
+                let retryCount = 0;
+                const maxRetries = 30; // 3秒間（100ms * 30回）
+                
+                const waitForRewriteSystem = async () => {
+                    if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && typeof window.rewriteSystem.openUrlModal === 'function') {
+                        console.log('✅ rewriteSystemが利用可能です');
+                        try {
+                            console.log('openUrlModalを呼び出します');
+                            await window.rewriteSystem.openUrlModal(article);
+                            console.log('openUrlModalが完了しました');
+                        } catch (error) {
+                            console.error('記事を開く際にエラーが発生しました:', error);
+                            alert('記事を開く際にエラーが発生しました: ' + error.message);
+                        }
+                        return true;
                     } else {
-                        console.error('❌ rewriteSystemの初期化がタイムアウトしました');
-                        alert('システムの初期化に失敗しました。ページをリロードしてください。');
-                        return false;
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            console.log(`rewriteSystemの初期化を待機中... (${retryCount}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            return waitForRewriteSystem();
+                        } else {
+                            console.error('❌ rewriteSystemの初期化がタイムアウトしました');
+                            alert('システムの初期化に失敗しました。ページをリロードしてください。');
+                            return false;
+                        }
                     }
-                }
-            };
-            
-            await waitForRewriteSystem();
-        });
+                };
+                
+                await waitForRewriteSystem();
+            });
+        }
+        
+        // ステータスセレクトボックスのクリックイベントを停止
+        const statusSelect = item.querySelector('.article-status-select');
+        if (statusSelect) {
+            statusSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+        
+        // スコアランクセレクトボックスのクリックイベントを停止
+        const scoreSelect = item.querySelector('.article-score-level-select');
+        if (scoreSelect) {
+            scoreSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
 
         return item;
     }
@@ -522,6 +530,64 @@ class Dashboard {
             backupBtn.addEventListener('click', () => {
                 dataManager.createBackup();
             });
+        }
+        
+        // 記事一覧のイベントリスナー（イベント委譲を使用）
+        const articleList = document.getElementById('articleList');
+        if (articleList) {
+            // ステータス変更
+            articleList.addEventListener('change', async (e) => {
+                if (e.target.classList.contains('article-status-select')) {
+                    e.stopPropagation();
+                    const articleId = parseInt(e.target.dataset.articleId);
+                    const newStatus = e.target.value;
+                    await this.updateArticleStatus(articleId, newStatus);
+                }
+                
+                // スコアランク変更
+                if (e.target.classList.contains('article-score-level-select')) {
+                    e.stopPropagation();
+                    const articleId = parseInt(e.target.dataset.articleId);
+                    const newLevel = e.target.value;
+                    await this.updateArticleScore(articleId, newLevel);
+                }
+            });
+        }
+    }
+    
+    async updateArticleScore(articleId, newLevel) {
+        if (!this.progressData || !this.progressData.articles) {
+            console.error('進捗データが読み込まれていません');
+            return;
+        }
+
+        const article = this.progressData.articles.find(a => a.id === articleId);
+        if (!article) {
+            console.error('記事が見つかりません:', articleId);
+            return;
+        }
+
+        // スコアを更新（afterスコアを優先、なければbeforeスコアを更新）
+        if (!article.scores) {
+            article.scores = {};
+        }
+        if (!article.scores.after) {
+            article.scores.after = { total: 0, level: 'C' };
+        }
+        article.scores.after.level = newLevel;
+        article.lastModified = new Date().toISOString();
+
+        // データを保存
+        try {
+            await dataManager.saveProgress(this.progressData);
+            console.log('スコアランクを更新しました:', articleId, newLevel);
+            
+            // 一覧を再描画
+            const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
+            this.renderArticleList(currentFilter);
+        } catch (error) {
+            console.error('スコアランクの更新に失敗しました:', error);
+            alert('スコアランクの更新に失敗しました: ' + error.message);
         }
     }
 

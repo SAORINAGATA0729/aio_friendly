@@ -1243,6 +1243,9 @@ ${article.keyword}について、重要なポイントをまとめました。
                 case 'html':
                     this.exportToHTML(htmlContent, title, filename);
                     break;
+                case 'md':
+                    this.exportToMarkdown(htmlContent, title, filename);
+                    break;
                 default:
                     alert('不明な形式です。');
             }
@@ -1378,22 +1381,44 @@ ${article.keyword}について、重要なポイントをまとめました。
         }
         
         // HTMLをパースしてdocx形式に変換
-        const doc = new Document({
-            sections: [{
-                properties: {},
-                children: [
+        try {
+            const elements = this.htmlToDocxElements(htmlContent, { Paragraph, HeadingLevel, TextRun });
+            
+            // 要素が空でないことを確認
+            if (!elements || elements.length === 0) {
+                throw new Error('変換された要素が空です');
+            }
+            
+            // 最初の要素がH1の場合はタイトルを追加しない（重複を防ぐ）
+            const firstElement = elements[0];
+            const isFirstH1 = firstElement && 
+                             firstElement.heading === HeadingLevel.HEADING_1;
+            
+            const children = isFirstH1 
+                ? elements 
+                : [
                     new Paragraph({
-                        text: title,
+                        text: title || '無題',
                         heading: HeadingLevel.HEADING_1,
                         spacing: { after: 400 }
                     }),
-                    ...this.htmlToDocxElements(htmlContent, { Paragraph, HeadingLevel, TextRun })
-                ]
-            }]
-        });
+                    ...elements
+                ];
+            
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: children
+                }]
+            });
 
-        try {
             const blob = await Packer.toBlob(doc);
+            
+            // Blobのサイズを確認（空でないことを確認）
+            if (blob.size === 0) {
+                throw new Error('生成されたWordファイルが空です');
+            }
+            
             if (typeof saveAs !== 'undefined') {
                 saveAs(blob, `${filename}.docx`);
             } else {
@@ -1402,146 +1427,201 @@ ${article.keyword}について、重要なポイントをまとめました。
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `${filename}.docx`;
+                document.body.appendChild(a);
                 a.click();
-                URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 100);
             }
         } catch (error) {
             console.error('Wordエクスポートエラー:', error);
-            alert('Word形式のエクスポートに失敗しました。HTML形式をお試しください。');
+            console.error('エラー詳細:', error.stack);
+            alert(`Word形式のエクスポートに失敗しました。\n\nエラー: ${error.message}\n\nHTML形式またはMarkdown形式でのエクスポートをお試しください。`);
         }
     }
 
     htmlToDocxElements(html, docxLib) {
-        // 簡易的なHTML→docx要素変換
+        // HTML→docx要素変換（より堅牢な実装）
         const { Paragraph, HeadingLevel, TextRun } = docxLib;
-        const elements = [];
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
 
-        const processNode = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent.trim();
-                if (text) {
-                    return new TextRun(text);
-                }
-                return null;
-            }
+        const processTextNode = (node) => {
+            const text = node.textContent.trim();
+            return text ? new TextRun(text) : null;
+        };
 
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const tagName = node.tagName.toLowerCase();
-                
-                switch (tagName) {
-                    case 'h1':
-                        return new Paragraph({
-                            text: node.textContent.trim(),
-                            heading: HeadingLevel.HEADING_1,
-                            spacing: { after: 400 }
-                        });
-                    case 'h2':
-                        return new Paragraph({
-                            text: node.textContent.trim(),
-                            heading: HeadingLevel.HEADING_2,
-                            spacing: { after: 300 }
-                        });
-                    case 'h3':
-                        return new Paragraph({
-                            text: node.textContent.trim(),
-                            heading: HeadingLevel.HEADING_3,
-                            spacing: { after: 200 }
-                        });
-                    case 'h4':
-                        return new Paragraph({
-                            text: node.textContent.trim(),
-                            heading: HeadingLevel.HEADING_4,
-                            spacing: { after: 200 }
-                        });
-                    case 'p':
-                        const runs = Array.from(node.childNodes)
-                            .map(processNode)
-                            .filter(n => n !== null);
-                        if (runs.length === 0) {
-                            return new Paragraph({
-                                text: '',
-                                spacing: { after: 200 }
-                            });
-                        }
-                        return new Paragraph({
-                            children: runs,
-                            spacing: { after: 200 }
-                        });
-                    case 'strong':
-                    case 'b':
-                        return new TextRun({
-                            text: node.textContent.trim(),
-                            bold: true
-                        });
-                    case 'em':
-                    case 'i':
-                        return new TextRun({
-                            text: node.textContent.trim(),
-                            italics: true
-                        });
-                    case 'ul':
-                    case 'ol':
-                        // ul/olの直接の子要素（li）を処理
-                        const listItems = [];
-                        Array.from(node.childNodes).forEach(child => {
-                            if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'li') {
-                                const liRuns = Array.from(child.childNodes)
-                                    .map(processNode)
-                                    .filter(n => n !== null);
-                                if (liRuns.length > 0) {
-                                    listItems.push(new Paragraph({
-                                        children: liRuns,
-                                        bullet: { level: 0 }
-                                    }));
-                                } else {
-                                    listItems.push(new Paragraph({
-                                        text: child.textContent.trim(),
-                                        bullet: { level: 0 }
-                                    }));
-                                }
-                            }
-                        });
-                        return listItems.length > 0 ? listItems : null;
-                    case 'li':
-                        // liタグは親のul/olで処理されるため、ここでは処理しない
-                        return null;
-                    case 'br':
-                        return new TextRun({ text: '\n', break: 1 });
-                    case 'img':
-                        // 画像はスキップ（またはaltテキストを表示）
-                        const altText = node.getAttribute('alt') || '';
-                        return altText ? new Paragraph({ text: `[画像: ${altText}]`, spacing: { after: 200 } }) : null;
-                    default:
-                        // 子要素を処理
-                        const children = [];
-                        Array.from(node.childNodes).forEach(child => {
-                            const result = processNode(child);
-                            if (Array.isArray(result)) {
-                                children.push(...result);
-                            } else if (result !== null) {
-                                children.push(result);
-                            }
-                        });
-                        return children.length > 0 ? children : null;
-                }
+        const processInlineNode = (node) => {
+            const tagName = node.tagName.toLowerCase();
+            const text = node.textContent.trim();
+            
+            if (!text) return null;
+            
+            switch (tagName) {
+                case 'strong':
+                case 'b':
+                    return new TextRun({ text, bold: true });
+                case 'em':
+                case 'i':
+                    return new TextRun({ text, italics: true });
+                case 'u':
+                    return new TextRun({ text, underline: {} });
+                case 's':
+                case 'strike':
+                    return new TextRun({ text, strike: true });
+                default:
+                    return new TextRun(text);
             }
-            return null;
+        };
+
+        const processBlockNode = (node) => {
+            const tagName = node.tagName.toLowerCase();
+            
+            switch (tagName) {
+                case 'h1':
+                    return new Paragraph({
+                        text: node.textContent.trim() || ' ',
+                        heading: HeadingLevel.HEADING_1,
+                        spacing: { after: 400 }
+                    });
+                case 'h2':
+                    return new Paragraph({
+                        text: node.textContent.trim() || ' ',
+                        heading: HeadingLevel.HEADING_2,
+                        spacing: { after: 300 }
+                    });
+                case 'h3':
+                    return new Paragraph({
+                        text: node.textContent.trim() || ' ',
+                        heading: HeadingLevel.HEADING_3,
+                        spacing: { after: 200 }
+                    });
+                case 'h4':
+                    return new Paragraph({
+                        text: node.textContent.trim() || ' ',
+                        heading: HeadingLevel.HEADING_4,
+                        spacing: { after: 200 }
+                    });
+                case 'p':
+                    const pRuns = [];
+                    Array.from(node.childNodes).forEach(child => {
+                        if (child.nodeType === Node.TEXT_NODE) {
+                            const run = processTextNode(child);
+                            if (run) pRuns.push(run);
+                        } else if (child.nodeType === Node.ELEMENT_NODE) {
+                            const inlineTag = child.tagName.toLowerCase();
+                            if (['strong', 'b', 'em', 'i', 'u', 's', 'strike', 'a'].includes(inlineTag)) {
+                                const run = processInlineNode(child);
+                                if (run) pRuns.push(run);
+                            } else if (inlineTag === 'br') {
+                                pRuns.push(new TextRun({ text: '\n', break: 1 }));
+                            } else {
+                                // その他のインライン要素はテキストとして処理
+                                const text = child.textContent.trim();
+                                if (text) pRuns.push(new TextRun(text));
+                            }
+                        }
+                    });
+                    
+                    if (pRuns.length === 0) {
+                        return new Paragraph({ text: ' ', spacing: { after: 200 } });
+                    }
+                    return new Paragraph({ children: pRuns, spacing: { after: 200 } });
+                
+                case 'ul':
+                case 'ol':
+                    const listItems = [];
+                    Array.from(node.childNodes).forEach(child => {
+                        if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'li') {
+                            const liRuns = [];
+                            Array.from(child.childNodes).forEach(liChild => {
+                                if (liChild.nodeType === Node.TEXT_NODE) {
+                                    const run = processTextNode(liChild);
+                                    if (run) liRuns.push(run);
+                                } else if (liChild.nodeType === Node.ELEMENT_NODE) {
+                                    const run = processInlineNode(liChild);
+                                    if (run) liRuns.push(run);
+                                }
+                            });
+                            
+                            const liText = child.textContent.trim();
+                            if (liRuns.length > 0) {
+                                listItems.push(new Paragraph({
+                                    children: liRuns,
+                                    bullet: { level: 0 }
+                                }));
+                            } else if (liText) {
+                                listItems.push(new Paragraph({
+                                    text: liText,
+                                    bullet: { level: 0 }
+                                }));
+                            }
+                        }
+                    });
+                    return listItems;
+                
+                case 'li':
+                    // liは親のul/olで処理されるためスキップ
+                    return null;
+                
+                case 'br':
+                    return new Paragraph({ children: [new TextRun({ text: '\n', break: 1 })] });
+                
+                case 'img':
+                    const altText = node.getAttribute('alt') || '画像';
+                    return new Paragraph({ 
+                        text: `[画像: ${altText}]`, 
+                        spacing: { after: 200 } 
+                    });
+                
+                case 'div':
+                case 'section':
+                case 'article':
+                    // ブロック要素として処理（子要素を再帰的に処理）
+                    const divChildren = [];
+                    Array.from(node.childNodes).forEach(child => {
+                        const result = processBlockNode(child);
+                        if (Array.isArray(result)) {
+                            divChildren.push(...result.filter(r => r !== null));
+                        } else if (result !== null) {
+                            divChildren.push(result);
+                        }
+                    });
+                    return divChildren.length > 0 ? divChildren : null;
+                
+                default:
+                    // その他の要素はテキストとして処理
+                    const text = node.textContent.trim();
+                    if (text) {
+                        return new Paragraph({ text, spacing: { after: 200 } });
+                    }
+                    return null;
+            }
         };
 
         // ルート要素の子ノードを処理
         const result = [];
         Array.from(tempDiv.childNodes).forEach(child => {
-            const processed = processNode(child);
-            if (Array.isArray(processed)) {
-                result.push(...processed);
-            } else if (processed !== null) {
-                result.push(processed);
+            if (child.nodeType === Node.TEXT_NODE) {
+                const text = child.textContent.trim();
+                if (text) {
+                    result.push(new Paragraph({ text, spacing: { after: 200 } }));
+                }
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const processed = processBlockNode(child);
+                if (Array.isArray(processed)) {
+                    result.push(...processed.filter(r => r !== null));
+                } else if (processed !== null) {
+                    result.push(processed);
+                }
             }
         });
 
-        return result.length > 0 ? result : [new Paragraph({ text: '' })];
+        // 結果が空の場合は空の段落を返す
+        if (result.length === 0) {
+            return [new Paragraph({ text: ' ' })];
+        }
+        
+        return result;
     }
 
     exportToHTML(htmlContent, title, filename) {
@@ -1581,6 +1661,23 @@ ${article.keyword}について、重要なポイントをまとめました。
         const a = document.createElement('a');
         a.href = url;
         a.download = `${filename}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    exportToMarkdown(htmlContent, title, filename) {
+        // HTMLをMarkdownに変換
+        let markdown = this.htmlToMarkdown(htmlContent);
+        
+        // タイトルを先頭に追加（H1として）
+        markdown = `# ${title}\n\n${markdown}`;
+        
+        // Markdownファイルとしてダウンロード
+        const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.md`;
         a.click();
         URL.revokeObjectURL(url);
     }
