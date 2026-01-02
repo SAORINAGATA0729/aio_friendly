@@ -533,6 +533,20 @@
             try {
                 console.log('システムの初期化を開始します...');
                 
+                // 各クラスが定義されているか確認
+                if (typeof Dashboard === 'undefined') {
+                    throw new Error('Dashboardクラスが定義されていません。js/dashboard.jsが正しく読み込まれているか確認してください。');
+                }
+                if (typeof RewriteSystem === 'undefined') {
+                    throw new Error('RewriteSystemクラスが定義されていません。js/rewrite.jsが正しく読み込まれているか確認してください。');
+                }
+                if (typeof MonitoringSystem === 'undefined') {
+                    throw new Error('MonitoringSystemクラスが定義されていません。js/monitoring.jsが正しく読み込まれているか確認してください。');
+                }
+                if (typeof ReportingSystem === 'undefined') {
+                    throw new Error('ReportingSystemクラスが定義されていません。js/reporting.jsが正しく読み込まれているか確認してください。');
+                }
+                
                 // 各システムのインスタンスを作成
                 window.dashboard = new Dashboard();
                 window.rewriteSystem = new RewriteSystem();
