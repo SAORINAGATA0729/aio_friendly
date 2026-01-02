@@ -716,6 +716,12 @@ class Dashboard {
         // 選択されたプランIDを保存
         this.selectedPlanId = planId;
         
+        // ドロップダウンの値も確実に設定
+        const planSelect = document.getElementById('selectedPlanId');
+        if (planSelect) {
+            planSelect.value = planId;
+        }
+        
         // プランの記事URLから記事データを作成
         const planArticles = plan.articleUrls.map((url, index) => {
             // 既存の記事データから該当するものを探す
@@ -725,15 +731,15 @@ class Dashboard {
             const articleMetric = plan.articleMetrics?.find(m => m.name === url || m.name === existingArticle?.title);
             
             if (existingArticle) {
-                // 既存記事にメトリクス情報を追加
+                // 既存記事にメトリクス情報を追加（最新のステータスを含む）
                 return {
-                    ...existingArticle,
+                    ...existingArticle, // 最新のステータスを含む
                     planId: planId,
                     clicks: articleMetric?.clicks || existingArticle.clicks || 0,
                     impressions: articleMetric?.impressions || existingArticle.impressions || 0,
                     ctr: articleMetric?.ctr || existingArticle.ctr || 0,
                     position: articleMetric?.position || existingArticle.position || 0,
-                    aioRank: existingArticle.aioRank || 'C'
+                    aioRank: existingArticle.aioRank || (existingArticle.scores?.after?.level || existingArticle.scores?.before?.level || 'C')
                 };
             } else {
                 // 新規記事データを作成
@@ -1352,8 +1358,11 @@ class Dashboard {
                     Object.assign(updatedArticle, article);
                 }
                 
-                // プランを再読み込みして最新の状態を反映
-                this.loadPlanArticles(this.selectedPlanId);
+                // プランを再読み込みせず、currentPlanArticlesを直接更新して再描画
+                // これによりドロップダウンの値がリセットされない
+                this.renderPlanArticleList(this.currentPlanArticles);
+                // 進捗状況を更新（プランの記事に基づいて）
+                this.updateProgressFromArticles(this.currentPlanArticles);
             } else {
                 // プランが選択されていない場合は通常の記事一覧を表示
                 const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
