@@ -500,6 +500,46 @@ class RewriteSystem {
         
         modalTitle.textContent = article.title;
         modal.classList.add('active');
+        
+        // エクスポートボタンのイベントリスナーを設定（モーダルが開かれた後に設定）
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:500',message:'openRewriteModal: Setting up export button',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        const exportBtn = document.getElementById('exportBtn');
+        const exportModal = document.getElementById('exportModal');
+        const closeExportModal = document.getElementById('closeExportModal');
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:505',message:'openRewriteModal: Export elements check',data:{exportBtn:!!exportBtn,exportModal:!!exportModal,closeExportModal:!!closeExportModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
+        if (exportBtn && exportModal) {
+            // 既存のイベントリスナーを削除（重複を防ぐ）
+            const newExportBtn = exportBtn.cloneNode(true);
+            exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:512',message:'openRewriteModal: Adding click listener to exportBtn',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            newExportBtn.addEventListener('click', (e) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:515',message:'Export button clicked in modal',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                e.preventDefault();
+                e.stopPropagation();
+                exportModal.classList.add('active');
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:519',message:'Export modal active class added',data:{hasActiveClass:exportModal.classList.contains('active')},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+            });
+        }
+        
+        if (closeExportModal && exportModal) {
+            closeExportModal.addEventListener('click', () => {
+                exportModal.classList.remove('active');
+            });
+        }
 
         const slug = this.getSlugFromUrl(article.url);
         let content = await dataManager.loadMarkdown(`${slug}.md`);
