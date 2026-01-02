@@ -138,6 +138,19 @@
             <div id="doTab" class="tab-content">
                 <h2>Do <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">施策実行 & リライト</span></h2>
                 
+                <!-- プラン選択セクション -->
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: white; border-radius: 0.75rem; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.95rem;">どのプランで記事の改修を進めますか？</label>
+                    <select id="selectedPlanId" style="width: 100%; max-width: 500px; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.9rem; background: white;">
+                        <option value="">プランを選択してください</option>
+                        <!-- プランが動的に追加される -->
+                    </select>
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">
+                        <span class="material-icons-round" style="font-size: 14px; vertical-align: middle;">info</span>
+                        プランを選択すると、そのプランで設定した記事URL一覧が表示されます。
+                    </div>
+                </div>
+                
                 <!-- 改修進捗状況 -->
                 <div class="progress-section" style="background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; border-radius: 1rem; box-shadow: var(--shadow);">
                     <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">改修進捗状況</h3>
@@ -481,12 +494,26 @@
                         <!-- 記事ごとの数値入力テーブル -->
                         <div style="margin-top: 1.5rem; padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary);">記事ごとの数値入力（Tier 1）</h4>
-                                <button type="button" id="addArticleRowBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">add</span>
-                                    記事を追加
-                                </button>
+                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary);">記事ごとの数値入力</h4>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <!-- CSVインポートボタン -->
+                                    <button type="button" id="importArticleMetricsCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                        <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                        CSVからインポート
+                                    </button>
+                                    <!-- MDインポートボタン -->
+                                    <button type="button" id="importArticleMetricsMdBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                        <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">description</span>
+                                        MDからインポート
+                                    </button>
+                                    <button type="button" id="addArticleRowBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                        <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">add</span>
+                                        記事を追加
+                                    </button>
+                                </div>
                             </div>
+                            <input type="file" id="articleMetricsCsvFileInput" accept=".csv" style="display: none;">
+                            <input type="file" id="articleMetricsMdFileInput" accept=".md,.txt" style="display: none;">
                             <div style="overflow-x: auto;">
                                 <table id="articleMetricsTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                                     <thead>
@@ -523,12 +550,12 @@
                                 <!-- CSVインポートボタン -->
                                 <button type="button" id="importUrlsCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                     <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
-                                    CSV
+                                    CSVからインポート
                                 </button>
                                 <!-- MDインポートボタン -->
                                 <button type="button" id="importUrlsMdBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                     <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">description</span>
-                                    MD
+                                    MDからインポート
                                 </button>
                             </div>
                         </div>

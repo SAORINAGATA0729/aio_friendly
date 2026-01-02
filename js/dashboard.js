@@ -385,6 +385,36 @@ class Dashboard {
                 this.exportCsvTemplate();
             });
         }
+        
+        // 記事ごとの数値入力のCSVインポート
+        const importArticleMetricsCsvBtn = document.getElementById('importArticleMetricsCsvBtn');
+        const articleMetricsCsvFileInput = document.getElementById('articleMetricsCsvFileInput');
+        if (importArticleMetricsCsvBtn && articleMetricsCsvFileInput) {
+            importArticleMetricsCsvBtn.addEventListener('click', () => {
+                articleMetricsCsvFileInput.click();
+            });
+            
+            articleMetricsCsvFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importArticleMetricsCsvFile(e.target.files[0]);
+                }
+            });
+        }
+        
+        // 記事ごとの数値入力のMDインポート
+        const importArticleMetricsMdBtn = document.getElementById('importArticleMetricsMdBtn');
+        const articleMetricsMdFileInput = document.getElementById('articleMetricsMdFileInput');
+        if (importArticleMetricsMdBtn && articleMetricsMdFileInput) {
+            importArticleMetricsMdBtn.addEventListener('click', () => {
+                articleMetricsMdFileInput.click();
+            });
+            
+            articleMetricsMdFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importArticleMetricsMdFile(e.target.files[0]);
+                }
+            });
+        }
     }
 
     // --- プラン管理機能の実装メソッド ---
@@ -822,8 +852,161 @@ class Dashboard {
                 const currentMetrics = this.getArticleMetricsFromTable();
                 currentMetrics.splice(index, 1);
                 this.renderArticleMetricsTable(currentMetrics);
+                this.updateMetricsFromArticleTable(); // 数値を反映
             });
         });
+        
+        // 数値入力時に全体の数値に反映
+        setTimeout(() => {
+            document.querySelectorAll('#articleMetricsBody input').forEach(input => {
+                input.addEventListener('input', () => {
+                    this.updateMetricsFromArticleTable();
+                });
+            });
+        }, 100);
+    }
+    
+    updateMetricsFromArticleTable() {
+        const metrics = this.getArticleMetricsFromTable();
+        if (metrics.length === 0) return;
+        
+        // 合計値を計算
+        const totalClicks = metrics.reduce((sum, m) => sum + (m.clicks || 0), 0);
+        const totalImpressions = metrics.reduce((sum, m) => sum + (m.impressions || 0), 0);
+        const avgPosition = metrics.length > 0 
+            ? metrics.reduce((sum, m) => sum + (m.position || 0), 0) / metrics.length 
+            : 0;
+        
+        // 全体の数値入力欄に反映
+        const trafficInput = document.getElementById('planTraffic');
+        if (trafficInput) {
+            trafficInput.value = totalClicks;
+        }
+        
+        const avgRankingInput = document.getElementById('planAvgRanking');
+        if (avgRankingInput) {
+            avgRankingInput.value = avgPosition.toFixed(2);
+        }
+        
+        // AIO引用数は記事ごとの数値からは計算できないので、手動入力のまま
+        // ブランド認知度も同様
+    }
+    
+    importArticleMetricsCsvFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const csvText = e.target.result;
+            const metrics = this.parseArticleMetricsCsv(csvText);
+            if (metrics && metrics.length > 0) {
+                this.renderArticleMetricsTable(metrics);
+                this.updateMetricsFromArticleTable();
+                alert(`${metrics.length}件の記事データをインポートしました`);
+            } else {
+                alert('CSVファイルから記事データを読み込めませんでした');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseArticleMetricsCsv(csvText) {
+        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
+        if (lines.length < 2) return null;
+        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const metrics = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            if (values.length === 0 || !values[0]) continue;
+            
+            const metric = {};
+            headers.forEach((header, index) => {
+                const value = values[index] || '';
+                if (header.includes('記事') || header.includes('URL') || header.includes('名前')) {
+                    metric.name = value;
+                } else if (header.includes('クリック')) {
+                    metric.clicks = parseInt(value) || 0;
+                } else if (header.includes('表示') || header.includes('インプレッション')) {
+                    metric.impressions = parseInt(value) || 0;
+                } else if (header.includes('CTR')) {
+                    metric.ctr = parseFloat(value) || 0;
+                } else if (header.includes('順位') || header.includes('ポジション')) {
+                    metric.position = parseFloat(value) || 0;
+                }
+            });
+            
+            if (metric.name) {
+                metrics.push(metric);
+            }
+        }
+        
+        return metrics.length > 0 ? metrics : null;
+    }
+    
+    importArticleMetricsMdFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const mdText = e.target.result;
+            const metrics = this.parseArticleMetricsMd(mdText);
+            if (metrics && metrics.length > 0) {
+                this.renderArticleMetricsTable(metrics);
+                this.updateMetricsFromArticleTable();
+                alert(`${metrics.length}件の記事データをインポートしました`);
+            } else {
+                alert('MDファイルから記事データを読み込めませんでした');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseArticleMetricsMd(mdText) {
+        const metrics = [];
+        const lines = mdText.split('\n').map(line => line.trim()).filter(line => line);
+        
+        let currentMetric = null;
+        
+        lines.forEach(line => {
+            // テーブル形式のMarkdownをパース
+            if (line.startsWith('|') && !line.includes('---')) {
+                const cells = line.split('|').map(c => c.trim()).filter(c => c);
+                if (cells.length >= 5 && !cells[0].toLowerCase().includes('記事')) {
+                    // ヘッダー行をスキップ
+                    const name = cells[0];
+                    const clicks = parseInt(cells[1]) || 0;
+                    const impressions = parseInt(cells[2]) || 0;
+                    const ctr = parseFloat(cells[3]) || 0;
+                    const position = parseFloat(cells[4]) || 0;
+                    
+                    if (name) {
+                        metrics.push({ name, clicks, impressions, ctr, position });
+                    }
+                }
+            }
+            // リスト形式のMarkdownをパース
+            else if (line.match(/^[-*]\s*(.+)/)) {
+                const match = line.match(/^[-*]\s*(.+)/);
+                if (match) {
+                    const parts = match[1].split(/[:：]/);
+                    if (parts.length >= 2) {
+                        const name = parts[0].trim();
+                        const rest = parts.slice(1).join(':');
+                        const numbers = rest.match(/\d+(?:\.\d+)?/g) || [];
+                        
+                        if (name && numbers.length >= 4) {
+                            metrics.push({
+                                name,
+                                clicks: parseInt(numbers[0]) || 0,
+                                impressions: parseInt(numbers[1]) || 0,
+                                ctr: parseFloat(numbers[2]) || 0,
+                                position: parseFloat(numbers[3]) || 0
+                            });
+                        }
+                    }
+                }
+            }
+        });
+        
+        return metrics.length > 0 ? metrics : null;
     }
     
     getArticleMetricsFromTable() {
