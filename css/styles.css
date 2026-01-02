@@ -1156,6 +1156,211 @@ body {
     color: #4b5563;
 }
 
+/* チェックリストスコア表示 */
+.checklist-score {
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.score-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.score-main {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
+
+.score-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+#scoreNumber {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.score-unit {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.score-separator {
+    color: var(--text-secondary);
+    margin: 0 0.2rem;
+}
+
+.score-total {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.score-rank-display {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
+.rank-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.rank-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.5rem;
+    background: white;
+    border: 2px solid var(--border-color);
+}
+
+.rank-value.rank-s {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.rank-value.rank-a {
+    color: #10b981;
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.rank-value.rank-b {
+    color: #3b82f6;
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.rank-value.rank-c {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.rank-value.rank-d {
+    color: #ef4444;
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+.score-progress {
+    margin-top: 1rem;
+}
+
+.score-bar {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+}
+
+.score-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.improvement-section {
+    margin-top: 1.5rem;
+}
+
+.improvement-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.checklist-checkbox {
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.checklist-checkbox:hover {
+    background: #f1f5f9;
+}
+
+.checklist-checkbox .material-icons-round {
+    font-size: 24px;
+    color: #94a3b8;
+    transition: var(--transition);
+}
+
+.checklist-checkbox .material-icons-round.checked {
+    color: var(--success-color);
+}
+
+.checklist-item {
+    padding: 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.checklist-item:hover {
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+    box-shadow: var(--shadow);
+}
+
+.checklist-content {
+    flex: 1;
+}
+
+.checklist-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.checklist-guidance {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
 /* エクスポートオプションボタン */
 .export-option-btn {
     display: flex;
