@@ -2422,11 +2422,39 @@ class Dashboard {
                 e.stopPropagation();
                 
                 console.log('記事がクリックされました:', article.title);
-                if (window.rewriteSystem) {
-                    await window.rewriteSystem.openUrlModal(article);
-                } else {
-                    console.error('rewriteSystemが利用できません');
-                }
+                console.log('rewriteSystem:', typeof rewriteSystem);
+                
+                // rewriteSystemが初期化されるまで最大3秒待つ
+                let retryCount = 0;
+                const maxRetries = 30; // 3秒間（100ms * 30回）
+                
+                const waitForRewriteSystem = async () => {
+                    if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && typeof window.rewriteSystem.openUrlModal === 'function') {
+                        console.log('✅ rewriteSystemが利用可能です');
+                        try {
+                            console.log('openUrlModalを呼び出します');
+                            await window.rewriteSystem.openUrlModal(article);
+                            console.log('openUrlModalが完了しました');
+                        } catch (error) {
+                            console.error('記事を開く際にエラーが発生しました:', error);
+                            alert('記事を開く際にエラーが発生しました: ' + error.message);
+                        }
+                        return true;
+                    } else {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            console.log(`rewriteSystemの初期化を待機中... (${retryCount}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            return waitForRewriteSystem();
+                        } else {
+                            console.error('❌ rewriteSystemの初期化がタイムアウトしました');
+                            alert('システムの初期化に失敗しました。ページをリロードしてください。');
+                            return false;
+                        }
+                    }
+                };
+                
+                await waitForRewriteSystem();
             });
         }
 
