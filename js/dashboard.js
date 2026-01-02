@@ -259,13 +259,13 @@ class Dashboard {
             console.log('rewriteSystem:', typeof rewriteSystem);
             
             // rewriteSystemが初期化されるまで待つ
-            if (typeof rewriteSystem === 'undefined') {
+            if (typeof window.rewriteSystem === 'undefined' || !window.rewriteSystem) {
                 console.warn('rewriteSystemが初期化されていません。少し待ってから再試行してください。');
                 // 少し待ってから再試行
                 setTimeout(async () => {
-                    if (typeof rewriteSystem !== 'undefined' && rewriteSystem.openUrlModal) {
+                    if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && window.rewriteSystem.openUrlModal) {
                         console.log('再試行: rewriteSystemが見つかりました');
-                        await rewriteSystem.openUrlModal(article);
+                        await window.rewriteSystem.openUrlModal(article);
                     } else {
                         console.error('rewriteSystemが見つかりません');
                         alert('システムの初期化に失敗しました。ページをリロードしてください。');
@@ -277,7 +277,7 @@ class Dashboard {
             // URL入力モーダルを開く
             try {
                 console.log('openUrlModalを呼び出します');
-                await rewriteSystem.openUrlModal(article);
+                await window.rewriteSystem.openUrlModal(article);
                 console.log('openUrlModalが完了しました');
             } catch (error) {
                 console.error('記事を開く際にエラーが発生しました:', error);
