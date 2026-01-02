@@ -144,28 +144,16 @@ class Dashboard {
 
     setupTabs() {
         console.log('[DEBUG] setupTabs: Starting');
-        console.log('[DEBUG] setupTabs: this =', this);
-        console.log('[DEBUG] setupTabs: window.dashboard =', window.dashboard);
-        
         const tabs = document.querySelectorAll('.pdca-tab');
         console.log('[DEBUG] setupTabs: Tabs found:', tabs.length);
-        console.log('[DEBUG] setupTabs: Tabs:', Array.from(tabs).map(t => ({ 
-            tab: t.dataset.tab, 
-            classes: t.className,
-            text: t.textContent.trim()
-        })));
         
         if (tabs.length === 0) {
             console.error('[ERROR] No tabs found!');
-            console.error('[ERROR] Document body:', document.body);
-            console.error('[ERROR] pdca-tabs container:', document.querySelector('.pdca-tabs'));
             return;
         }
         
-        const self = this; // コンテキストを保存
-        tabs.forEach((tab, index) => {
+        tabs.forEach((tab) => {
             const tabName = tab.dataset.tab;
-            console.log(`[DEBUG] Setting up tab ${index}:`, tabName, tab);
             if (!tabName) {
                 console.error('[ERROR] Tab has no data-tab attribute:', tab);
                 return;
@@ -175,32 +163,18 @@ class Dashboard {
             const newTab = tab.cloneNode(true);
             tab.parentNode.replaceChild(newTab, tab);
             
-            newTab.addEventListener('click', function(e) {
-                console.log('[DEBUG] Tab clicked:', tabName, e);
-                console.log('[DEBUG] Event target:', e.target);
-                console.log('[DEBUG] Current tab:', this);
+            // 新しいイベントリスナーを追加
+            newTab.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[DEBUG] Tab clicked:', tabName);
                 
-                // グローバルから取得
-                const dashboard = window.dashboard || self;
-                console.log('[DEBUG] Dashboard instance:', dashboard);
-                console.log('[DEBUG] switchTab function:', typeof dashboard?.switchTab);
-                
-                if (dashboard && typeof dashboard.switchTab === 'function') {
-                    try {
-                        dashboard.switchTab(tabName);
-                    } catch (error) {
-                        console.error('[ERROR] Error in switchTab:', error);
-                        console.error('[ERROR] Stack:', error.stack);
-                    }
+                if (window.dashboard && typeof window.dashboard.switchTab === 'function') {
+                    window.dashboard.switchTab(tabName);
                 } else {
-                    console.error('[ERROR] switchTab not available!');
-                    console.error('[ERROR] dashboard:', dashboard);
+                    console.error('[ERROR] window.dashboard.switchTab not available');
                 }
             });
-            
-            console.log(`[DEBUG] Event listener added to tab ${index}:`, tabName);
         });
         console.log('[DEBUG] setupTabs completed');
     }
