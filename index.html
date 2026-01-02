@@ -528,23 +528,37 @@
         window.monitoringSystem = null;
         window.reportingSystem = null;
 
+        // スクリプトが読み込まれるまで待つ関数
+        async function waitForScripts(maxWaitTime = 10000) {
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxWaitTime) {
+                if (typeof Dashboard !== 'undefined' && 
+                    typeof RewriteSystem !== 'undefined' && 
+                    typeof MonitoringSystem !== 'undefined' && 
+                    typeof ReportingSystem !== 'undefined') {
+                    console.log('✅ すべてのスクリプトが読み込まれました');
+                    return true;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return false;
+        }
+
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 console.log('システムの初期化を開始します...');
                 
-                // 各クラスが定義されているか確認
-                if (typeof Dashboard === 'undefined') {
-                    throw new Error('Dashboardクラスが定義されていません。js/dashboard.jsが正しく読み込まれているか確認してください。');
-                }
-                if (typeof RewriteSystem === 'undefined') {
-                    throw new Error('RewriteSystemクラスが定義されていません。js/rewrite.jsが正しく読み込まれているか確認してください。');
-                }
-                if (typeof MonitoringSystem === 'undefined') {
-                    throw new Error('MonitoringSystemクラスが定義されていません。js/monitoring.jsが正しく読み込まれているか確認してください。');
-                }
-                if (typeof ReportingSystem === 'undefined') {
-                    throw new Error('ReportingSystemクラスが定義されていません。js/reporting.jsが正しく読み込まれているか確認してください。');
+                // スクリプトが読み込まれるまで待つ
+                console.log('スクリプトの読み込みを待機中...');
+                const scriptsLoaded = await waitForScripts();
+                if (!scriptsLoaded) {
+                    const missingScripts = [];
+                    if (typeof Dashboard === 'undefined') missingScripts.push('Dashboard (js/dashboard.js)');
+                    if (typeof RewriteSystem === 'undefined') missingScripts.push('RewriteSystem (js/rewrite.js)');
+                    if (typeof MonitoringSystem === 'undefined') missingScripts.push('MonitoringSystem (js/monitoring.js)');
+                    if (typeof ReportingSystem === 'undefined') missingScripts.push('ReportingSystem (js/reporting.js)');
+                    throw new Error('以下のスクリプトが読み込まれていません: ' + missingScripts.join(', '));
                 }
                 
                 // 各システムのインスタンスを作成
