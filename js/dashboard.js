@@ -678,6 +678,8 @@ class Dashboard {
                 } else {
                     // プランが選択されていない場合は、デフォルトの記事一覧を表示
                     this.renderArticleList('all');
+                    // 進捗状況もデフォルトに戻す
+                    this.updateProgress();
                 }
             });
         }
@@ -737,6 +739,33 @@ class Dashboard {
         // プランの記事を一時的に保存して表示
         this.currentPlanArticles = planArticles;
         this.renderPlanArticleList(planArticles);
+        
+        // 進捗状況を更新（選択したプランの記事に基づいて）
+        this.updateProgressFromArticles(planArticles);
+    }
+    
+    updateProgressFromArticles(articles) {
+        if (!articles || articles.length === 0) {
+            // デフォルト値を設定
+            document.getElementById('progressCompleted').textContent = '0';
+            document.getElementById('progressInProgress').textContent = '0';
+            document.getElementById('progressNotStarted').textContent = '0';
+            document.getElementById('progressBarFill').style.width = '0%';
+            return;
+        }
+        
+        const completed = articles.filter(a => a.status === '完了').length;
+        const inProgress = articles.filter(a => a.status === '進行中').length;
+        const notStarted = articles.filter(a => a.status === '未着手').length;
+        const total = articles.length;
+        
+        document.getElementById('progressCompleted').textContent = completed;
+        document.getElementById('progressInProgress').textContent = inProgress;
+        document.getElementById('progressNotStarted').textContent = notStarted;
+        
+        // 進捗バー
+        const percentage = total > 0 ? (completed / total) * 100 : 0;
+        document.getElementById('progressBarFill').style.width = `${percentage}%`;
     }
     
     extractTitleFromUrl(url) {
