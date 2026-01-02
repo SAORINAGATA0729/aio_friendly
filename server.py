@@ -72,43 +72,108 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
 
     def html_to_markdown(self, html):
         """
-        簡易的なHTML→Markdown変換
-        BeautifulSoupを使わずに正規表現で処理（依存関係を減らすため）
+        HTML→Markdown変換（Vercel版と同じロジック）
+        giftee.bizの記事ページ構造に合わせた抽出
         """
-        # mainタグまたはarticleタグの中身を抽出（できれば）
-        main_match = re.search(r'<article[^>]*>(.*?)</article>', html, re.DOTALL | re.IGNORECASE)
-        if not main_match:
-            main_match = re.search(r'<main[^>]*>(.*?)</main>', html, re.DOTALL | re.IGNORECASE)
+        # 1. まず、記事のメインコンテンツエリアを探す
+        content_match = None
         
-        content = main_match.group(1) if main_match else html
+        # パターン1: classに"content"や"article"を含むdivを探す
+        patterns = [
+            r'<div[^>]*class="[^"]*article[^"]*content[^"]*"[^>]*>([\s\S]*?)</div>',
+            r'<div[^>]*class="[^"]*post[^"]*content[^"]*"[^>]*>([\s\S]*?)</div>',
+            r'<div[^>]*class="[^"]*entry[^"]*content[^"]*"[^>]*>([\s\S]*?)</div>',
+            r'<div[^>]*class="[^"]*column[^"]*content[^"]*"[^>]*>([\s\S]*?)</div>',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                content_match = match
+                break
+        
+        # パターン2: articleタグまたはmainタグの中身を抽出
+        if not content_match:
+            match = re.search(r'<article[^>]*>([\s\S]*?)</article>', html, re.IGNORECASE)
+            if match:
+                content_match = match
+        
+        if not content_match:
+            match = re.search(r'<main[^>]*>([\s\S]*?)</main>', html, re.IGNORECASE)
+            if match:
+                content_match = match
+        
+        # パターン3: H1タグを含むセクションを探す
+        if not content_match:
+            h1_match = re.search(r'<h1[^>]*>([\s\S]*?)</h1>', html, re.IGNORECASE)
+            if h1_match:
+                h1_index = html.find(h1_match.group(0))
+                start = max(0, h1_index - 500)
+                end = min(len(html), h1_index + 10000)
+                # ダミーマッチオブジェクトを作成
+                class DummyMatch:
+                    def __init__(self, group):
+                        self._group = group
+                    def group(self, n):
+                        return self._group if n == 1 else None
+                content_match = DummyMatch(html[start:end])
+        
+        # パターン4: bodyタグ全体から不要な部分を除外
+        if not content_match:
+            body_match = re.search(r'<body[^>]*>([\s\S]*?)</body>', html, re.IGNORECASE)
+            if body_match:
+                body_content = body_match.group(1)
+                # ヘッダー、フッター、サイドバーを削除
+                body_content = re.sub(r'<header[^>]*>[\s\S]*?</header>', '', body_content, flags=re.IGNORECASE)
+                body_content = re.sub(r'<footer[^>]*>[\s\S]*?</footer>', '', body_content, flags=re.IGNORECASE)
+                body_content = re.sub(r'<nav[^>]*>[\s\S]*?</nav>', '', body_content, flags=re.IGNORECASE)
+                body_content = re.sub(r'<aside[^>]*>[\s\S]*?</aside>', '', body_content, flags=re.IGNORECASE)
+                class DummyMatch:
+                    def __init__(self, group):
+                        self._group = group
+                    def group(self, n):
+                        return self._group if n == 1 else None
+                content_match = DummyMatch(body_content)
+        
+        content = content_match.group(1) if content_match else html
 
         # スクリプトとスタイルを削除
-        content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
-        content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.DOTALL | re.IGNORECASE)
+        content = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', content, flags=re.IGNORECASE)
 
-        # 見出し
-        content = re.sub(r'<h1[^>]*>(.*?)</h1>', r'\n# \1\n', content, flags=re.IGNORECASE)
-        content = re.sub(r'<h2[^>]*>(.*?)</h2>', r'\n## \1\n', content, flags=re.IGNORECASE)
-        content = re.sub(r'<h3[^>]*>(.*?)</h3>', r'\n### \1\n', content, flags=re.IGNORECASE)
-        content = re.sub(r'<h4[^>]*>(.*?)</h4>', r'\n#### \1\n', content, flags=re.IGNORECASE)
+        # 見出し（最初のH1のみを保持し、2つ目以降はH2に変換）
+        h1_count = 0
+        def replace_h1(match):
+            nonlocal h1_count
+            h1_count += 1
+            text = match.group(1).strip()
+            if h1_count == 1:
+                return '\n# ' + text + '\n'
+            else:
+                return '\n## ' + text + '\n'
+        
+        content = re.sub(r'<h1[^>]*>([\s\S]*?)</h1>', replace_h1, content, flags=re.IGNORECASE)
+        content = re.sub(r'<h2[^>]*>([\s\S]*?)</h2>', r'\n## \1\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<h3[^>]*>([\s\S]*?)</h3>', r'\n### \1\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<h4[^>]*>([\s\S]*?)</h4>', r'\n#### \1\n', content, flags=re.IGNORECASE)
 
         # 段落
-        content = re.sub(r'<p[^>]*>(.*?)</p>', r'\n\1\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<p[^>]*>([\s\S]*?)</p>', r'\n\1\n', content, flags=re.IGNORECASE)
 
         # リスト
-        content = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1', content, flags=re.IGNORECASE)
-        content = re.sub(r'<ul[^>]*>', r'', content, flags=re.IGNORECASE)
-        content = re.sub(r'</ul>', r'', content, flags=re.IGNORECASE)
+        content = re.sub(r'<li[^>]*>([\s\S]*?)</li>', r'- \1', content, flags=re.IGNORECASE)
+        content = re.sub(r'<ul[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</ul>', '', content, flags=re.IGNORECASE)
 
         # 改行タグ
-        content = re.sub(r'<br\s*/?>', r'\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<br\s*/?>', '\n', content, flags=re.IGNORECASE)
 
         # 太字
-        content = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', content, flags=re.IGNORECASE)
-        content = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', content, flags=re.IGNORECASE)
+        content = re.sub(r'<strong[^>]*>([\s\S]*?)</strong>', r'**\1**', content, flags=re.IGNORECASE)
+        content = re.sub(r'<b[^>]*>([\s\S]*?)</b>', r'**\1**', content, flags=re.IGNORECASE)
 
         # リンク
-        content = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', r'[\2](\1)', content, flags=re.IGNORECASE)
+        content = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)</a>', r'[\2](\1)', content, flags=re.IGNORECASE)
 
         # 画像
         content = re.sub(r'<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>', r'![\2](\1)', content, flags=re.IGNORECASE)

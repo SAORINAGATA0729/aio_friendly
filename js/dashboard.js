@@ -8,14 +8,28 @@ class Dashboard {
         this.currentTab = 'plan';
         this.progressData = null;
         this.baselineData = null;
-        this.init();
+        this.initialized = false;
+        // init()は外部から明示的に呼び出す
     }
 
     async init() {
+        if (this.initialized) {
+            console.log('Dashboardは既に初期化されています');
+            return;
+        }
+        
+        this.initialized = true;
         await this.loadData();
         this.setupTabs();
         this.updateDashboard();
         this.setupEventListeners();
+        
+        // rewriteSystemの初期化を待つ（記事クリック時に必要）
+        // rewriteSystemはindex.htmlで先に初期化されるので、ここでは確認のみ
+        if (typeof window.rewriteSystem === 'undefined' || !window.rewriteSystem || typeof window.rewriteSystem.openUrlModal !== 'function') {
+            console.warn('⚠️ rewriteSystemがまだ初期化されていません。待機します...');
+            await this.waitForRewriteSystem();
+        }
         
         // データが読み込まれたら、現在のタブのコンテンツを表示
         // Doタブがアクティブな場合、記事一覧を表示
@@ -25,6 +39,19 @@ class Dashboard {
                 this.renderArticleList();
             }, 500);
         }
+    }
+
+    async waitForRewriteSystem(maxWaitTime = 5000) {
+        const startTime = Date.now();
+        while (typeof window.rewriteSystem === 'undefined' || !window.rewriteSystem || typeof window.rewriteSystem.openUrlModal !== 'function') {
+            if (Date.now() - startTime > maxWaitTime) {
+                console.warn('⚠️ rewriteSystemの初期化待機がタイムアウトしました');
+                return false;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.log('✅ rewriteSystemの初期化が完了しました');
+        return true;
     }
 
     async loadData() {
@@ -433,31 +460,37 @@ class Dashboard {
             console.log('rewriteSystem:', typeof rewriteSystem);
             
             
-            // rewriteSystemが初期化されるまで待つ
-            if (typeof window.rewriteSystem === 'undefined' || !window.rewriteSystem) {
-                console.warn('rewriteSystemが初期化されていません。少し待ってから再試行してください。');
-                // 少し待ってから再試行
-                setTimeout(async () => {
-                    if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && window.rewriteSystem.openUrlModal) {
-                        console.log('再試行: rewriteSystemが見つかりました');
-                        await window.rewriteSystem.openUrlModal(article);
-                    } else {
-                        console.error('rewriteSystemが見つかりません');
-                        alert('システムの初期化に失敗しました。ページをリロードしてください。');
-                    }
-                }, 1000);
-                return;
-            }
+            // rewriteSystemが初期化されるまで最大3秒待つ
+            let retryCount = 0;
+            const maxRetries = 30; // 3秒間（100ms * 30回）
             
-            // URL入力モーダルを開く
-            try {
-                console.log('openUrlModalを呼び出します');
-                await window.rewriteSystem.openUrlModal(article);
-                console.log('openUrlModalが完了しました');
-            } catch (error) {
-                console.error('記事を開く際にエラーが発生しました:', error);
-                alert('記事を開く際にエラーが発生しました: ' + error.message);
-            }
+            const waitForRewriteSystem = async () => {
+                if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && typeof window.rewriteSystem.openUrlModal === 'function') {
+                    console.log('✅ rewriteSystemが利用可能です');
+                    try {
+                        console.log('openUrlModalを呼び出します');
+                        await window.rewriteSystem.openUrlModal(article);
+                        console.log('openUrlModalが完了しました');
+                    } catch (error) {
+                        console.error('記事を開く際にエラーが発生しました:', error);
+                        alert('記事を開く際にエラーが発生しました: ' + error.message);
+                    }
+                    return true;
+                } else {
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        console.log(`rewriteSystemの初期化を待機中... (${retryCount}/${maxRetries})`);
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        return waitForRewriteSystem();
+                    } else {
+                        console.error('❌ rewriteSystemの初期化がタイムアウトしました');
+                        alert('システムの初期化に失敗しました。ページをリロードしてください。');
+                        return false;
+                    }
+                }
+            };
+            
+            await waitForRewriteSystem();
         });
 
         return item;

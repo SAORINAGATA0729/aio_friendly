@@ -531,20 +531,35 @@
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 各システムを初期化
+                console.log('システムの初期化を開始します...');
+                
+                // 各システムのインスタンスを作成
                 window.dashboard = new Dashboard();
                 window.rewriteSystem = new RewriteSystem();
                 window.monitoringSystem = new MonitoringSystem();
                 window.reportingSystem = new ReportingSystem();
                 
-                // 初期化を実行
+                // 初期化を順番に実行（rewriteSystemを先に初期化してからdashboardを初期化）
+                console.log('RewriteSystemの初期化を開始...');
                 await window.rewriteSystem.init();
-                await window.monitoringSystem.init();
-                await window.reportingSystem.init();
+                console.log('RewriteSystemの初期化が完了しました');
                 
-                console.log('システムの初期化が完了しました');
+                console.log('Dashboardの初期化を待機中...');
+                await window.dashboard.init();
+                console.log('Dashboardの初期化が完了しました');
+                
+                console.log('MonitoringSystemの初期化を開始...');
+                await window.monitoringSystem.init();
+                console.log('MonitoringSystemの初期化が完了しました');
+                
+                console.log('ReportingSystemの初期化を開始...');
+                await window.reportingSystem.init();
+                console.log('ReportingSystemの初期化が完了しました');
+                
+                console.log('✅ すべてのシステムの初期化が完了しました');
             } catch (error) {
-                console.error('システムの初期化エラー:', error);
+                console.error('❌ システムの初期化エラー:', error);
+                alert('システムの初期化に失敗しました。ページをリロードしてください。\nエラー: ' + error.message);
             }
         });
     </script>
