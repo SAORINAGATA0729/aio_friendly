@@ -13,8 +13,18 @@ class RewriteSystem {
                 id: 'h1',
                 label: 'H1タグが1つだけ存在する',
                 check: (content) => {
-                    const h1Matches = content.match(/^#\s+.+$/gm);
-                    return h1Matches && h1Matches.length === 1;
+                    // Markdown形式とHTML形式の両方をチェック
+                    const markdownH1Matches = content.match(/^#\s+.+$/gm);
+                    const htmlH1Matches = content.match(/<h1[^>]*>.*?<\/h1>/gi);
+                    
+                    // Markdown形式のH1をカウント
+                    const markdownH1Count = markdownH1Matches ? markdownH1Matches.length : 0;
+                    // HTML形式のH1をカウント
+                    const htmlH1Count = htmlH1Matches ? htmlH1Matches.length : 0;
+                    
+                    // どちらかの形式でH1が1つだけ存在するかチェック
+                    const totalH1Count = markdownH1Count + htmlH1Count;
+                    return totalH1Count === 1;
                 },
                 guidance: '記事のタイトルをH1タグ（# タイトル）で1つだけ記述してください。'
             },
@@ -573,9 +583,17 @@ class RewriteSystem {
         
         // HTMLエディタにコンテンツを設定（先に設定）
         // HTMLを整形して改行を追加（見やすくするため）
+        // より読みやすい形式に整形
         const formattedHtml = htmlContent
             .replace(/></g, '>\n<') // タグの間に改行を追加
-            .replace(/\n\n+/g, '\n') // 連続する改行を1つに
+            .replace(/\n\n+/g, '\n\n') // 連続する改行を2つに統一
+            .replace(/\n<h/g, '\n\n<h') // 見出しタグの前に空行を追加
+            .replace(/\n<p/g, '\n\n<p') // 段落タグの前に空行を追加
+            .replace(/\n<ul/g, '\n\n<ul') // リストタグの前に空行を追加
+            .replace(/<\/h[1-6]>\n/g, '</h$1>\n\n') // 見出しタグの後に空行を追加
+            .replace(/<\/p>\n/g, '</p>\n\n') // 段落タグの後に空行を追加
+            .replace(/<\/ul>\n/g, '</ul>\n\n') // リストタグの後に空行を追加
+            .replace(/\n\n\n+/g, '\n\n') // 3つ以上の連続する改行を2つに
             .trim();
         
         const htmlEditor = document.getElementById('htmlEditor');
@@ -742,32 +760,28 @@ class RewriteSystem {
         }
         
         // 画像タグをすべて取得（最初の1つだけを保持）
-        const imgMatches = htmlContent.match(/<img[^>]*>/gi);
-        if (imgMatches && imgMatches.length > 1) {
-            // 各画像の位置を取得
-            const imgPositions = [];
-            let searchIndex = 0;
-            for (const imgMatch of imgMatches) {
-                const index = htmlContent.indexOf(imgMatch, searchIndex);
-                if (index !== -1) {
-                    imgPositions.push({ match: imgMatch, index: index });
-                    searchIndex = index + imgMatch.length;
+        const imgMatches = [...htmlContent.matchAll(/<img[^>]*>/gi)];
+        if (imgMatches.length > 1) {
+            // 最初の画像の位置
+            const firstImgIndex = imgMatches[0].index;
+            
+            // 削除する画像を特定（最初の画像から1000文字以内の重複画像）
+            // より広い範囲で重複を検出
+            const imagesToRemove = [];
+            for (let i = 1; i < imgMatches.length; i++) {
+                const currentImgIndex = imgMatches[i].index;
+                // 最初の画像から1000文字以内、または最初のH1から1000文字以内の画像を削除
+                if (currentImgIndex < firstImgIndex + 1000) {
+                    imagesToRemove.push(imgMatches[i]);
                 }
             }
-            
-            // 最初の画像の位置
-            const firstImgIndex = imgPositions[0]?.index || -1;
-            
-            // 削除する画像を特定（最初の画像から500文字以内の画像）
-            const imagesToRemove = imgPositions.filter((pos, idx) => {
-                return idx > 0 && pos.index < firstImgIndex + 500;
-            });
             
             // 後ろから削除することで、インデックスのずれを防ぐ
             for (const imgToRemove of imagesToRemove.reverse()) {
                 // 正確にマッチするように、エスケープされた文字列を使用
-                const escapedMatch = imgToRemove.match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                htmlContent = htmlContent.replace(new RegExp(escapedMatch, 'gi'), '');
+                const escapedMatch = imgToRemove[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                htmlContent = htmlContent.substring(0, imgToRemove.index) + 
+                             htmlContent.substring(imgToRemove.index + imgToRemove[0].length);
             }
             
             // #region agent log
@@ -951,6 +965,16 @@ ${article.keyword}について、重要なポイントをまとめました。
 
     updateChecklist(article, content) {
         // 手動チェックが設定されていない項目のみ自動チェックを更新
+        // contentがHTML形式の場合は、Markdown形式に変換してからチェック
+        let contentToCheck = content;
+        
+        // HTML形式かどうかを判定（<h1>タグや<img>タグが含まれている場合）
+        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(content);
+        if (isHtml) {
+            // HTML形式の場合はMarkdownに変換
+            contentToCheck = this.htmlToMarkdown(content);
+        }
+        
         this.checklistItems.forEach(item => {
             const div = document.querySelector(`[data-item-id="${item.id}"]`);
             if (!div) return;
@@ -960,7 +984,7 @@ ${article.keyword}について、重要なポイントをまとめました。
                 return;
             }
             
-            const checked = item.check(content);
+            const checked = item.check(contentToCheck);
             this.updateChecklistItem(div, item.id, checked);
         });
         
@@ -1409,70 +1433,113 @@ ${article.keyword}について、重要なポイントをまとめました。
                 switch (tagName) {
                     case 'h1':
                         return new Paragraph({
-                            text: node.textContent,
+                            text: node.textContent.trim(),
                             heading: HeadingLevel.HEADING_1,
                             spacing: { after: 400 }
                         });
                     case 'h2':
                         return new Paragraph({
-                            text: node.textContent,
+                            text: node.textContent.trim(),
                             heading: HeadingLevel.HEADING_2,
                             spacing: { after: 300 }
                         });
                     case 'h3':
                         return new Paragraph({
-                            text: node.textContent,
+                            text: node.textContent.trim(),
                             heading: HeadingLevel.HEADING_3,
+                            spacing: { after: 200 }
+                        });
+                    case 'h4':
+                        return new Paragraph({
+                            text: node.textContent.trim(),
+                            heading: HeadingLevel.HEADING_4,
                             spacing: { after: 200 }
                         });
                     case 'p':
                         const runs = Array.from(node.childNodes)
                             .map(processNode)
                             .filter(n => n !== null);
+                        if (runs.length === 0) {
+                            return new Paragraph({
+                                text: '',
+                                spacing: { after: 200 }
+                            });
+                        }
                         return new Paragraph({
-                            children: runs.length > 0 ? runs : [new TextRun('')],
+                            children: runs,
                             spacing: { after: 200 }
                         });
                     case 'strong':
                     case 'b':
                         return new TextRun({
-                            text: node.textContent,
+                            text: node.textContent.trim(),
                             bold: true
                         });
                     case 'em':
                     case 'i':
                         return new TextRun({
-                            text: node.textContent,
+                            text: node.textContent.trim(),
                             italics: true
                         });
                     case 'ul':
                     case 'ol':
-                        const listItems = Array.from(node.querySelectorAll('li'))
-                            .map(li => new Paragraph({
-                                text: li.textContent,
-                                bullet: { level: 0 }
-                            }));
-                        return listItems;
-                    case 'li':
-                        return new Paragraph({
-                            text: node.textContent,
-                            bullet: { level: 0 }
+                        // ul/olの直接の子要素（li）を処理
+                        const listItems = [];
+                        Array.from(node.childNodes).forEach(child => {
+                            if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'li') {
+                                const liRuns = Array.from(child.childNodes)
+                                    .map(processNode)
+                                    .filter(n => n !== null);
+                                if (liRuns.length > 0) {
+                                    listItems.push(new Paragraph({
+                                        children: liRuns,
+                                        bullet: { level: 0 }
+                                    }));
+                                } else {
+                                    listItems.push(new Paragraph({
+                                        text: child.textContent.trim(),
+                                        bullet: { level: 0 }
+                                    }));
+                                }
+                            }
                         });
+                        return listItems.length > 0 ? listItems : null;
+                    case 'li':
+                        // liタグは親のul/olで処理されるため、ここでは処理しない
+                        return null;
+                    case 'br':
+                        return new TextRun({ text: '\n', break: 1 });
+                    case 'img':
+                        // 画像はスキップ（またはaltテキストを表示）
+                        const altText = node.getAttribute('alt') || '';
+                        return altText ? new Paragraph({ text: `[画像: ${altText}]`, spacing: { after: 200 } }) : null;
                     default:
                         // 子要素を処理
-                        const children = Array.from(node.childNodes)
-                            .map(processNode)
-                            .filter(n => n !== null);
+                        const children = [];
+                        Array.from(node.childNodes).forEach(child => {
+                            const result = processNode(child);
+                            if (Array.isArray(result)) {
+                                children.push(...result);
+                            } else if (result !== null) {
+                                children.push(result);
+                            }
+                        });
                         return children.length > 0 ? children : null;
                 }
             }
             return null;
         };
 
-        const result = Array.from(tempDiv.childNodes)
-            .map(processNode)
-            .filter(n => n !== null)
-            .flat();
+        // ルート要素の子ノードを処理
+        const result = [];
+        Array.from(tempDiv.childNodes).forEach(child => {
+            const processed = processNode(child);
+            if (Array.isArray(processed)) {
+                result.push(...processed);
+            } else if (processed !== null) {
+                result.push(processed);
+            }
+        });
 
         return result.length > 0 ? result : [new Paragraph({ text: '' })];
     }
@@ -1518,3 +1585,4 @@ ${article.keyword}について、重要なポイントをまとめました。
         URL.revokeObjectURL(url);
     }
 }
+
