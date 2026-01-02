@@ -1027,8 +1027,8 @@ body {
 }
 
 /* HTMLエディタコンテナ */
+/* displayは.editor-mode-containerで制御されるため、ここでは指定しない */
 #htmlEditorContainer {
-    display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
@@ -1093,7 +1093,7 @@ body {
 
 /* Quillエディタのスタイル */
 #visualEditorContainer {
-    display: flex;
+    /* displayは.editor-mode-containerで制御されるため、ここでは指定しない */
     flex-direction: column;
     flex: 1;
     min-height: 0;
