@@ -171,8 +171,14 @@ class RewriteSystem {
                 statusDiv.innerHTML = '<span style="color: var(--primary-color);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle; animation: spin 1s linear infinite;">sync</span> 記事を取得中...</span>';
                 
                 try {
-                    // 自作サーバーのAPIを叩く
-                    const response = await fetch(`/api/fetch?url=${encodeURIComponent(url)}`);
+                    // ローカル環境かVercel環境かを自動検出
+                    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const apiUrl = isLocal 
+                        ? `http://localhost:8000/api/fetch?url=${encodeURIComponent(url)}`
+                        : `/api/fetch?url=${encodeURIComponent(url)}`;
+                    
+                    console.log(`[DEBUG] Fetching from: ${apiUrl}`);
+                    const response = await fetch(apiUrl);
                     
                     if (!response.ok) {
                         throw new Error(`HTTPエラー: ${response.status}`);
@@ -182,16 +188,35 @@ class RewriteSystem {
 
                     if (data.success && data.content) {
                         statusDiv.innerHTML = '<span style="color: var(--success-color);">✓ 取得成功！エディタを開きます...</span>';
-                        setTimeout(() => {
-                            urlModal.classList.remove('active');
-                            this.openRewriteModal(this.currentArticle, data.content);
-                        }, 500);
+                        
+                        // URLモーダルを閉じる
+                        urlModal.classList.remove('active');
+                        
+                        // 少し待ってからエディタを開く（アニメーション完了を待つ）
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                        // エディタを開く
+                        try {
+                            await this.openRewriteModal(this.currentArticle, data.content);
+                            console.log('[DEBUG] エディタを開きました');
+                        } catch (modalError) {
+                            console.error('エディタを開く際にエラー:', modalError);
+                            alert('エディタを開く際にエラーが発生しました。ページをリロードして再試行してください。');
+                        }
                     } else {
                         throw new Error(data.error || 'コンテンツを取得できませんでした');
                     }
                 } catch (error) {
                     console.error('Fetch error:', error);
-                    statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${error.message}<br>手動でコピーしてください。</span>`;
+                    statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${error.message}<br><br><button id="retryFetchBtn" style="margin-top: 10px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">再試行</button><br><br>手動でコピーする場合は「次へ進む」ボタンをクリックしてください。</span>`;
+                    
+                    // 再試行ボタンのイベントリスナーを追加
+                    const retryBtn = document.getElementById('retryFetchBtn');
+                    if (retryBtn) {
+                        retryBtn.addEventListener('click', () => {
+                            autoFetchBtn.click();
+                        });
+                    }
                 }
             });
         }
@@ -482,7 +507,12 @@ class RewriteSystem {
         }
         
         modalTitle.textContent = article.title;
+        
+        // モーダルを開く
         modal.classList.add('active');
+        
+        // モーダルが開いたことを確認してから処理を続行
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // エクスポートボタンのイベントリスナーを設定（モーダルが開かれた後に設定）
         const exportBtn = document.getElementById('rewriteExportBtn');
@@ -562,6 +592,9 @@ class RewriteSystem {
         // デフォルトでビジュアルモードを表示（先に切り替え、同期をスキップ）
         this.switchEditorMode('visual', true);
         
+        // エディタの初期化を確実に行うために少し待つ
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Quillエディタをクリアしてからコンテンツを設定（モード切り替え後）
         if (this.quill) {
             // 既存のイベントリスナーを削除（重複を防ぐ）
@@ -597,6 +630,16 @@ class RewriteSystem {
         
         this.renderChecklist(article, content);
         this.updateChecklist(article, content);
+        
+        // エディタが正しく表示されているか確認
+        const visualEditor = document.querySelector('.ql-editor');
+        const htmlEditor = document.getElementById('htmlEditor');
+        
+        if (!visualEditor && !htmlEditor) {
+            console.warn('エディタ要素が見つかりません');
+        } else {
+            console.log('[DEBUG] エディタモーダルが正常に開きました');
+        }
     }
 
     getSlugFromUrl(url) {
@@ -692,32 +735,54 @@ class RewriteSystem {
         // H1タグをすべて取得
         const h1Matches = htmlContent.match(/<h1[^>]*>.*?<\/h1>/gi);
         if (h1Matches && h1Matches.length > 1) {
-            // 最初のH1以外を削除
-            for (let i = 1; i < h1Matches.length; i++) {
-                htmlContent = htmlContent.replace(h1Matches[i], '');
-            }
+            // 最初のH1以外をH2に変換
+            let h1Count = 0;
+            htmlContent = htmlContent.replace(/<h1[^>]*>(.*?)<\/h1>/gi, (match, text) => {
+                h1Count++;
+                if (h1Count === 1) {
+                    return match; // 最初のH1はそのまま
+                } else {
+                    return `<h2>${text.trim()}</h2>`; // 2つ目以降はH2に変換
+                }
+            });
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:678',message:'removeDuplicateH1AndEyeCatchFromHtml: Removed duplicate H1 tags',data:{removedH1Count:h1Matches.length-1},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'R'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:678',message:'removeDuplicateH1AndEyeCatchFromHtml: Converted duplicate H1 tags to H2',data:{convertedH1Count:h1Matches.length-1},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'R'})}).catch(()=>{});
             // #endregion
         }
         
         // 画像タグをすべて取得（最初の1つだけを保持）
         const imgMatches = htmlContent.match(/<img[^>]*>/gi);
         if (imgMatches && imgMatches.length > 1) {
-            // 最初の画像の位置を特定
-            const firstImgIndex = htmlContent.indexOf(imgMatches[0]);
-            // 最初の画像の後の画像を削除（ただし、最初の画像から500文字以内の画像はアイキャッチとして扱う）
-            let removedCount = 0;
-            for (let i = 1; i < imgMatches.length; i++) {
-                const imgIndex = htmlContent.indexOf(imgMatches[i]);
-                // 最初の画像から500文字以内の画像は削除（重複アイキャッチとして）
-                if (imgIndex < firstImgIndex + 500) {
-                    htmlContent = htmlContent.replace(imgMatches[i], '');
-                    removedCount++;
+            // 各画像の位置を取得
+            const imgPositions = [];
+            let searchIndex = 0;
+            for (const imgMatch of imgMatches) {
+                const index = htmlContent.indexOf(imgMatch, searchIndex);
+                if (index !== -1) {
+                    imgPositions.push({ match: imgMatch, index: index });
+                    searchIndex = index + imgMatch.length;
                 }
             }
+            
+            // 最初の画像の位置
+            const firstImgIndex = imgPositions[0]?.index || -1;
+            
+            // 削除する画像を特定（最初の画像から500文字以内の画像）
+            const imagesToRemove = imgPositions.filter((pos, idx) => {
+                return idx > 0 && pos.index < firstImgIndex + 500;
+            });
+            
+            // 後ろから削除することで、インデックスのずれを防ぐ
+            for (const imgToRemove of imagesToRemove.reverse()) {
+                // 正確にマッチするように、エスケープされた文字列を使用
+                const escapedMatch = imgToRemove.match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                htmlContent = htmlContent.replace(new RegExp(escapedMatch, 'gi'), '');
+            }
+            
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:692',message:'removeDuplicateH1AndEyeCatchFromHtml: Removed duplicate images',data:{removedImgCount:removedCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'S'})}).catch(()=>{});
+            if (imagesToRemove.length > 0) {
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:692',message:'removeDuplicateH1AndEyeCatchFromHtml: Removed duplicate images',data:{removedImgCount:imagesToRemove.length,initialImgCount:imgMatches.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'S'})}).catch(()=>{});
+            }
             // #endregion
         }
         
