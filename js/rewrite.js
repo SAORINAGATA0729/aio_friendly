@@ -86,9 +86,21 @@ class RewriteSystem {
     }
 
     async init() {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:88',message:'RewriteSystem.init: Starting',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         await this.loadProgressData();
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:91',message:'RewriteSystem.init: loadProgressData completed',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         this.setupModal();
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:93',message:'RewriteSystem.init: setupModal completed',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         this.setupEditor();
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:95',message:'RewriteSystem.init: setupEditor completed',data:{hasOpenUrlModal:typeof this.openUrlModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
     }
 
     async loadProgressData() {
@@ -469,10 +481,18 @@ class RewriteSystem {
     }
 
     async openUrlModal(article) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:468',message:'openUrlModal: Called',data:{articleId:article.id,articleTitle:article.title},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         this.currentArticle = article;
         const urlModal = document.getElementById('urlModal');
         const urlInput = document.getElementById('articleUrlInput');
         const statusDiv = document.getElementById('fetchStatus');
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:474',message:'openUrlModal: Elements check',data:{urlModal:!!urlModal,urlInput:!!urlInput,statusDiv:!!statusDiv},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         if (statusDiv) statusDiv.innerHTML = '';
         
         let url = article.url;
@@ -481,7 +501,16 @@ class RewriteSystem {
         }
         
         if (urlInput) urlInput.value = url;
-        if (urlModal) urlModal.classList.add('active');
+        if (urlModal) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:485',message:'openUrlModal: Opening urlModal',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            urlModal.classList.add('active');
+        } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:488',message:'openUrlModal: urlModal not found',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+        }
     }
 
     async openRewriteModal(article, fetchedContent = null) {
