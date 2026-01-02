@@ -418,24 +418,20 @@ class Dashboard {
                 </span>
             </div>
             <div style="display: flex; justify-content: center; align-items: center;">
-                <select class="article-score-level-select" data-article-id="${article.id}" 
+                <span class="article-score-display" data-article-id="${article.id}" 
                     style="
                         padding: 0.3rem 0.5rem;
                         border-radius: 0.4rem;
                         border: 1px solid var(--border-color);
-                        background: white;
+                        background: #f3f4f6;
+                        color: var(--text-primary);
                         font-size: 0.85rem;
                         font-weight: 600;
-                        cursor: pointer;
+                        text-align: center;
                         min-width: 50px;
-                    "
-                    title="ランクを選択">
-                    <option value="S" ${score.level === 'S' ? 'selected' : ''}>S</option>
-                    <option value="A" ${score.level === 'A' ? 'selected' : ''}>A</option>
-                    <option value="B" ${score.level === 'B' ? 'selected' : ''}>B</option>
-                    <option value="C" ${score.level === 'C' ? 'selected' : ''}>C</option>
-                    <option value="D" ${score.level === 'D' ? 'selected' : ''}>D</option>
-                </select>
+                    ">
+                    ランク ${score.level || 'C'}
+                </span>
             </div>
         `;
 
@@ -492,15 +488,6 @@ class Dashboard {
                 e.stopPropagation();
             });
         }
-        
-        // スコアランクセレクトボックスのクリックイベントを停止
-        const scoreSelect = item.querySelector('.article-score-level-select');
-        if (scoreSelect) {
-            scoreSelect.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-        }
-
         return item;
     }
 
@@ -543,14 +530,7 @@ class Dashboard {
                     const newStatus = e.target.value;
                     await this.updateArticleStatus(articleId, newStatus);
                 }
-                
-                // スコアランク変更
-                if (e.target.classList.contains('article-score-level-select')) {
-                    e.stopPropagation();
-                    const articleId = parseInt(e.target.dataset.articleId);
-                    const newLevel = e.target.value;
-                    await this.updateArticleScore(articleId, newLevel);
-                }
+                // スコアランク変更のイベントリスナーは削除（読み取り専用のため）
             });
         }
     }

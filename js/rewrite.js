@@ -1208,7 +1208,9 @@ ${article.keyword}について、重要なポイントをまとめました。
         if (scoreNumberEl) scoreNumberEl.textContent = score;
         if (scoreRankEl) {
             scoreRankEl.textContent = rank;
-            scoreRankEl.className = `rank-value rank-${rank}`;
+            // rank-valueクラスを維持しつつ、rank-{rank}クラスを追加
+            scoreRankEl.className = 'rank-value';
+            scoreRankEl.classList.add(`rank-${rank}`);
         }
         if (checkedCountElNew) checkedCountElNew.textContent = checkedCount;
         if (totalCountElNew) totalCountElNew.textContent = totalItems;
@@ -1310,9 +1312,15 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             const slug = this.getSlugFromUrl(this.currentArticle.url);
             
-            const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
-            if (!saved) {
-                alert('ファイルの保存に失敗しました');
+            try {
+                const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
+                if (!saved) {
+                    // ローカルストレージには保存されている可能性があるため、警告のみ
+                    console.warn('ファイルの保存に失敗しましたが、ローカルストレージには保存されている可能性があります');
+                }
+            } catch (saveError) {
+                console.error('保存エラー:', saveError);
+                alert('ファイルの保存中にエラーが発生しました: ' + saveError.message);
                 return;
             }
             

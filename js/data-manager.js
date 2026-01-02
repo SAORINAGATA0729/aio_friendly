@@ -143,19 +143,31 @@ class DataManager {
         try {
             const storageKey = `${this.storageKeys.articles}${filename}`;
             localStorage.setItem(storageKey, content);
+            console.log('[DEBUG] saveMarkdown: Saved to localStorage:', storageKey);
 
             if ('showSaveFilePicker' in window) {
-                const fileHandle = await this.getFileHandleForSave(`${this.articlesPath}${filename}`);
-                const writable = await fileHandle.createWritable();
-                await writable.write(content);
-                await writable.close();
-                return true;
+                try {
+                    const fileHandle = await this.getFileHandleForSave(`${this.articlesPath}${filename}`);
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    console.log('[DEBUG] saveMarkdown: Saved via File System Access API');
+                    return true;
+                } catch (fsError) {
+                    console.warn('[WARN] saveMarkdown: File System Access API failed:', fsError);
+                    // フォールバック: ダウンロード
+                    this.downloadFile(filename, content, 'text/markdown');
+                    return true; // ローカルストレージには保存済みなのでtrueを返す
+                }
             }
 
+            // フォールバック: ダウンロード
             this.downloadFile(filename, content, 'text/markdown');
+            console.log('[DEBUG] saveMarkdown: Saved via download');
             return true;
         } catch (error) {
             console.error(`Markdown保存エラー (${filename}):`, error);
+            // ローカルストレージには保存されている可能性があるため、falseを返すが警告のみ
             return false;
         }
     }
