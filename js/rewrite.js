@@ -702,18 +702,24 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             // チェックボックスのクリックイベント（手動チェック切り替え）
             const checkbox = div.querySelector('.checklist-checkbox');
+            console.log('[DEBUG] Checklist checkbox found:', !!checkbox, item.id);
             if (checkbox) {
                 checkbox.addEventListener('click', (e) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:625',message:'Checklist checkbox clicked',data:{itemId:item.id},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
+                    console.log('[DEBUG] Checklist checkbox clicked:', item.id, e);
                     e.stopPropagation();
-                    const currentChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
-                    const newChecked = !currentChecked;
-                    this.manualChecks[item.id] = newChecked;
-                    this.updateChecklistItem(div, item.id, newChecked);
-                    this.updateScore();
+                    try {
+                        const currentChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
+                        const newChecked = !currentChecked;
+                        this.manualChecks[item.id] = newChecked;
+                        this.updateChecklistItem(div, item.id, newChecked);
+                        this.updateScore();
+                        console.log('[DEBUG] Checklist updated:', item.id, newChecked);
+                    } catch (error) {
+                        console.error('[ERROR] Error updating checklist:', error);
+                    }
                 });
+            } else {
+                console.error('[ERROR] Checkbox not found for item:', item.id);
             }
             
             // 項目全体のクリックイベント（ガイダンス表示）
