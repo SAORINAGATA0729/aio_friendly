@@ -98,38 +98,75 @@ module.exports = async function handler(req, res) {
  * HTMLをMarkdownに変換（簡易版）
  */
 function htmlToMarkdown(html) {
-    // より正確なコンテンツ抽出を試みる
-    // 1. まず、class="article-content"やclass="post-content"などの記事コンテンツエリアを探す
-    let contentMatch = html.match(/<div[^>]*class="[^"]*article[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    if (!contentMatch) {
-        contentMatch = html.match(/<div[^>]*class="[^"]*post[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    }
-    if (!contentMatch) {
-        contentMatch = html.match(/<div[^>]*class="[^"]*entry[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    // giftee.bizの記事ページ構造に合わせた抽出
+    // 1. まず、記事のメインコンテンツエリアを探す（giftee.bizの構造に合わせる）
+    // classに"content"や"article"を含むdivを探す
+    let contentMatch = null;
+    
+    // パターン1: class="article-content"やclass="post-content"など
+    const patterns = [
+        /<div[^>]*class="[^"]*article[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+        /<div[^>]*class="[^"]*post[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+        /<div[^>]*class="[^"]*entry[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+        /<div[^>]*class="[^"]*column[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+    ];
+    
+    for (const pattern of patterns) {
+        contentMatch = html.match(pattern);
+        if (contentMatch) {
+            console.log(`[DEBUG] Found content using pattern: ${pattern}`);
+            break;
+        }
     }
     
-    // 2. articleタグまたはmainタグの中身を抽出
+    // パターン2: articleタグまたはmainタグの中身を抽出
     if (!contentMatch) {
         contentMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+        if (contentMatch) {
+            console.log(`[DEBUG] Found content using <article> tag`);
+        }
     }
     if (!contentMatch) {
         contentMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+        if (contentMatch) {
+            console.log(`[DEBUG] Found content using <main> tag`);
+        }
     }
     
-    // 3. それでも見つからない場合は、bodyタグ内の特定のセクションを探す
+    // パターン3: H1タグを含むセクションを探す（より広範囲に）
     if (!contentMatch) {
-        // タイトル（h1）を含むセクションを探す
         const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
         if (h1Match) {
             const h1Index = html.indexOf(h1Match[0]);
-            // h1の前後2000文字を抽出
+            // H1の前500文字から後10000文字までを抽出
             const start = Math.max(0, h1Index - 500);
-            const end = Math.min(html.length, h1Index + 5000);
+            const end = Math.min(html.length, h1Index + 10000);
             contentMatch = [null, html.substring(start, end)];
+            console.log(`[DEBUG] Found content using H1-based extraction (${end - start} chars)`);
+        }
+    }
+    
+    // パターン4: bodyタグ全体から不要な部分を除外
+    if (!contentMatch) {
+        // bodyタグを取得
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+            let bodyContent = bodyMatch[1];
+            // ヘッダー、フッター、サイドバーを削除
+            bodyContent = bodyContent.replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '');
+            bodyContent = bodyContent.replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '');
+            bodyContent = bodyContent.replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '');
+            bodyContent = bodyContent.replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '');
+            contentMatch = [null, bodyContent];
+            console.log(`[DEBUG] Found content using body tag (cleaned)`);
         }
     }
     
     let content = contentMatch ? contentMatch[1] : html;
+    
+    if (!contentMatch) {
+        console.log(`[WARNING] Could not find specific content area, using full HTML`);
+    }
     
     // 抽出されたコンテンツ内のH1タグを確認（デバッグ用）
     const extractedH1Matches = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
