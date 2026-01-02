@@ -138,14 +138,27 @@ class Dashboard {
             }
             tab.addEventListener('click', (e) => {
                 console.log('[DEBUG] Tab clicked:', tabName, e);
+                console.log('[DEBUG] this context:', this);
                 e.preventDefault();
                 e.stopPropagation();
                 try {
-                    this.switchTab(tabName);
+                    if (!this || typeof this.switchTab !== 'function') {
+                        console.error('[ERROR] this.switchTab is not a function!', this);
+                        // グローバルから取得を試みる
+                        if (window.dashboard && typeof window.dashboard.switchTab === 'function') {
+                            console.log('[DEBUG] Using window.dashboard.switchTab');
+                            window.dashboard.switchTab(tabName);
+                        } else {
+                            console.error('[ERROR] window.dashboard.switchTab also not available!');
+                        }
+                    } else {
+                        this.switchTab(tabName);
+                    }
                 } catch (error) {
                     console.error('[ERROR] Error in switchTab:', error);
+                    console.error('[ERROR] Stack:', error.stack);
                 }
-            });
+            }.bind(this));
         });
         console.log('[DEBUG] setupTabs completed');
     }

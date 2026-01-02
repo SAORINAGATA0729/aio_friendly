@@ -531,9 +531,7 @@
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:492',message:'DOMContentLoaded: Starting initialization',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
+                console.log('[DEBUG] DOMContentLoaded: Starting initialization');
                 
                 // 各システムを初期化
                 window.dashboard = new Dashboard();
@@ -541,29 +539,23 @@
                 window.monitoringSystem = new MonitoringSystem();
                 window.reportingSystem = new ReportingSystem();
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:500',message:'DOMContentLoaded: Systems created',data:{hasDashboard:!!window.dashboard,hasRewriteSystem:!!window.rewriteSystem,hasMonitoringSystem:!!window.monitoringSystem,hasReportingSystem:!!window.reportingSystem},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
+                console.log('[DEBUG] DOMContentLoaded: Systems created', {
+                    hasDashboard: !!window.dashboard,
+                    hasRewriteSystem: !!window.rewriteSystem,
+                    hasMonitoringSystem: !!window.monitoringSystem,
+                    hasReportingSystem: !!window.reportingSystem
+                });
                 
                 // 初期化を実行
                 await window.rewriteSystem.init();
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:504',message:'DOMContentLoaded: rewriteSystem.init completed',data:{hasOpenUrlModal:typeof window.rewriteSystem.openUrlModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                
                 await window.monitoringSystem.init();
                 await window.reportingSystem.init();
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:509',message:'DOMContentLoaded: All systems initialized',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                
+                console.log('[DEBUG] DOMContentLoaded: All systems initialized');
                 console.log('システムの初期化が完了しました');
             } catch (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:513',message:'DOMContentLoaded: Initialization error',data:{error:error.message,stack:error.stack},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                console.error('システムの初期化エラー:', error);
+                console.error('[ERROR] システムの初期化エラー:', error);
+                console.error('[ERROR] Stack:', error.stack);
             }
         });
     </script>
