@@ -47,12 +47,14 @@ class Dashboard {
         }
         
         // データが読み込まれたら、現在のタブのコンテンツを表示
-        // Doタブがアクティブな場合、記事一覧を表示
-        if (this.currentTab === 'do' && this.progressData && this.progressData.articles) {
-            console.log('初期化時: Doタブがアクティブなので記事一覧を表示します');
-            setTimeout(() => {
-                this.renderArticleList();
-            }, 500);
+        // Doタブがアクティブな場合でも、プランが選択されていない場合は記事一覧を非表示
+        if (this.currentTab === 'do') {
+            if (!this.selectedPlanId) {
+                const articleListSection = document.querySelector('.article-list-section');
+                if (articleListSection) {
+                    articleListSection.style.display = 'none';
+                }
+            }
         }
     }
 
@@ -1454,16 +1456,19 @@ class Dashboard {
             console.log('articles:', this.progressData?.articles);
             
             if (tabName === 'do') {
-                console.log('Doタブが選択されました。記事一覧を表示します...');
-                if (this.progressData && this.progressData.articles) {
-                    console.log('データが読み込まれています。記事一覧を表示します');
-                    this.renderArticleList();
-                } else {
-                    console.warn('データがまだ読み込まれていません。データを読み込みます...');
-                    this.loadData().then(() => {
-                        console.log('データ読み込み完了。記事一覧を表示します');
-                        this.renderArticleList();
-                    });
+                console.log('Doタブが選択されました。');
+                // プランが選択されていない場合は記事一覧を非表示
+                if (!this.selectedPlanId) {
+                    const articleListSection = document.querySelector('.article-list-section');
+                    if (articleListSection) {
+                        articleListSection.style.display = 'none';
+                    }
+                    const articleList = document.getElementById('articleList');
+                    if (articleList) {
+                        articleList.innerHTML = '';
+                    }
+                    const existingHeaders = document.querySelectorAll('.article-list-header');
+                    existingHeaders.forEach(header => header.remove());
                 }
             } else if (tabName === 'plan') {
                 // Planタブが選択されたらプラン一覧を表示
