@@ -343,9 +343,12 @@ class RewriteSystem {
             visualContainer?.classList.add('active');
             htmlContainer?.style.setProperty('display', 'none');
             
-            // HTMLエディタの内容をQuillに反映
+            // HTMLエディタの内容をQuillに反映（既存のコンテンツをクリアしてから）
             if (this.quill && htmlEditor) {
                 const htmlContent = htmlEditor.value;
+                // 既存のコンテンツをクリア
+                this.quill.setText('');
+                // 新しいコンテンツを設定
                 this.quill.root.innerHTML = htmlContent;
             }
         } else {
@@ -430,7 +433,13 @@ class RewriteSystem {
         
         if (!content) {
             if (fetchedContent) {
-                content = `# ${article.title}\n\n${fetchedContent}`;
+                // fetchedContentに既にH1が含まれている場合は追加しない
+                const hasH1 = fetchedContent.trim().startsWith('# ');
+                if (hasH1) {
+                    content = fetchedContent;
+                } else {
+                    content = `# ${article.title}\n\n${fetchedContent}`;
+                }
             } else {
                 content = this.createArticleTemplate(article);
             }
@@ -439,8 +448,15 @@ class RewriteSystem {
         // コンテンツをMarkdownからHTMLに変換
         const htmlContent = this.markdownToHtml(content);
         
-        // Quillエディタにコンテンツを設定
+        // Quillエディタをクリアしてからコンテンツを設定
         if (this.quill) {
+            // 既存のイベントリスナーを削除（重複を防ぐ）
+            this.quill.off('text-change');
+            
+            // エディタをクリア
+            this.quill.setText('');
+            
+            // 新しいコンテンツを設定
             this.quill.root.innerHTML = htmlContent;
             
             // Quillエディタの変更を監視してチェックリストを更新
@@ -451,7 +467,7 @@ class RewriteSystem {
             });
         }
         
-        // HTMLエディタにもコンテンツを設定
+        // HTMLエディタにもコンテンツを設定（クリアしてから）
         const htmlEditor = document.getElementById('htmlEditor');
         if (htmlEditor) {
             htmlEditor.value = htmlContent;
