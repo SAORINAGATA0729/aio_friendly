@@ -49,9 +49,18 @@ module.exports = async function handler(req, res) {
         console.log(`[DEBUG] Found ${h1Matches ? h1Matches.length : 0} H1 tags in HTML`);
         if (h1Matches) {
             h1Matches.forEach((h1, index) => {
-                console.log(`[DEBUG] H1 ${index + 1}: ${h1.substring(0, 100)}`);
+                const textMatch = h1.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+                if (textMatch) {
+                    console.log(`[DEBUG] H1 ${index + 1}: ${textMatch[1].trim().substring(0, 100)}`);
+                }
             });
         }
+        
+        // HTMLの構造を確認（デバッグ用）
+        const hasArticle = /<article[^>]*>/i.test(htmlContent);
+        const hasMain = /<main[^>]*>/i.test(htmlContent);
+        const hasArticleContent = /class="[^"]*article[^"]*content[^"]*"/i.test(htmlContent);
+        console.log(`[DEBUG] HTML structure: hasArticle=${hasArticle}, hasMain=${hasMain}, hasArticleContent=${hasArticleContent}`);
 
         // HTMLをMarkdownに変換
         const markdownContent = htmlToMarkdown(htmlContent);
@@ -89,17 +98,50 @@ module.exports = async function handler(req, res) {
  * HTMLをMarkdownに変換（簡易版）
  */
 function htmlToMarkdown(html) {
-    // mainタグまたはarticleタグの中身を抽出
-    let mainMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-    if (!mainMatch) {
-        mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+    // より正確なコンテンツ抽出を試みる
+    // 1. まず、class="article-content"やclass="post-content"などの記事コンテンツエリアを探す
+    let contentMatch = html.match(/<div[^>]*class="[^"]*article[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    if (!contentMatch) {
+        contentMatch = html.match(/<div[^>]*class="[^"]*post[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    }
+    if (!contentMatch) {
+        contentMatch = html.match(/<div[^>]*class="[^"]*entry[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
     }
     
-    let content = mainMatch ? mainMatch[1] : html;
+    // 2. articleタグまたはmainタグの中身を抽出
+    if (!contentMatch) {
+        contentMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+    }
+    if (!contentMatch) {
+        contentMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+    }
+    
+    // 3. それでも見つからない場合は、bodyタグ内の特定のセクションを探す
+    if (!contentMatch) {
+        // タイトル（h1）を含むセクションを探す
+        const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+        if (h1Match) {
+            const h1Index = html.indexOf(h1Match[0]);
+            // h1の前後2000文字を抽出
+            const start = Math.max(0, h1Index - 500);
+            const end = Math.min(html.length, h1Index + 5000);
+            contentMatch = [null, html.substring(start, end)];
+        }
+    }
+    
+    let content = contentMatch ? contentMatch[1] : html;
     
     // 抽出されたコンテンツ内のH1タグを確認（デバッグ用）
     const extractedH1Matches = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
     console.log(`[DEBUG] Found ${extractedH1Matches ? extractedH1Matches.length : 0} H1 tags in extracted content`);
+    if (extractedH1Matches) {
+        extractedH1Matches.forEach((h1, index) => {
+            const textMatch = h1.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+            if (textMatch) {
+                console.log(`[DEBUG] Extracted H1 ${index + 1}: ${textMatch[1].trim().substring(0, 100)}`);
+            }
+        });
+    }
 
     // スクリプトとスタイルを削除
     content = content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
