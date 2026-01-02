@@ -1351,11 +1351,21 @@ class Dashboard {
             // プランが選択されている場合は、プランの記事一覧を再描画
             if (this.selectedPlanId) {
                 // currentPlanArticlesも更新（progressDataから最新の状態を反映）
-                const updatedArticle = this.currentPlanArticles.find(a => a.id === articleId);
+                // 記事IDの型を統一してマッチング（文字列と数値の両方に対応）
+                const updatedArticle = this.currentPlanArticles.find(a => 
+                    String(a.id) === String(articleId) || a.url === article.url
+                );
                 if (updatedArticle) {
                     updatedArticle.status = newStatus;
                     // progressDataから最新の情報を反映
                     Object.assign(updatedArticle, article);
+                } else {
+                    // 見つからない場合は、URLでマッチングを試みる
+                    const articleByUrl = this.currentPlanArticles.find(a => a.url === article.url);
+                    if (articleByUrl) {
+                        articleByUrl.status = newStatus;
+                        Object.assign(articleByUrl, article);
+                    }
                 }
                 
                 // プランを再読み込みせず、currentPlanArticlesを直接更新して再描画
@@ -2178,17 +2188,7 @@ class Dashboard {
                 </div>
             </div>
             <div style="display: flex; justify-content: center;">
-                <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
-                    padding: 0.4rem 0.8rem;
-                    border-radius: 0.5rem;
-                    border: 1px solid var(--border-color);
-                    background: white;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition);
-                    min-width: 100px;
-                ">
+                <select class="article-status-select ${statusClass}" data-article-id="${article.id}">
                     <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
                     <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
                     <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
@@ -2294,6 +2294,9 @@ class Dashboard {
             statusSelect.addEventListener('change', async (e) => {
                 e.stopPropagation();
                 const newStatus = e.target.value;
+                // ステータス変更時にクラスを更新して色を反映
+                const newStatusClass = newStatus === '完了' ? 'completed' : newStatus === '進行中' ? 'inProgress' : 'notStarted';
+                statusSelect.className = `article-status-select ${newStatusClass}`;
                 await this.updateArticleStatus(article.id, newStatus);
             });
         }
