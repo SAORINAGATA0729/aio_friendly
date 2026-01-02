@@ -569,6 +569,47 @@ body {
     color: #059669;
 }
 
+.article-status-select {
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 100px;
+}
+
+.article-status-select:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.article-status-select.notStarted {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.article-status-select.inProgress {
+    background: #fffbeb;
+    color: #d97706;
+    border-color: #fde68a;
+}
+
+.article-status-select.completed {
+    background: #f0fdf4;
+    color: #16a34a;
+    border-color: #bbf7d0;
+}
+
+.article-status-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
 .article-citation {
     font-weight: 600;
     color: var(--text-primary);
