@@ -393,21 +393,13 @@ class RewriteSystem {
                 fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:363',message:'switchEditorMode: Syncing HTML to Quill',data:{skipContentSync:skipContentSync,mode:mode,htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,300),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
                 // #endregion
                 if (htmlContent) {
-                    // 既存のコンテンツをクリア
-                    this.quill.setText('');
-                    // Quillのエディタ要素を取得
+                    // QuillのAPIを使ってHTMLコンテンツを設定（正しい方法）
+                    const delta = this.quill.clipboard.convert({ html: htmlContent });
+                    this.quill.setContents(delta);
+                    // #region agent log
                     const quillEditor = this.quill.root.querySelector('.ql-editor');
-                    if (quillEditor) {
-                        // 既存のコンテンツをクリア
-                        quillEditor.innerHTML = '';
-                        // 新しいコンテンツを設定
-                        quillEditor.innerHTML = htmlContent;
-                        // #region agent log
-                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:377',message:'switchEditorMode: After setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML.substring(0,500),h1Count:(quillEditor.innerHTML.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor.innerHTML.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
-                        // #endregion
-                    } else {
-                        this.quill.root.innerHTML = htmlContent;
-                    }
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:377',message:'switchEditorMode: After setting Quill content',data:{quillEditorInnerHTML:quillEditor?.innerHTML?.substring(0,500),quillContentLength:quillEditor?.innerHTML?.length,h1Count:(quillEditor?.innerHTML?.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor?.innerHTML?.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+                    // #endregion
                 }
             } else {
                 // #region agent log
@@ -603,22 +595,19 @@ class RewriteSystem {
             // エディタを完全にクリア
             this.quill.setText('');
             
-            // Quillのエディタ要素を取得して設定（重複を防ぐ）
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:548',message:'openRewriteModal: Before setting Quill content',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            
+            // QuillのAPIを使ってHTMLコンテンツを設定（正しい方法）
+            // dangerouslyPasteHTMLはQuillが推奨するHTML設定方法
+            const delta = this.quill.clipboard.convert({ html: htmlContent });
+            this.quill.setContents(delta);
+            
+            // #region agent log
             const quillEditor = this.quill.root.querySelector('.ql-editor');
-            if (quillEditor) {
-                // 既存のコンテンツを完全にクリア
-                quillEditor.innerHTML = '';
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:548',message:'openRewriteModal: Before setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML,htmlContentLength:htmlContent.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
-                // #endregion
-                // 新しいコンテンツを設定
-                quillEditor.innerHTML = htmlContent;
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:551',message:'openRewriteModal: After setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML.substring(0,500),h1Count:(quillEditor.innerHTML.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor.innerHTML.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
-                // #endregion
-            } else {
-                this.quill.root.innerHTML = htmlContent;
-            }
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:551',message:'openRewriteModal: After setting Quill content',data:{quillEditorInnerHTML:quillEditor?.innerHTML?.substring(0,500),quillContentLength:quillEditor?.innerHTML?.length,h1Count:(quillEditor?.innerHTML?.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor?.innerHTML?.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+            // #endregion
             
             // Quillエディタの変更を監視してチェックリストを更新
             this.quill.on('text-change', () => {
