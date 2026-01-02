@@ -201,11 +201,31 @@ class RewriteSystem {
         // Quillエディタを初期化（画像のALTタグ対応）
         const editorContainer = document.getElementById('quillEditor');
         if (editorContainer && typeof Quill !== 'undefined') {
-            // カスタム画像ハンドラー（ALTタグ対応）
+            // カスタム画像フォーマット（ALTタグ対応）
             const Image = Quill.import('formats/image');
-            Image.sanitize = function(url) {
-                return url;
-            };
+            const BaseImage = Image;
+            
+            class CustomImage extends BaseImage {
+                static create(value) {
+                    const node = super.create(value);
+                    if (typeof value === 'object') {
+                        node.setAttribute('src', value.src);
+                        node.setAttribute('alt', value.alt || '');
+                    } else {
+                        node.setAttribute('src', value);
+                    }
+                    return node;
+                }
+                
+                static value(node) {
+                    return {
+                        src: node.getAttribute('src'),
+                        alt: node.getAttribute('alt') || ''
+                    };
+                }
+            }
+            
+            Quill.register(CustomImage, true);
             
             this.quill = new Quill('#quillEditor', {
                 theme: 'snow',
@@ -229,6 +249,13 @@ class RewriteSystem {
                 },
                 placeholder: '記事を編集してください...',
                 formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block']
+            });
+            
+            // 画像をクリックしたときにALTタグを編集できるように
+            this.quill.root.addEventListener('click', (e) => {
+                if (e.target.tagName === 'IMG') {
+                    this.editImageAlt(e.target);
+                }
             });
         }
 
@@ -311,16 +338,23 @@ class RewriteSystem {
         
         if (this.quill) {
             const range = this.quill.getSelection(true);
-            this.quill.insertEmbed(range.index, 'image', imageUrl, 'user');
-            
-            // ALTタグを設定（Quillのカスタム属性として）
-            setTimeout(() => {
-                const img = this.quill.root.querySelector(`img[src="${imageUrl}"]`);
-                if (img && imageAlt) {
-                    img.setAttribute('alt', imageAlt);
-                    img.setAttribute('data-alt', imageAlt);
-                }
-            }, 100);
+            // カスタム画像フォーマットを使用してALTタグ付きで挿入
+            this.quill.insertEmbed(range.index, 'image', {
+                src: imageUrl,
+                alt: imageAlt
+            }, 'user');
+        }
+    }
+
+    editImageAlt(imgElement) {
+        const currentAlt = imgElement.getAttribute('alt') || '';
+        const newAlt = prompt('画像のALTテキスト（説明）を編集してください:', currentAlt);
+        
+        if (newAlt !== null) {
+            imgElement.setAttribute('alt', newAlt);
+            // Quillの変更をトリガー
+            const range = this.quill.getSelection();
+            this.quill.updateContents([], 'user');
         }
     }
 
