@@ -385,6 +385,8 @@ class RewriteSystem {
                     .replace(/<p>\s*<\/p>/g, '') // 空白のみの段落を削除
                     .trim();
                 
+                // HTMLエディタをクリアしてから設定（重複を防ぐ）
+                htmlEditor.value = '';
                 htmlEditor.value = cleanedHtml || '';
             }
         }
@@ -480,8 +482,13 @@ class RewriteSystem {
             // エディタをクリア
             this.quill.setText('');
             
-            // 新しいコンテンツを設定
-            this.quill.root.innerHTML = htmlContent;
+            // Quillのエディタ要素を取得して設定（重複を防ぐ）
+            const quillEditor = this.quill.root.querySelector('.ql-editor');
+            if (quillEditor) {
+                quillEditor.innerHTML = htmlContent;
+            } else {
+                this.quill.root.innerHTML = htmlContent;
+            }
             
             // Quillエディタの変更を監視してチェックリストを更新
             this.quill.on('text-change', () => {
