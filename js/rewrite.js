@@ -874,20 +874,6 @@ ${article.keyword}について、重要なポイントをまとめました。
                 console.error('[ERROR] Checkbox not found for item:', item.id);
             }
             
-            // 項目全体のクリックイベント（ガイダンス表示）
-            div.addEventListener('click', (e) => {
-                if (e.target.closest('.checklist-checkbox')) return; // チェックボックスクリック時はスキップ
-                
-                const guidanceDiv = document.getElementById('aiGuidance');
-                if (guidanceDiv) {
-                    const currentChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
-                    guidanceDiv.innerHTML = `
-                        <h4><span class="material-icons-round" style="color: ${currentChecked ? 'var(--success-color)' : 'var(--danger-color)'}">${currentChecked ? 'check_circle' : 'error'}</span> ${item.label}</h4>
-                        <p>${item.guidance}</p>
-                    `;
-                }
-            });
-            
             container.appendChild(div);
         });
         
