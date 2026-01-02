@@ -727,6 +727,25 @@ class RewriteSystem {
             });
         }
 
+        // 保存ボタンのイベントリスナーを再設定（モーダルが開かれた後に設定）
+        const saveBtn = document.querySelector('[data-action="save"]');
+        if (saveBtn) {
+            // 既存のイベントリスナーを削除（重複を防ぐ）
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            
+            newSaveBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                    await this.saveArticle();
+                } catch (error) {
+                    console.error('保存エラー:', error);
+                    alert('保存に失敗しました: ' + error.message);
+                }
+            });
+        }
+
         const slug = this.getSlugFromUrl(article.url);
         let content = null;
         
@@ -1256,50 +1275,66 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     async saveArticle() {
-        if (!this.currentArticle) return;
+        if (!this.currentArticle) {
+            alert('記事が選択されていません');
+            return;
+        }
 
-        let content;
-        
-        // 現在の編集モードに応じてコンテンツを取得
-        const visualContainer = document.getElementById('visualEditorContainer');
-        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
-        
-        if (isVisualMode && this.quill) {
-            // ビジュアルモード：QuillエディタからHTMLを取得してMarkdownに変換
-            const htmlContent = this.quill.root.innerHTML;
-            content = this.htmlToMarkdown(htmlContent);
-        } else {
-            // HTMLモード：HTMLエディタから直接取得してMarkdownに変換
-            const htmlEditor = document.getElementById('htmlEditor');
-            if (htmlEditor && htmlEditor.value) {
-                const htmlContent = htmlEditor.value;
+        try {
+            let content;
+            
+            // 現在の編集モードに応じてコンテンツを取得
+            const visualContainer = document.getElementById('visualEditorContainer');
+            const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+            
+            if (isVisualMode && this.quill) {
+                // ビジュアルモード：QuillエディタからHTMLを取得してMarkdownに変換
+                const htmlContent = this.quill.root.innerHTML;
                 content = this.htmlToMarkdown(htmlContent);
             } else {
-                // フォールバック：従来のtextarea
-                const editor = document.getElementById('markdownEditor');
-                if (!editor) return;
-                content = editor.value;
+                // HTMLモード：HTMLエディタから直接取得してMarkdownに変換
+                const htmlEditor = document.getElementById('htmlEditor');
+                if (htmlEditor && htmlEditor.value) {
+                    const htmlContent = htmlEditor.value;
+                    content = this.htmlToMarkdown(htmlContent);
+                } else {
+                    alert('保存するコンテンツがありません');
+                    return;
+                }
             }
-        }
-        const slug = this.getSlugFromUrl(this.currentArticle.url);
-        
-        await dataManager.saveMarkdown(`${slug}.md`, content);
-        
-        // 進捗を更新
-        if (this.progressData && this.progressData.articles) {
-            const article = this.progressData.articles.find(a => a.id === this.currentArticle.id);
-            if (article) {
-                article.status = '完了';
-                article.lastModified = new Date().toISOString();
-                await dataManager.saveProgress(this.progressData);
+            
+            if (!content || content.trim().length === 0) {
+                alert('保存するコンテンツが空です');
+                return;
             }
-        }
+            
+            const slug = this.getSlugFromUrl(this.currentArticle.url);
+            
+            const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
+            if (!saved) {
+                alert('ファイルの保存に失敗しました');
+                return;
+            }
+            
+            // 進捗を更新
+            if (this.progressData && this.progressData.articles) {
+                const article = this.progressData.articles.find(a => a.id === this.currentArticle.id);
+                if (article) {
+                    article.status = '完了';
+                    article.lastModified = new Date().toISOString();
+                    await dataManager.saveProgress(this.progressData);
+                }
+            }
 
-        alert('保存しました！');
-        
-        // ダッシュボードを更新
-        if (typeof dashboard !== 'undefined') {
-            await dashboard.renderArticleList();
+            alert('保存しました！');
+            
+            // ダッシュボードを更新
+            if (typeof dashboard !== 'undefined') {
+                await dashboard.renderArticleList();
+            }
+        } catch (error) {
+            console.error('保存エラー:', error);
+            alert('保存に失敗しました: ' + error.message);
         }
     }
 
@@ -1652,36 +1687,58 @@ ${article.keyword}について、重要なポイントをまとめました。
                 throw new Error('変換された要素が空です');
             }
             
+            // 要素をフラット化（ネストされた配列を展開）
+            const flatElements = [];
+            elements.forEach(el => {
+                if (Array.isArray(el)) {
+                    flatElements.push(...el.filter(e => e !== null && e !== undefined));
+                } else if (el !== null && el !== undefined) {
+                    flatElements.push(el);
+                }
+            });
+            
+            if (flatElements.length === 0) {
+                throw new Error('変換された要素が空です');
+            }
+            
             // 最初の要素がH1の場合はタイトルを追加しない（重複を防ぐ）
-            const firstElement = elements[0];
+            const firstElement = flatElements[0];
             const isFirstH1 = firstElement && 
                              firstElement.heading === HeadingLevel.HEADING_1;
             
             const children = isFirstH1 
-                ? elements 
+                ? flatElements 
                 : [
                     new Paragraph({
                         text: title || '無題',
                         heading: HeadingLevel.HEADING_1,
                         spacing: { after: 400 }
                     }),
-                    ...elements
+                    ...flatElements
                 ];
             
+            // Documentを作成（より明示的な構造）
             const doc = new Document({
                 sections: [{
                     properties: {},
-                    children: children
+                    children: children.filter(child => {
+                        // Paragraphオブジェクトであることを確認
+                        return child && typeof child === 'object' && child.constructor === Paragraph;
+                    })
                 }]
             });
 
+            // Packerを使用してBlobを生成
             const blob = await Packer.toBlob(doc);
             
             // Blobのサイズを確認（空でないことを確認）
-            if (blob.size === 0) {
+            if (!blob || blob.size === 0) {
                 throw new Error('生成されたWordファイルが空です');
             }
             
+            console.log('[DEBUG] exportToWord: Blob size:', blob.size, 'bytes');
+            
+            // ファイルをダウンロード
             if (typeof saveAs !== 'undefined') {
                 saveAs(blob, `${filename}.docx`);
             } else {
@@ -1695,9 +1752,12 @@ ${article.keyword}について、重要なポイントをまとめました。
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 100);
             }
+            
+            console.log('[DEBUG] exportToWord: File downloaded successfully');
         } catch (error) {
             console.error('Wordエクスポートエラー:', error);
             console.error('エラー詳細:', error.stack);
+            console.error('エラー発生時の要素:', elements);
             alert(`Word形式のエクスポートに失敗しました。\n\nエラー: ${error.message}\n\nHTML形式またはMarkdown形式でのエクスポートをお試しください。`);
         }
     }
@@ -1731,12 +1791,21 @@ ${article.keyword}について、重要なポイントをまとめました。
                 case 's':
                 case 'strike':
                     return new TextRun({ text, strike: true });
+                case 'a':
+                    const href = node.getAttribute('href') || '';
+                    return new TextRun({ 
+                        text: text + (href ? ` (${href})` : ''), 
+                        color: '0563C1',
+                        underline: {}
+                    });
                 default:
                     return new TextRun(text);
             }
         };
 
         const processBlockNode = (node) => {
+            if (!node || node.nodeType !== Node.ELEMENT_NODE) return null;
+            
             const tagName = node.tagName.toLowerCase();
             
             switch (tagName) {
@@ -1768,23 +1837,25 @@ ${article.keyword}について、重要なポイントをまとめました。
                     const pRuns = [];
                     Array.from(node.childNodes).forEach(child => {
                         if (child.nodeType === Node.TEXT_NODE) {
-                            const run = processTextNode(child);
-                            if (run) pRuns.push(run);
+                            const text = child.textContent.trim();
+                            if (text) {
+                                pRuns.push(new TextRun(text));
+                            }
                         } else if (child.nodeType === Node.ELEMENT_NODE) {
                             const inlineTag = child.tagName.toLowerCase();
-                            if (['strong', 'b', 'em', 'i', 'u', 's', 'strike', 'a'].includes(inlineTag)) {
+                            if (['strong', 'b', 'em', 'i', 'u', 's', 'strike', 'a', 'span'].includes(inlineTag)) {
                                 const run = processInlineNode(child);
                                 if (run) pRuns.push(run);
                             } else if (inlineTag === 'br') {
                                 pRuns.push(new TextRun({ text: '\n', break: 1 }));
                             } else {
-                                // その他のインライン要素はテキストとして処理
                                 const text = child.textContent.trim();
                                 if (text) pRuns.push(new TextRun(text));
                             }
                         }
                     });
                     
+                    // childrenがある場合はchildrenを使用、ない場合はtextを使用
                     if (pRuns.length === 0) {
                         return new Paragraph({ text: ' ', spacing: { after: 200 } });
                     }
@@ -1793,16 +1864,26 @@ ${article.keyword}について、重要なポイントをまとめました。
                 case 'ul':
                 case 'ol':
                     const listItems = [];
-                    Array.from(node.childNodes).forEach(child => {
-                        if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'li') {
+                    Array.from(node.children).forEach(child => {
+                        if (child.tagName.toLowerCase() === 'li') {
                             const liRuns = [];
                             Array.from(child.childNodes).forEach(liChild => {
                                 if (liChild.nodeType === Node.TEXT_NODE) {
-                                    const run = processTextNode(liChild);
-                                    if (run) liRuns.push(run);
+                                    const text = liChild.textContent.trim();
+                                    if (text) {
+                                        liRuns.push(new TextRun(text));
+                                    }
                                 } else if (liChild.nodeType === Node.ELEMENT_NODE) {
-                                    const run = processInlineNode(liChild);
-                                    if (run) liRuns.push(run);
+                                    const inlineTag = liChild.tagName.toLowerCase();
+                                    if (['strong', 'b', 'em', 'i', 'u', 's', 'strike', 'a', 'span'].includes(inlineTag)) {
+                                        const run = processInlineNode(liChild);
+                                        if (run) liRuns.push(run);
+                                    } else if (inlineTag === 'br') {
+                                        liRuns.push(new TextRun({ text: '\n', break: 1 }));
+                                    } else {
+                                        const text = liChild.textContent.trim();
+                                        if (text) liRuns.push(new TextRun(text));
+                                    }
                                 }
                             });
                             
@@ -1820,14 +1901,13 @@ ${article.keyword}について、重要なポイントをまとめました。
                             }
                         }
                     });
-                    return listItems;
+                    return listItems.length > 0 ? listItems : null;
                 
                 case 'li':
-                    // liは親のul/olで処理されるためスキップ
                     return null;
                 
                 case 'br':
-                    return new Paragraph({ children: [new TextRun({ text: '\n', break: 1 })] });
+                    return new Paragraph({ text: ' ', spacing: { after: 200 } });
                 
                 case 'img':
                     const altText = node.getAttribute('alt') || '画像';
@@ -1839,52 +1919,55 @@ ${article.keyword}について、重要なポイントをまとめました。
                 case 'div':
                 case 'section':
                 case 'article':
-                    // ブロック要素として処理（子要素を再帰的に処理）
+                case 'main':
+                case 'body':
                     const divChildren = [];
                     Array.from(node.childNodes).forEach(child => {
-                        const result = processBlockNode(child);
-                        if (Array.isArray(result)) {
-                            divChildren.push(...result.filter(r => r !== null));
-                        } else if (result !== null) {
-                            divChildren.push(result);
+                        if (child.nodeType === Node.ELEMENT_NODE) {
+                            const result = processBlockNode(child);
+                            if (Array.isArray(result)) {
+                                divChildren.push(...result.filter(r => r !== null && r !== undefined));
+                            } else if (result !== null) {
+                                divChildren.push(result);
+                            }
+                        } else if (child.nodeType === Node.TEXT_NODE) {
+                            const text = child.textContent.trim();
+                            if (text) {
+                                divChildren.push(new Paragraph({ text, spacing: { after: 200 } }));
+                            }
                         }
                     });
                     return divChildren.length > 0 ? divChildren : null;
                 
                 default:
-                    // その他の要素はテキストとして処理
                     const text = node.textContent.trim();
-                    if (text) {
-                        return new Paragraph({ text, spacing: { after: 200 } });
-                    }
-                    return null;
+                    return text ? new Paragraph({ text, spacing: { after: 200 } }) : null;
             }
         };
 
-        // ルート要素の子ノードを処理
-        const result = [];
+        // メイン処理
+        const elements = [];
         Array.from(tempDiv.childNodes).forEach(child => {
-            if (child.nodeType === Node.TEXT_NODE) {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                const result = processBlockNode(child);
+                if (Array.isArray(result)) {
+                    elements.push(...result.filter(r => r !== null && r !== undefined));
+                } else if (result !== null) {
+                    elements.push(result);
+                }
+            } else if (child.nodeType === Node.TEXT_NODE) {
                 const text = child.textContent.trim();
                 if (text) {
-                    result.push(new Paragraph({ text, spacing: { after: 200 } }));
-                }
-            } else if (child.nodeType === Node.ELEMENT_NODE) {
-                const processed = processBlockNode(child);
-                if (Array.isArray(processed)) {
-                    result.push(...processed.filter(r => r !== null));
-                } else if (processed !== null) {
-                    result.push(processed);
+                    elements.push(new Paragraph({ text, spacing: { after: 200 } }));
                 }
             }
         });
 
-        // 結果が空の場合は空の段落を返す
-        if (result.length === 0) {
-            return [new Paragraph({ text: ' ' })];
+        if (elements.length === 0) {
+            return [new Paragraph({ text: ' ', spacing: { after: 200 } })];
         }
-        
-        return result;
+
+        return elements.filter(el => el !== null && el !== undefined);
     }
 
     exportToHTML(htmlContent, title, filename) {
