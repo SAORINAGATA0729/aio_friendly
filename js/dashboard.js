@@ -18,7 +18,9 @@ class Dashboard {
         this.setupEventListeners();
         
         // データが読み込まれたら、現在のタブのコンテンツを表示
-        if (this.currentTab === 'do' && this.progressData) {
+        // Doタブがアクティブな場合、記事一覧を表示
+        if (this.currentTab === 'do' && this.progressData && this.progressData.articles) {
+            console.log('初期化時: Doタブがアクティブなので記事一覧を表示します');
             setTimeout(() => {
                 this.renderArticleList();
             }, 500);
@@ -197,14 +199,17 @@ class Dashboard {
     }
 
     renderArticleList(filter = 'all') {
-        console.log('renderArticleList called, filter:', filter);
+        console.log('=== renderArticleList called ===');
+        console.log('filter:', filter);
         console.log('progressData:', this.progressData);
+        console.log('articles:', this.progressData?.articles);
         
         if (!this.progressData || !this.progressData.articles) {
             console.warn('進捗データが読み込まれていません。データを再読み込みします...');
             // データを再読み込み
             this.loadData().then(() => {
                 if (this.progressData && this.progressData.articles) {
+                    console.log('データ再読み込み成功。記事一覧を表示します');
                     this.renderArticleList(filter);
                 } else {
                     console.error('データの読み込みに失敗しました');
@@ -219,10 +224,12 @@ class Dashboard {
 
         const articleList = document.getElementById('articleList');
         if (!articleList) {
-            console.error('articleList要素が見つかりません');
+            console.error('articleList要素が見つかりません！');
+            console.error('現在のDOM:', document.querySelector('#doTab'));
             return;
         }
         
+        console.log('articleList要素が見つかりました:', articleList);
         console.log('記事数:', this.progressData.articles.length);
         
         // ヘッダーを追加（初回のみ）
