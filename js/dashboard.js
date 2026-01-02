@@ -12,14 +12,34 @@ class Dashboard {
     }
 
     async init() {
-        console.log('[DEBUG] Dashboard.init: Starting');
+        console.log('[DEBUG] ========== Dashboard.init: Starting ==========');
+        console.log('[DEBUG] Dashboard.init: this =', this);
+        console.log('[DEBUG] Dashboard.init: DOM ready?', document.readyState);
+        console.log('[DEBUG] Dashboard.init: Tabs exist?', document.querySelectorAll('.pdca-tab').length);
+        
         try {
             await this.loadData();
             console.log('[DEBUG] Dashboard.init: Data loaded');
+            
+            // DOMが完全に読み込まれるまで少し待つ
+            if (document.readyState === 'loading') {
+                console.log('[DEBUG] Dashboard.init: Waiting for DOM...');
+                await new Promise(resolve => {
+                    if (document.readyState === 'complete') {
+                        resolve();
+                    } else {
+                        document.addEventListener('DOMContentLoaded', resolve);
+                    }
+                });
+            }
+            
+            console.log('[DEBUG] Dashboard.init: DOM ready, setting up tabs...');
             this.setupTabs();
             console.log('[DEBUG] Dashboard.init: Tabs setup');
+            
             this.updateDashboard();
             console.log('[DEBUG] Dashboard.init: Dashboard updated');
+            
             this.setupEventListeners();
             console.log('[DEBUG] Dashboard.init: Event listeners setup');
             
@@ -31,9 +51,10 @@ class Dashboard {
                     this.renderArticleList();
                 }, 500);
             }
-            console.log('[DEBUG] Dashboard.init: Completed');
+            console.log('[DEBUG] ========== Dashboard.init: Completed ==========');
         } catch (error) {
             console.error('[ERROR] Dashboard.init failed:', error);
+            console.error('[ERROR] Stack:', error.stack);
         }
     }
 
