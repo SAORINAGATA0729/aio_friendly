@@ -295,14 +295,45 @@ class RewriteSystem {
         }
 
         // エクスポートボタン
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:298',message:'setupEditor: Checking export elements',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const exportBtn = document.getElementById('exportBtn');
         const exportModal = document.getElementById('exportModal');
         const closeExportModal = document.getElementById('closeExportModal');
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:301',message:'setupEditor: Export elements found',data:{exportBtn:!!exportBtn,exportModal:!!exportModal,closeExportModal:!!closeExportModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         if (exportBtn) {
-            exportBtn.addEventListener('click', () => {
-                if (exportModal) exportModal.classList.add('active');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:305',message:'setupEditor: Adding click listener to exportBtn',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            exportBtn.addEventListener('click', (e) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:307',message:'exportBtn clicked',data:{exportModalExists:!!exportModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                e.preventDefault();
+                e.stopPropagation();
+                if (exportModal) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:311',message:'Opening export modal',data:{hasActiveClass:exportModal.classList.contains('active')},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                    // #endregion
+                    exportModal.classList.add('active');
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:313',message:'Export modal active class added',data:{hasActiveClass:exportModal.classList.contains('active')},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                    // #endregion
+                } else {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:316',message:'Export modal not found',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                    // #endregion
+                }
             });
+        } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:320',message:'Export button not found in setupEditor',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
         }
 
         if (closeExportModal) {
@@ -320,15 +351,31 @@ class RewriteSystem {
         }
 
         // エクスポートオプションボタン（動的に追加される要素なので、イベント委譲を使用）
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:336',message:'Setting up event delegation for export options',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        const self = this;
         document.addEventListener('click', async (e) => {
-            const exportBtn = e.target.closest('.export-option-btn');
-            if (exportBtn) {
-                const format = exportBtn.dataset.format;
+            const exportOptionBtn = e.target.closest('.export-option-btn');
+            if (exportOptionBtn) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:341',message:'Export option button clicked',data:{format:exportOptionBtn.dataset.format,hasSelf:!!self},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                e.preventDefault();
+                e.stopPropagation();
+                const format = exportOptionBtn.dataset.format;
                 if (format) {
                     try {
-                        await this.exportArticle(format);
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:347',message:'Calling exportArticle',data:{format,hasExportArticle:typeof self.exportArticle},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
+                        await self.exportArticle(format);
+                        const exportModal = document.getElementById('exportModal');
                         if (exportModal) exportModal.classList.remove('active');
                     } catch (error) {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:352',message:'Export error',data:{error:error.message,stack:error.stack},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
                         console.error('エクスポートエラー:', error);
                         alert('エクスポートに失敗しました: ' + error.message);
                     }
