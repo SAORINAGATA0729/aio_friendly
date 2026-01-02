@@ -813,53 +813,71 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     async exportToPDF(htmlContent, title, filename) {
-        // HTMLを整形してPDF化
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html lang="ja">
-            <head>
-                <meta charset="UTF-8">
-                <title>${title}</title>
-                <style>
-                    body {
-                        font-family: 'Noto Sans JP', sans-serif;
-                        padding: 2rem;
-                        line-height: 1.8;
-                        color: #333;
-                    }
-                    h1 { font-size: 2rem; margin-top: 2rem; margin-bottom: 1rem; }
-                    h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.8rem; }
-                    h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.6rem; }
-                    h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
-                    p { margin-bottom: 1rem; }
-                    img { max-width: 100%; height: auto; }
-                    ul, ol { margin-left: 2rem; margin-bottom: 1rem; }
-                </style>
-            </head>
-            <body>
-                <h1>${title}</h1>
-                ${htmlContent}
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+        try {
+            if (typeof html2pdf === 'undefined') {
+                alert('PDFエクスポート機能が利用できません。ページをリロードしてください。');
+                return;
+            }
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+            // HTMLを整形してPDF化
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('ポップアップがブロックされています。ブラウザの設定を確認してください。');
+                return;
+            }
 
-        if (typeof html2pdf !== 'undefined') {
+            // HTMLコンテンツをクリーンアップ（Quillの不要な要素を削除）
+            let cleanedHtml = htmlContent
+                .replace(/<p><br><\/p>/g, '')
+                .replace(/<p>\s*<\/p>/g, '')
+                .trim();
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="ja">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                    <style>
+                        body {
+                            font-family: 'Noto Sans JP', sans-serif;
+                            padding: 2rem;
+                            line-height: 1.8;
+                            color: #333;
+                        }
+                        h1 { font-size: 2rem; margin-top: 2rem; margin-bottom: 1rem; }
+                        h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.8rem; }
+                        h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.6rem; }
+                        h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+                        p { margin-bottom: 1rem; }
+                        img { max-width: 100%; height: auto; }
+                        ul, ol { margin-left: 2rem; margin-bottom: 1rem; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${title}</h1>
+                    ${cleanedHtml}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             const element = printWindow.document.body;
             const opt = {
                 margin: 1,
                 filename: `${filename}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
+                html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
+            
             await html2pdf().set(opt).from(element).save();
             printWindow.close();
-        } else {
-            printWindow.print();
+        } catch (error) {
+            console.error('PDFエクスポートエラー:', error);
+            alert('PDFエクスポートに失敗しました: ' + error.message);
         }
     }
 
