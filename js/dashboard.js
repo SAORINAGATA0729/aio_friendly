@@ -292,8 +292,14 @@ class Dashboard {
         const planForm = document.getElementById('planForm');
         const cancelPlanBtn = document.getElementById('cancelPlanBtn');
         const importCsvBtn = document.getElementById('importCsvBtn');
+        const importMdMetricsBtn = document.getElementById('importMdMetricsBtn');
         const exportCsvTemplateBtn = document.getElementById('exportCsvTemplateBtn');
         const csvFileInput = document.getElementById('csvFileInput');
+        const mdMetricsFileInput = document.getElementById('mdMetricsFileInput');
+        const importUrlsCsvBtn = document.getElementById('importUrlsCsvBtn');
+        const importUrlsMdBtn = document.getElementById('importUrlsMdBtn');
+        const urlsCsvFileInput = document.getElementById('urlsCsvFileInput');
+        const urlsMdFileInput = document.getElementById('urlsMdFileInput');
 
         if (createPlanBtn) {
             createPlanBtn.addEventListener('click', () => {
@@ -320,6 +326,7 @@ class Dashboard {
             });
         }
         
+        // 数値入力のCSVインポート
         if (importCsvBtn && csvFileInput) {
             importCsvBtn.addEventListener('click', () => {
                 csvFileInput.click();
@@ -328,6 +335,45 @@ class Dashboard {
             csvFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     this.importCsvFile(e.target.files[0]);
+                }
+            });
+        }
+        
+        // 数値入力のMDインポート
+        if (importMdMetricsBtn && mdMetricsFileInput) {
+            importMdMetricsBtn.addEventListener('click', () => {
+                mdMetricsFileInput.click();
+            });
+            
+            mdMetricsFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importMdMetricsFile(e.target.files[0]);
+                }
+            });
+        }
+        
+        // 記事URL一覧のCSVインポート
+        if (importUrlsCsvBtn && urlsCsvFileInput) {
+            importUrlsCsvBtn.addEventListener('click', () => {
+                urlsCsvFileInput.click();
+            });
+            
+            urlsCsvFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importUrlsCsvFile(e.target.files[0]);
+                }
+            });
+        }
+        
+        // 記事URL一覧のMDインポート
+        if (importUrlsMdBtn && urlsMdFileInput) {
+            importUrlsMdBtn.addEventListener('click', () => {
+                urlsMdFileInput.click();
+            });
+            
+            urlsMdFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importUrlsMdFile(e.target.files[0]);
                 }
             });
         }
@@ -616,6 +662,143 @@ class Dashboard {
         if (data.avgRanking) document.getElementById('planAvgRanking').value = data.avgRanking;
         if (data.traffic) document.getElementById('planTraffic').value = data.traffic;
         if (data.brandClicks) document.getElementById('planBrandClicks').value = data.brandClicks;
+    }
+    
+    importMdMetricsFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const mdText = e.target.result;
+            const data = this.parseMdMetrics(mdText);
+            if (data) {
+                this.fillMetricsFromCsv(data);
+                alert('MDファイルからデータをインポートしました');
+            } else {
+                alert('MDファイルの形式が正しくありません');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseMdMetrics(mdText) {
+        const data = {};
+        const lines = mdText.split('\n').map(line => line.trim()).filter(line => line);
+        
+        // キーと値のマッピング
+        const keyMap = {
+            'AIO引用数': 'aioCitations',
+            '引用数': 'aioCitations',
+            'AIO': 'aioCitations',
+            '検索順位': 'avgRanking',
+            '平均順位': 'avgRanking',
+            '順位': 'avgRanking',
+            'トラフィック': 'traffic',
+            'クリック数': 'traffic',
+            'ブランド認知度': 'brandClicks',
+            '指名検索': 'brandClicks',
+            'ブランド': 'brandClicks'
+        };
+        
+        lines.forEach(line => {
+            // コロン区切りや等号区切りをサポート
+            const match = line.match(/^[-*]?\s*(.+?)[:：=]\s*(\d+(?:\.\d+)?)/);
+            if (match) {
+                const key = match[1].trim();
+                const value = parseFloat(match[2]);
+                
+                // キーマップから該当するフィールドを探す
+                const mappedKey = Object.keys(keyMap).find(k => key.includes(k));
+                if (mappedKey && !isNaN(value)) {
+                    data[keyMap[mappedKey]] = value;
+                }
+            }
+        });
+        
+        return Object.keys(data).length > 0 ? data : null;
+    }
+    
+    importUrlsCsvFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const csvText = e.target.result;
+            const urls = this.parseUrlsCsv(csvText);
+            if (urls && urls.length > 0) {
+                const textarea = document.getElementById('articleUrlsTextarea');
+                if (textarea) {
+                    textarea.value = urls.join('\n');
+                    alert(`${urls.length}件のURLをインポートしました`);
+                }
+            } else {
+                alert('CSVファイルからURLを読み込めませんでした');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseUrlsCsv(csvText) {
+        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
+        const urls = [];
+        
+        lines.forEach((line, index) => {
+            // ヘッダー行をスキップ
+            if (index === 0 && (line.toLowerCase().includes('url') || line.toLowerCase().includes('link'))) {
+                return;
+            }
+            
+            // CSVの各行からURLを抽出
+            const columns = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+            columns.forEach(col => {
+                // URL形式かチェック
+                if (col.match(/^https?:\/\//)) {
+                    urls.push(col);
+                }
+            });
+        });
+        
+        return urls;
+    }
+    
+    importUrlsMdFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const mdText = e.target.result;
+            const urls = this.parseUrlsMd(mdText);
+            if (urls && urls.length > 0) {
+                const textarea = document.getElementById('articleUrlsTextarea');
+                if (textarea) {
+                    textarea.value = urls.join('\n');
+                    alert(`${urls.length}件のURLをインポートしました`);
+                }
+            } else {
+                alert('MDファイルからURLを読み込めませんでした');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseUrlsMd(mdText) {
+        const urls = [];
+        const lines = mdText.split('\n').map(line => line.trim()).filter(line => line);
+        
+        lines.forEach(line => {
+            // Markdownリンク形式 [text](url) からURLを抽出
+            const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+            if (linkMatch && linkMatch[2].match(/^https?:\/\//)) {
+                urls.push(linkMatch[2]);
+            }
+            // 直接URLが書かれている場合
+            else if (line.match(/^https?:\/\//)) {
+                urls.push(line);
+            }
+            // リスト形式 - URL や * URL
+            else if (line.match(/^[-*]\s*(https?:\/\/.+)/)) {
+                const urlMatch = line.match(/^[-*]\s*(https?:\/\/.+)/);
+                if (urlMatch) {
+                    urls.push(urlMatch[1].trim());
+                }
+            }
+        });
+        
+        return urls;
     }
     
     exportCsvTemplate() {
