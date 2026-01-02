@@ -47,15 +47,6 @@ class Dashboard {
         }
         
         // データが読み込まれたら、現在のタブのコンテンツを表示
-        // Doタブがアクティブな場合でも、プランが選択されていない場合は記事一覧を非表示
-        if (this.currentTab === 'do') {
-            if (!this.selectedPlanId) {
-                const articleListSection = document.querySelector('.article-list-section');
-                if (articleListSection) {
-                    articleListSection.style.display = 'none';
-                }
-            }
-        }
     }
 
     async waitForRewriteSystem(maxWaitTime = 5000) {
@@ -678,28 +669,12 @@ class Dashboard {
                 if (planId) {
                     this.loadPlanArticles(planId);
                 } else {
-                    // プランが選択されていない場合は、記事一覧を非表示にする
+                    // プランが選択されていない場合は、通常の記事一覧を表示する
                     this.selectedPlanId = null;
                     this.currentPlanArticles = [];
                     
-                    // 記事一覧セクションを非表示
-                    const articleListSection = document.querySelector('.article-list-section');
-                    if (articleListSection) {
-                        articleListSection.style.display = 'none';
-                    }
-                    
-                    // 記事一覧をクリア
-                    const articleList = document.getElementById('articleList');
-                    if (articleList) {
-                        articleList.innerHTML = '';
-                    }
-                    
-                    // ヘッダーも削除
-                    const existingHeaders = document.querySelectorAll('.article-list-header');
-                    existingHeaders.forEach(header => header.remove());
-                    
-                    // 進捗状況もデフォルトに戻す
-                    this.updateProgress();
+                    // 通常の記事一覧を表示
+                    this.renderArticleList('all');
                 }
             });
         }
@@ -2135,12 +2110,9 @@ class Dashboard {
             return;
         }
 
-        // プランが選択されている場合は、プランの記事一覧を表示しない（通常の記事一覧を非表示にする）
+        // プランが選択されている場合は、プランの記事一覧を表示するため、通常の記事一覧は表示しない
+        // renderPlanArticleListが呼ばれるので、ここでは早期リターン
         if (this.selectedPlanId) {
-            const articleListSection = document.querySelector('.article-list-section');
-            if (articleListSection) {
-                articleListSection.style.display = 'none';
-            }
             return;
         }
 
