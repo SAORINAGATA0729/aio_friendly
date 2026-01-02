@@ -7,6 +7,7 @@ class RewriteSystem {
     constructor() {
         this.currentArticle = null;
         this.progressData = null;
+        this.quill = null; // Quillエディタインスタンス
         this.checklistItems = [
             {
                 id: 'h1',
@@ -197,22 +198,28 @@ class RewriteSystem {
     }
 
     setupEditor() {
-        const editor = document.getElementById('markdownEditor');
-        const previewBtn = document.querySelector('[data-action="preview"]');
-        const saveBtn = document.querySelector('[data-action="save"]');
-        const preview = document.getElementById('markdownPreview');
-
-        if (previewBtn) {
-            previewBtn.addEventListener('click', () => {
-                const content = editor.value;
-                if (preview) {
-                    preview.innerHTML = this.markdownToHtml(content);
-                    preview.style.display = preview.style.display === 'none' ? 'block' : 'none';
-                    editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
-                }
+        // Quillエディタを初期化
+        const editorContainer = document.getElementById('quillEditor');
+        if (editorContainer && typeof Quill !== 'undefined') {
+            this.quill = new Quill('#quillEditor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, 4, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        ['link', 'image'],
+                        ['blockquote', 'code-block'],
+                        ['clean']
+                    ]
+                },
+                placeholder: '記事を編集してください...',
+                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block']
             });
         }
 
+        const saveBtn = document.querySelector('[data-action="save"]');
         if (saveBtn) {
             saveBtn.addEventListener('click', async () => {
                 await this.saveArticle();
@@ -376,10 +383,18 @@ ${article.keyword}について、重要なポイントをまとめました。
     async saveArticle() {
         if (!this.currentArticle) return;
 
-        const editor = document.getElementById('markdownEditor');
-        if (!editor) return;
-
-        const content = editor.value;
+        let content;
+        
+        // Quillエディタからコンテンツを取得（HTMLをMarkdownに変換）
+        if (this.quill) {
+            const htmlContent = this.quill.root.innerHTML;
+            content = this.htmlToMarkdown(htmlContent);
+        } else {
+            // フォールバック：従来のtextarea
+            const editor = document.getElementById('markdownEditor');
+            if (!editor) return;
+            content = editor.value;
+        }
         const slug = this.getSlugFromUrl(this.currentArticle.url);
         
         await dataManager.saveMarkdown(`${slug}.md`, content);
@@ -400,6 +415,51 @@ ${article.keyword}について、重要なポイントをまとめました。
         if (typeof dashboard !== 'undefined') {
             await dashboard.renderArticleList();
         }
+    }
+
+    htmlToMarkdown(html) {
+        // HTMLをMarkdownに変換（QuillのHTML出力用）
+        let markdown = html;
+        
+        // 見出し
+        markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
+        markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
+        markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
+        markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n');
+        
+        // 段落
+        markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n');
+        
+        // リスト
+        markdown = markdown.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1');
+        markdown = markdown.replace(/<ul[^>]*>/gi, '');
+        markdown = markdown.replace(/<\/ul>/gi, '');
+        markdown = markdown.replace(/<ol[^>]*>/gi, '');
+        markdown = markdown.replace(/<\/ol>/gi, '');
+        
+        // 太字・斜体
+        markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+        markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+        markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+        markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+        
+        // リンク
+        markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+        
+        // その他のタグを削除
+        markdown = markdown.replace(/<[^>]+>/g, '');
+        
+        // HTMLエンティティのデコード
+        markdown = markdown.replace(/&nbsp;/g, ' ')
+                          .replace(/&amp;/g, '&')
+                          .replace(/&lt;/g, '<')
+                          .replace(/&gt;/g, '>')
+                          .replace(/&quot;/g, '"');
+        
+        // 連続する空行を整理
+        markdown = markdown.replace(/\n\s*\n/g, '\n\n');
+        
+        return markdown.trim();
     }
 
     markdownToHtml(markdown) {
