@@ -172,7 +172,7 @@
                 <!-- 記事一覧 -->
                 <div class="article-list-section">
                     <div class="section-header">
-                        <h3>改修対象記事一覧（Tier 1の20ページ）</h3>
+                        <h3>改修対象記事一覧</h3>
                         <div class="filter-buttons">
                             <button class="filter-btn active" data-filter="all">すべて</button>
                             <button class="filter-btn" data-filter="notStarted">未着手</button>
@@ -477,6 +477,35 @@
                             </div>
                         </div>
                         
+                        
+                        <!-- 記事ごとの数値入力テーブル -->
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary);">記事ごとの数値入力（Tier 1）</h4>
+                                <button type="button" id="addArticleRowBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">add</span>
+                                    記事を追加
+                                </button>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <table id="articleMetricsTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="background: #f9fafb; border-bottom: 2px solid var(--border-color);">
+                                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151;">記事名/URL</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">クリック数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">表示回数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">CTR (%)</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">順位</th>
+                                            <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #374151;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="articleMetricsBody">
+                                        <!-- 動的に追加される -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
                         <!-- API連携ボタン（将来実装用） -->
                         <button type="button" id="connectAhrefsBtn" class="btn btn-secondary" 
                             style="width: 100%; margin-top: 0.5rem; opacity: 0.6; cursor: not-allowed;"
@@ -508,7 +537,7 @@
                             placeholder="記事URLを1行に1つずつ入力してください&#10;例：&#10;https://example.com/article1&#10;https://example.com/article2&#10;https://example.com/article3"></textarea>
                         <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">
                             <span class="material-icons-round" style="font-size: 14px; vertical-align: middle;">info</span>
-                            1行に1つのURLを入力してください。空行は無視されます。CSV/MDファイルからもインポート可能です。
+                            1行に1つのURLを入力してください。空行は無視されます。<strong>CSV/MDファイルからもインポート可能です。</strong>
                         </div>
                         <input type="file" id="urlsCsvFileInput" accept=".csv" style="display: none;">
                         <input type="file" id="urlsMdFileInput" accept=".md,.txt" style="display: none;">

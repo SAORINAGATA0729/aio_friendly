@@ -10,6 +10,7 @@ class Dashboard {
         this.baselineData = null;
         this.evidenceRecords = []; // エビデンス記録の配列
         this.plans = []; // プラン一覧
+        this.currentPlanArticles = []; // 現在選択されているプランの記事一覧
         this.initialized = false;
         // init()は外部から明示的に呼び出す
     }
@@ -30,6 +31,7 @@ class Dashboard {
         this.setupBaselineManagement();
         this.setupEvidenceManagement();
         this.setupPlanManagement();
+        this.setupPlanSelection();
         
         this.updateDashboard();
         this.renderBaseline();
@@ -403,6 +405,9 @@ class Dashboard {
             urlTextarea.value = '';
         }
         
+        // 記事ごとの数値テーブルをリセット
+        this.renderArticleMetricsTable([]);
+        
         if (planId) {
             if (title) title.textContent = 'プランを編集';
             const plan = this.plans.find(p => p.id === planId);
@@ -460,6 +465,13 @@ class Dashboard {
         } else if (urlTextarea) {
             urlTextarea.value = '';
         }
+        
+        // 記事ごとの数値データを表示
+        if (plan.articleMetrics && plan.articleMetrics.length > 0) {
+            this.renderArticleMetricsTable(plan.articleMetrics);
+        } else {
+            this.renderArticleMetricsTable([]);
+        }
     }
 
     async savePlan() {
@@ -490,6 +502,7 @@ class Dashboard {
                 brandClicks: parseInt(document.getElementById('planBrandClicks').value) || 0
             },
             articleUrls: articleUrls,
+            articleMetrics: this.getArticleMetricsFromTable(),
             updatedAt: new Date().toISOString()
         };
         
@@ -510,6 +523,7 @@ class Dashboard {
             modal.classList.remove('active');
         }
         this.renderPlans();
+        this.updatePlanSelectOptions();
     }
 
     async savePlans() {
@@ -559,7 +573,7 @@ class Dashboard {
                     </div>
                     ` : ''}
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
                         <div>
                             <div style="font-size: 0.75rem; color: #6b7280;">AIO引用数</div>
                             <div style="font-weight: 700; color: #2563eb;">${(plan.metrics?.aioCitations || 0).toLocaleString()}</div>
@@ -571,6 +585,10 @@ class Dashboard {
                         <div>
                             <div style="font-size: 0.75rem; color: #6b7280;">トラフィック</div>
                             <div style="font-weight: 700; color: #d97706;">${(plan.metrics?.traffic || 0).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: #6b7280;">ブランド認知度</div>
+                            <div style="font-weight: 700; color: #9333ea;">${(plan.metrics?.brandClicks || 0).toLocaleString()}</div>
                         </div>
                     </div>
                     
@@ -604,6 +622,233 @@ class Dashboard {
         this.plans = this.plans.filter(p => p.id !== planId);
         await this.savePlans();
         this.renderPlans();
+        this.updatePlanSelectOptions();
+        
+        // 現在選択されているプランが削除された場合、選択をリセット
+        const planSelect = document.getElementById('selectedPlanId');
+        if (planSelect && planSelect.value === planId) {
+            planSelect.value = '';
+            this.renderArticleList('all');
+        }
+    }
+    
+    // --- プラン選択機能の実装メソッド ---
+    
+    setupPlanSelection() {
+        const planSelect = document.getElementById('selectedPlanId');
+        if (planSelect) {
+            // プラン一覧をドロップダウンに追加
+            this.updatePlanSelectOptions();
+            
+            // プラン選択時のイベント
+            planSelect.addEventListener('change', (e) => {
+                const planId = e.target.value;
+                if (planId) {
+                    this.loadPlanArticles(planId);
+                } else {
+                    // プランが選択されていない場合は、デフォルトの記事一覧を表示
+                    this.renderArticleList('all');
+                }
+            });
+        }
+    }
+    
+    updatePlanSelectOptions() {
+        const planSelect = document.getElementById('selectedPlanId');
+        if (!planSelect) return;
+        
+        // 既存のオプションをクリア（最初の「プランを選択してください」以外）
+        while (planSelect.children.length > 1) {
+            planSelect.removeChild(planSelect.lastChild);
+        }
+        
+        // プランを追加
+        this.plans.forEach(plan => {
+            const option = document.createElement('option');
+            option.value = plan.id;
+            option.textContent = plan.name;
+            planSelect.appendChild(option);
+        });
+    }
+    
+    loadPlanArticles(planId) {
+        const plan = this.plans.find(p => p.id === planId);
+        if (!plan || !plan.articleUrls || plan.articleUrls.length === 0) {
+            alert('このプランには記事URLが設定されていません。');
+            return;
+        }
+        
+        // プランの記事URLから記事データを作成
+        const planArticles = plan.articleUrls.map((url, index) => {
+            // 既存の記事データから該当するものを探す
+            const existingArticle = this.progressData?.articles?.find(a => a.url === url);
+            
+            if (existingArticle) {
+                return existingArticle;
+            } else {
+                // 新規記事データを作成
+                return {
+                    id: `plan-${planId}-article-${index}`,
+                    title: this.extractTitleFromUrl(url) || `記事 ${index + 1}`,
+                    url: url,
+                    keyword: '',
+                    status: '未着手',
+                    citationCount: 0,
+                    scores: {
+                        before: { total: 0, level: 'C' },
+                        after: { total: 0, level: 'C' }
+                    },
+                    createdAt: new Date().toISOString(),
+                    planId: planId // どのプランから来たかを記録
+                };
+            }
+        });
+        
+        // プランの記事を一時的に保存して表示
+        this.currentPlanArticles = planArticles;
+        this.renderPlanArticleList(planArticles);
+    }
+    
+    extractTitleFromUrl(url) {
+        try {
+            const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+            const pathParts = urlObj.pathname.split('/').filter(p => p);
+            return pathParts[pathParts.length - 1] || '';
+        } catch {
+            return '';
+        }
+    }
+    
+    renderPlanArticleList(articles) {
+        const articleList = document.getElementById('articleList');
+        if (!articleList) return;
+        
+        // ヘッダーを追加（初回のみ）
+        if (!document.querySelector('.article-list-header')) {
+            const header = document.createElement('div');
+            header.className = 'article-list-header';
+            header.innerHTML = `
+                <div>記事情報</div>
+                <div style="text-align: center;">ステータス</div>
+                <div style="text-align: center;">AIO引用数</div>
+                <div style="text-align: center;">スコア</div>
+            `;
+            articleList.parentNode.insertBefore(header, articleList);
+        }
+        
+        articleList.innerHTML = '';
+        
+        articles.forEach(article => {
+            const item = this.createArticleItem(article);
+            articleList.appendChild(item);
+        });
+        
+        // フィルターボタンの動作も更新
+        this.updateFilterButtons();
+    }
+    
+    // --- 記事ごとの数値入力テーブルの実装メソッド ---
+    
+    renderArticleMetricsTable(metrics = []) {
+        const tbody = document.getElementById('articleMetricsBody');
+        if (!tbody) return;
+        
+        if (metrics.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center; color: #6b7280;">記事を追加してください</td></tr>';
+            this.setupArticleMetricsListeners();
+            return;
+        }
+        
+        tbody.innerHTML = metrics.map((metric, index) => `
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 0.75rem;">
+                    <input type="text" class="article-name-input" data-index="${index}" value="${metric.name || ''}" 
+                        placeholder="記事名またはURL" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" class="article-clicks-input" data-index="${index}" value="${metric.clicks || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" class="article-impressions-input" data-index="${index}" value="${metric.impressions || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" step="0.01" class="article-ctr-input" data-index="${index}" value="${metric.ctr || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" step="0.1" class="article-position-input" data-index="${index}" value="${metric.position || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    <button type="button" class="remove-article-metric-btn" data-index="${index}" 
+                        style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0.25rem;">
+                        <span class="material-icons-round" style="font-size: 20px;">delete</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // イベントリスナーを設定
+        this.setupArticleMetricsListeners();
+    }
+    
+    setupArticleMetricsListeners() {
+        const addBtn = document.getElementById('addArticleRowBtn');
+        if (addBtn) {
+            // 既存のイベントリスナーを削除
+            const newAddBtn = addBtn.cloneNode(true);
+            addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+            
+            newAddBtn.addEventListener('click', () => {
+                const currentMetrics = this.getArticleMetricsFromTable();
+                currentMetrics.push({
+                    name: '',
+                    clicks: 0,
+                    impressions: 0,
+                    ctr: 0,
+                    position: 0
+                });
+                this.renderArticleMetricsTable(currentMetrics);
+            });
+        }
+        
+        // 削除ボタン
+        document.querySelectorAll('.remove-article-metric-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const index = parseInt(btn.dataset.index);
+                const currentMetrics = this.getArticleMetricsFromTable();
+                currentMetrics.splice(index, 1);
+                this.renderArticleMetricsTable(currentMetrics);
+            });
+        });
+    }
+    
+    getArticleMetricsFromTable() {
+        const metrics = [];
+        const rows = document.querySelectorAll('#articleMetricsBody tr');
+        
+        rows.forEach(row => {
+            const nameInput = row.querySelector('.article-name-input');
+            const clicksInput = row.querySelector('.article-clicks-input');
+            const impressionsInput = row.querySelector('.article-impressions-input');
+            const ctrInput = row.querySelector('.article-ctr-input');
+            const positionInput = row.querySelector('.article-position-input');
+            
+            if (nameInput && nameInput.value.trim()) {
+                metrics.push({
+                    name: nameInput.value.trim(),
+                    clicks: parseInt(clicksInput?.value) || 0,
+                    impressions: parseInt(impressionsInput?.value) || 0,
+                    ctr: parseFloat(ctrInput?.value) || 0,
+                    position: parseFloat(positionInput?.value) || 0
+                });
+            }
+        });
+        
+        return metrics;
     }
     
     importCsvFile(file) {
