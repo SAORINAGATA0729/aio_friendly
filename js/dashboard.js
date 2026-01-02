@@ -12,18 +12,28 @@ class Dashboard {
     }
 
     async init() {
-        await this.loadData();
-        this.setupTabs();
-        this.updateDashboard();
-        this.setupEventListeners();
-        
-        // データが読み込まれたら、現在のタブのコンテンツを表示
-        // Doタブがアクティブな場合、記事一覧を表示
-        if (this.currentTab === 'do' && this.progressData && this.progressData.articles) {
-            console.log('初期化時: Doタブがアクティブなので記事一覧を表示します');
-            setTimeout(() => {
-                this.renderArticleList();
-            }, 500);
+        console.log('[DEBUG] Dashboard.init: Starting');
+        try {
+            await this.loadData();
+            console.log('[DEBUG] Dashboard.init: Data loaded');
+            this.setupTabs();
+            console.log('[DEBUG] Dashboard.init: Tabs setup');
+            this.updateDashboard();
+            console.log('[DEBUG] Dashboard.init: Dashboard updated');
+            this.setupEventListeners();
+            console.log('[DEBUG] Dashboard.init: Event listeners setup');
+            
+            // データが読み込まれたら、現在のタブのコンテンツを表示
+            // Doタブがアクティブな場合、記事一覧を表示
+            if (this.currentTab === 'do' && this.progressData && this.progressData.articles) {
+                console.log('初期化時: Doタブがアクティブなので記事一覧を表示します');
+                setTimeout(() => {
+                    this.renderArticleList();
+                }, 500);
+            }
+            console.log('[DEBUG] Dashboard.init: Completed');
+        } catch (error) {
+            console.error('[ERROR] Dashboard.init failed:', error);
         }
     }
 
@@ -112,34 +122,32 @@ class Dashboard {
     }
 
     setupTabs() {
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:114',message:'setupTabs: Starting',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
+        console.log('[DEBUG] setupTabs: Starting');
         const tabs = document.querySelectorAll('.pdca-tab');
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:118',message:'setupTabs: Tabs found',data:{tabCount:tabs.length},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
-        console.log('setupTabs: タブ数:', tabs.length);
-        tabs.forEach(tab => {
+        console.log('[DEBUG] setupTabs: Tabs found:', tabs.length);
+        if (tabs.length === 0) {
+            console.error('[ERROR] No tabs found!');
+            return;
+        }
+        tabs.forEach((tab, index) => {
             const tabName = tab.dataset.tab;
-            console.log('タブを設定:', tabName);
+            console.log(`[DEBUG] Setting up tab ${index}:`, tabName, tab);
+            if (!tabName) {
+                console.error('[ERROR] Tab has no data-tab attribute:', tab);
+                return;
+            }
             tab.addEventListener('click', (e) => {
-                // #region agent log
-                try {
-                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:125',message:'Tab clicked',data:{tabName},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                } catch(e) {}
-                // #endregion
+                console.log('[DEBUG] Tab clicked:', tabName, e);
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('タブがクリックされました:', tabName);
-                this.switchTab(tabName);
+                try {
+                    this.switchTab(tabName);
+                } catch (error) {
+                    console.error('[ERROR] Error in switchTab:', error);
+                }
             });
         });
-        console.log('setupTabs完了');
+        console.log('[DEBUG] setupTabs completed');
     }
 
     getStatusClass(status) {
@@ -197,44 +205,45 @@ class Dashboard {
     }
 
     switchTab(tabName) {
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:184',message:'switchTab: Called',data:{tabName},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
-        console.log('=== switchTab called ===', tabName);
+        console.log('[DEBUG] switchTab called with:', tabName);
+        console.log('[DEBUG] this:', this);
+        
         // タブの切り替え
-        document.querySelectorAll('.pdca-tab').forEach(tab => {
+        const allTabs = document.querySelectorAll('.pdca-tab');
+        console.log('[DEBUG] All tabs found:', allTabs.length);
+        allTabs.forEach(tab => {
             tab.classList.remove('active');
         });
+        
         const targetTab = document.querySelector(`[data-tab="${tabName}"]`);
+        console.log('[DEBUG] Target tab found:', !!targetTab, targetTab);
         if (targetTab) {
             targetTab.classList.add('active');
-            console.log('タブをアクティブにしました:', tabName);
+            console.log('[DEBUG] Tab activated:', tabName);
         } else {
-            console.error('タブが見つかりません:', tabName);
+            console.error('[ERROR] Tab not found:', tabName);
             return;
         }
 
         // コンテンツの切り替え
-        document.querySelectorAll('.tab-content').forEach(content => {
+        const allContents = document.querySelectorAll('.tab-content');
+        console.log('[DEBUG] All contents found:', allContents.length);
+        allContents.forEach(content => {
             content.classList.remove('active');
         });
+        
         const targetContent = document.getElementById(`${tabName}Tab`);
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:203',message:'switchTab: Elements found',data:{targetTab:!!targetTab,targetContent:!!targetContent},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
+        console.log('[DEBUG] Target content found:', !!targetContent, targetContent);
         if (targetContent) {
             targetContent.classList.add('active');
-            console.log('コンテンツをアクティブにしました:', `${tabName}Tab`);
+            console.log('[DEBUG] Content activated:', `${tabName}Tab`);
         } else {
-            console.error('コンテンツが見つかりません:', `${tabName}Tab`);
+            console.error('[ERROR] Content not found:', `${tabName}Tab`);
             return;
         }
 
         this.currentTab = tabName;
+        console.log('[DEBUG] switchTab completed');
 
         // タブごとの初期化（少し遅延させてDOMの更新を確実にする）
         setTimeout(() => {
