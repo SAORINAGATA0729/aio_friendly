@@ -801,10 +801,14 @@ body {
 }
 
 .modal-body {
-    padding: 2rem;
+    padding: 1.5rem;
     overflow-y: auto;
     flex: 1;
     background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
+    gap: 1rem; /* rewrite-containerとai-guidanceの間の余白 */
 }
 
 /* リライトコンテナ */
@@ -812,8 +816,11 @@ body {
     display: grid;
     grid-template-columns: 300px 1fr;
     gap: 2rem;
-    margin-bottom: 2rem;
-    height: calc(100% - 100px); /* 概算 */
+    margin-bottom: 0;
+    flex: 1;
+    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
+    overflow: hidden; /* はみ出しを防ぐ */
+    max-height: calc(100% - 100px); /* AIサポートセクションのスペースを確保 */
 }
 
 .rewrite-sidebar {
@@ -886,7 +893,8 @@ body {
 .rewrite-editor {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
     background: white;
     border-radius: 1rem;
     border: 1px solid var(--border-color);
@@ -944,11 +952,13 @@ body {
     display: none;
     flex: 1;
     overflow: hidden;
+    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
 }
 
 .editor-mode-container.active {
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 /* HTMLエディタ */
@@ -1011,15 +1021,25 @@ body {
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 16px;
     line-height: 1.8;
-}
-
-#quillEditor .ql-editor {
-    min-height: 500px;
-    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
 }
 
 #quillEditor .ql-container {
     font-family: 'Noto Sans JP', sans-serif;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#quillEditor .ql-editor {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* 画像のスタイル（ALTタグ編集可能であることを示す） */
