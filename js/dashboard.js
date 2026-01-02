@@ -241,6 +241,32 @@ class Dashboard {
         }
     }
 
+    openBaselineModal() {
+        const baselineModal = document.getElementById('baselineModal');
+        if (!baselineModal) {
+            console.error('ベースラインモーダルが見つかりません');
+            return;
+        }
+        
+        // フォームに現在の値を設定
+        if (this.baselineData) {
+            const aioEl = document.getElementById('baselineAioCitations');
+            const rankEl = document.getElementById('baselineAvgRanking');
+            const trafficEl = document.getElementById('baselineTraffic');
+            const brandEl = document.getElementById('baselineBrandClicks');
+            
+            if (aioEl) aioEl.value = this.baselineData.metrics?.aioCitations || '';
+            if (rankEl) rankEl.value = this.baselineData.metrics?.avgRanking || '';
+            if (trafficEl) trafficEl.value = this.baselineData.metrics?.traffic || '';
+            if (brandEl) brandEl.value = this.baselineData.metrics?.brandClicks || '';
+            
+            // Tier 1記事データを設定
+            this.renderTier1ArticlesInput();
+        }
+        
+        baselineModal.classList.add('active');
+    }
+
     setupEvidenceManagement() {
         const addEvidenceBtn = document.getElementById('addEvidenceBtn');
         const evidenceModal = document.getElementById('evidenceModal');
@@ -730,30 +756,467 @@ class Dashboard {
     }
 
     updateDashboard() {
-        if (!this.baselineData) return;
-
-        // AIO引用数
-        const aioCount = this.baselineData.metrics?.aioCitations || 0;
-        const aioEl = document.getElementById('aioCitationCount');
-        if (aioEl) aioEl.textContent = aioCount.toLocaleString();
+        // Overviewタブの数値を更新
+        this.renderBaseline();
         
-        // 検索順位
-        const avgPosition = this.baselineData.metrics?.avgRanking || 0;
-        const rankEl = document.getElementById('searchRankingAvg');
-        if (rankEl) rankEl.textContent = avgPosition.toFixed(2);
-        
-        // トラフィック
-        const trafficClicks = this.baselineData.metrics?.traffic || 0;
-        const trafficEl = document.getElementById('trafficClicks');
-        if (trafficEl) trafficEl.textContent = trafficClicks.toLocaleString();
-        
-        // ブランド認知度
-        const brandClicks = this.baselineData.metrics?.brandClicks || 0;
-        const brandEl = document.getElementById('brandClicks');
-        if (brandEl) brandEl.textContent = brandClicks.toLocaleString();
-
-        // 進捗状況
+        // 進捗状況を更新
         this.updateProgress();
+    }
+
+    renderBaseline() {
+        // ベースライン数値をOverviewカードに表示
+        if (this.baselineData && this.baselineData.metrics) {
+            const aioEl = document.getElementById('aioCitationCount');
+            const rankEl = document.getElementById('searchRankingAvg');
+            const trafficEl = document.getElementById('trafficClicks');
+            const brandEl = document.getElementById('brandClicks');
+            
+            if (aioEl) aioEl.textContent = (this.baselineData.metrics.aioCitations || 0).toLocaleString();
+            if (rankEl) rankEl.textContent = (this.baselineData.metrics.avgRanking || 0).toFixed(2);
+            if (trafficEl) trafficEl.textContent = (this.baselineData.metrics.traffic || 0).toLocaleString();
+            if (brandEl) brandEl.textContent = (this.baselineData.metrics.brandClicks || 0).toLocaleString();
+        } else {
+            // デフォルト値を表示
+            const aioEl = document.getElementById('aioCitationCount');
+            const rankEl = document.getElementById('searchRankingAvg');
+            const trafficEl = document.getElementById('trafficClicks');
+            const brandEl = document.getElementById('brandClicks');
+            
+            if (aioEl) aioEl.textContent = '857';
+            if (rankEl) rankEl.textContent = '4.88';
+            if (trafficEl) trafficEl.textContent = '102,000';
+            if (brandEl) brandEl.textContent = '22';
+        }
+        
+        // Tier 1記事テーブルを表示（Planタブ用 - 現在はPlanタブにないのでコメントアウト）
+        // this.renderTier1ArticlesTable();
+    }
+
+    renderTier1ArticlesTable() {
+        const container = document.getElementById('tier1ArticlesTable');
+        if (!container) return;
+        
+        const articles = this.baselineData?.tier1Articles || [];
+        
+        if (articles.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280; padding: 1rem; text-align: center;">データがありません。ベースラインを編集してデータを追加してください。</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse; min-width: 600px;">
+                <thead>
+                    <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">記事名</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">クリック数</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">表示回数</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">CTR</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">順位</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${articles.map((article, i) => `
+                        <tr style="border-bottom: 1px solid #f3f4f6; ${i % 2 === 0 ? 'background: #fff;' : 'background: #fcfcfc;'}">
+                            <td style="padding: 10px; color: #1f2937;">${article.title || '-'}</td>
+                            <td style="padding: 10px; text-align: right; font-weight: 600; color: #ea580c;">${(article.clicks || 0).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; color: #4b5563;">${(article.impressions || 0).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; color: #4b5563;">${(article.ctr || 0).toFixed(2)}%</td>
+                            <td style="padding: 10px; text-align: right; font-weight: 600; color: #059669;">${(article.position || 0).toFixed(1)}位</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    renderTier1ArticlesInput() {
+        const container = document.getElementById('tier1ArticlesInputContainer');
+        if (!container) return;
+        
+        const articles = this.baselineData?.tier1Articles || [];
+        
+        container.innerHTML = `
+            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f9fafb;">
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">記事名</th>
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">クリック数</th>
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">表示回数</th>
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">CTR</th>
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">順位</th>
+                        <th style="padding: 8px; border: 1px solid #e5e7eb;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tier1ArticlesBody">
+                    ${articles.map((article, index) => `
+                        <tr>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb;"><input type="text" value="${article.title || ''}" data-index="${index}" data-field="title" style="width: 100%; border: 1px solid #ccc; padding: 4px;"></td>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb;"><input type="number" value="${article.clicks || ''}" data-index="${index}" data-field="clicks" style="width: 100%; border: 1px solid #ccc; padding: 4px;"></td>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb;"><input type="number" value="${article.impressions || ''}" data-index="${index}" data-field="impressions" style="width: 100%; border: 1px solid #ccc; padding: 4px;"></td>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb;"><input type="number" step="0.01" value="${article.ctr || ''}" data-index="${index}" data-field="ctr" style="width: 100%; border: 1px solid #ccc; padding: 4px;"></td>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb;"><input type="number" step="0.1" value="${article.position || ''}" data-index="${index}" data-field="position" style="width: 100%; border: 1px solid #ccc; padding: 4px;"></td>
+                            <td style="padding: 4px; border: 1px solid #e5e7eb; text-align: center;">
+                                <button type="button" class="remove-article-btn" data-index="${index}" style="color: red; border: none; background: none; cursor: pointer;">
+                                    <span class="material-icons-round">delete</span>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <button type="button" id="addTier1ArticleBtn" class="btn btn-secondary" style="margin-top: 1rem;">
+                <span class="material-icons-round">add</span>
+                記事を追加
+            </button>
+        `;
+        
+        // 記事追加ボタン
+        const addBtn = document.getElementById('addTier1ArticleBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                this.addTier1ArticleRow();
+            });
+        }
+
+        // 削除ボタン
+        container.querySelectorAll('.remove-article-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = parseInt(e.currentTarget.dataset.index);
+                this.baselineData.tier1Articles.splice(index, 1);
+                this.renderTier1ArticlesInput();
+            });
+        });
+    }
+
+    addTier1ArticleRow() {
+        if (!this.baselineData.tier1Articles) {
+            this.baselineData.tier1Articles = [];
+        }
+        this.baselineData.tier1Articles.push({
+            title: '', clicks: 0, impressions: 0, ctr: 0, position: 0
+        });
+        this.renderTier1ArticlesInput();
+    }
+
+    async saveBaseline() {
+        const metrics = {
+            aioCitations: parseInt(document.getElementById('baselineAioCitations').value) || 0,
+            avgRanking: parseFloat(document.getElementById('baselineAvgRanking').value) || 0,
+            traffic: parseInt(document.getElementById('baselineTraffic').value) || 0,
+            brandClicks: parseInt(document.getElementById('baselineBrandClicks').value) || 0
+        };
+        
+        // Tier 1記事データを取得（入力値で更新）
+        const articleInputs = document.querySelectorAll('#tier1ArticlesInputContainer input[data-index]');
+        
+        articleInputs.forEach(input => {
+            const index = parseInt(input.dataset.index);
+            const field = input.dataset.field;
+            
+            if (this.baselineData.tier1Articles[index]) {
+                if (field === 'title') {
+                    this.baselineData.tier1Articles[index].title = input.value;
+                } else if (field === 'clicks') {
+                    this.baselineData.tier1Articles[index].clicks = parseInt(input.value) || 0;
+                } else if (field === 'impressions') {
+                    this.baselineData.tier1Articles[index].impressions = parseInt(input.value) || 0;
+                } else if (field === 'ctr') {
+                    this.baselineData.tier1Articles[index].ctr = parseFloat(input.value) || 0;
+                } else if (field === 'position') {
+                    this.baselineData.tier1Articles[index].position = parseFloat(input.value) || 0;
+                }
+            }
+        });
+        
+        this.baselineData.metrics = metrics;
+        this.baselineData.period = '2025年12月';
+        this.baselineData.recordedDate = new Date().toISOString().split('T')[0];
+        
+        // 保存
+        await dataManager.saveBaseline(this.baselineData);
+        
+        // エビデンス記録の最初のエントリを更新
+        const baselineRecord = {
+            ...this.baselineData,
+            id: 'baseline-2025-12'
+        };
+
+        if (this.evidenceRecords.length > 0 && this.evidenceRecords[0].id === 'baseline-2025-12') {
+            this.evidenceRecords[0] = baselineRecord;
+        } else {
+            this.evidenceRecords.unshift(baselineRecord);
+        }
+        
+        await this.saveEvidenceRecords();
+        
+        // モーダルを閉じる
+        document.getElementById('baselineModal').classList.remove('active');
+        
+        // 表示を更新
+        this.renderBaseline();
+        this.renderEvidenceTable();
+        this.renderEvidenceChart();
+        this.updateDashboard(); // Overviewタブの更新
+    }
+
+    openEvidenceModal() {
+        const evidenceModal = document.getElementById('evidenceModal');
+        if (!evidenceModal) {
+            console.error('エビデンスモーダルが見つかりません');
+            return;
+        }
+        
+        // フォームをリセット
+        const form = document.getElementById('evidenceForm');
+        if (form) {
+            form.reset();
+            // 現在の月をデフォルトに設定
+            const now = new Date();
+            document.getElementById('evidenceMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        
+        evidenceModal.classList.add('active');
+    }
+
+    async saveEvidenceRecord() {
+        const monthInput = document.getElementById('evidenceMonth');
+        if (!monthInput) return;
+        
+        const [year, month] = monthInput.value.split('-').map(Number);
+        
+        const record = {
+            id: `evidence-${year}-${month}`,
+            period: `${year}年${month}月`,
+            recordedDate: new Date().toISOString().split('T')[0],
+            metrics: {
+                aioCitations: parseInt(document.getElementById('evidenceAioCitations').value) || 0,
+                avgRanking: parseFloat(document.getElementById('evidenceAvgRanking').value) || 0,
+                traffic: parseInt(document.getElementById('evidenceTraffic').value) || 0,
+                brandClicks: parseInt(document.getElementById('evidenceBrandClicks').value) || 0
+            },
+            notes: document.getElementById('evidenceNotes').value || ''
+        };
+        
+        // 既存のレコードを更新または新規追加
+        const existingIndex = this.evidenceRecords.findIndex(r => r.id === record.id);
+        if (existingIndex >= 0) {
+            this.evidenceRecords[existingIndex] = record;
+        } else {
+            this.evidenceRecords.push(record);
+        }
+        
+        // 日付順にソート
+        this.evidenceRecords.sort((a, b) => {
+            const dateA = new Date(a.period.replace('年', '-').replace('月', ''));
+            const dateB = new Date(b.period.replace('年', '-').replace('月', ''));
+            return dateA - dateB;
+        });
+        
+        await this.saveEvidenceRecords();
+        
+        // モーダルを閉じる
+        document.getElementById('evidenceModal').classList.remove('active');
+        
+        // 表示を更新
+        this.renderEvidenceTable();
+        this.renderEvidenceChart();
+    }
+
+    async saveEvidenceRecords() {
+        localStorage.setItem('aio_pdca_evidence_records', JSON.stringify(this.evidenceRecords));
+    }
+
+    renderEvidenceTable() {
+        const container = document.getElementById('evidenceTable');
+        if (!container) return;
+        
+        if (this.evidenceRecords.length === 0) {
+            container.innerHTML = '<p style="padding: 2rem; text-align: center; color: #999;">エビデンス記録がありません。「月次データを追加」から記録を追加してください。</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">月</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">AIO引用</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">平均順位</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">トラフィック</th>
+                        <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">ブランド認知度</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">備考</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.evidenceRecords.map((record, i) => `
+                        <tr style="border-bottom: 1px solid #f3f4f6; ${i % 2 === 0 ? 'background: #fff;' : 'background: #fcfcfc;'}">
+                            <td style="padding: 12px; font-weight: bold; color: #1f2937;">${record.period}</td>
+                            <td style="padding: 12px; text-align: right; color: #2563eb;">${(record.metrics?.aioCitations || 0).toLocaleString()}件</td>
+                            <td style="padding: 12px; text-align: right; color: #059669;">${(record.metrics?.avgRanking || 0).toFixed(2)}位</td>
+                            <td style="padding: 12px; text-align: right; color: #d97706;">${(record.metrics?.traffic || 0).toLocaleString()}</td>
+                            <td style="padding: 12px; text-align: right; color: #9333ea;">${(record.metrics?.brandClicks || 0)}件</td>
+                            <td style="padding: 12px; color: #6b7280; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.notes || '-'}</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <button class="edit-evidence-btn" data-id="${record.id}" style="padding: 6px; background: transparent; color: #6b7280; border: none; border-radius: 4px; cursor: pointer;">
+                                    <span class="material-icons-round" style="font-size: 20px;">edit</span>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        // 編集ボタンのイベントリスナー
+        container.querySelectorAll('.edit-evidence-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const recordId = btn.dataset.id;
+                this.editEvidenceRecord(recordId);
+            });
+        });
+    }
+
+    editEvidenceRecord(id) {
+        const record = this.evidenceRecords.find(r => r.id === id);
+        if (!record) return;
+        
+        const evidenceModal = document.getElementById('evidenceModal');
+        const [yearStr, monthStr] = record.period.split('年');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr.replace('月', ''));
+        
+        document.getElementById('evidenceMonth').value = `${year}-${String(month).padStart(2, '0')}`;
+        document.getElementById('evidenceAioCitations').value = record.metrics?.aioCitations || 0;
+        document.getElementById('evidenceAvgRanking').value = record.metrics?.avgRanking || 0;
+        document.getElementById('evidenceTraffic').value = record.metrics?.traffic || 0;
+        document.getElementById('evidenceBrandClicks').value = record.metrics?.brandClicks || 0;
+        document.getElementById('evidenceNotes').value = record.notes || '';
+        
+        evidenceModal.classList.add('active');
+    }
+
+    renderEvidenceChart() {
+        const ctx = document.getElementById('evidenceChart');
+        if (!ctx || this.evidenceRecords.length === 0) return;
+        
+        // Chart.jsでグラフを描画
+        const labels = this.evidenceRecords.map(r => r.period);
+        const aioData = this.evidenceRecords.map(r => r.metrics?.aioCitations || 0);
+        const rankingData = this.evidenceRecords.map(r => r.metrics?.avgRanking || 0);
+        const trafficData = this.evidenceRecords.map(r => r.metrics?.traffic || 0);
+        
+        // 既存のチャートを破棄
+        if (this.evidenceChart) {
+            this.evidenceChart.destroy();
+        }
+        
+        this.evidenceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'AIO引用数',
+                        data: aioData,
+                        borderColor: '#2563eb', // blue
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        yAxisID: 'y',
+                        tension: 0.3
+                    },
+                    {
+                        label: '平均順位',
+                        data: rankingData,
+                        borderColor: '#059669', // green
+                        backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                        yAxisID: 'y1',
+                        tension: 0.3
+                    },
+                    {
+                        label: 'トラフィック',
+                        data: trafficData,
+                        borderColor: '#d97706', // amber
+                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                        yAxisID: 'y2',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'AIO引用数' },
+                        grid: { borderDash: [2, 4] }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: '平均順位' },
+                        grid: { drawOnChartArea: false },
+                        reverse: true // 順位なので逆順
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'トラフィック' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+
+    exportEvidenceCsv() {
+        if (this.evidenceRecords.length === 0) {
+            alert('エクスポートするデータがありません。');
+            return;
+        }
+        
+        // CSVヘッダー
+        const headers = ['月', 'AIO引用数', '平均順位', 'トラフィック', 'ブランド認知度', '備考', '記録日'];
+        
+        // CSVデータ
+        const rows = this.evidenceRecords.map(record => [
+            record.period,
+            record.metrics?.aioCitations || 0,
+            record.metrics?.avgRanking || 0,
+            record.metrics?.traffic || 0,
+            record.metrics?.brandClicks || 0,
+            (record.notes || '').replace(/,/g, '、'), // カンマを置換
+            record.recordedDate || ''
+        ]);
+        
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `${cell}`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `エビデンス記録_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 
     updateProgress() {

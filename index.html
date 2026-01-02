@@ -121,12 +121,22 @@
             <!-- Planタブコンテンツ -->
             <div id="planTab" class="tab-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">プラン管理 & 現状把握</span></h2>
+                    <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">プラン管理</span></h2>
                     <button id="createPlanBtn" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
                         <span class="material-icons-round">add</span>
                         プランを作成する
                     </button>
                 </div>
+                
+                <!-- プラン一覧 -->
+                <div id="plansList" class="plans-list">
+                    <!-- プランカードが動的に追加される -->
+                </div>
+            </div>
+
+            <!-- Doタブコンテンツ -->
+            <div id="doTab" class="tab-content">
+                <h2>Do <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">施策実行 & リライト</span></h2>
                 
                 <!-- 改修進捗状況（固定表示） -->
                 <div class="progress-section" style="position: sticky; top: 0; background: #f8fafc; z-index: 10; padding: 1.5rem 2rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; border-radius: 1rem; box-shadow: var(--shadow);">
@@ -158,68 +168,6 @@
                         <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
                     </div>
                 </div>
-
-                <!-- ベースライン設定セクション -->
-                <div class="baseline-section" style="margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3>モニタリング・ベースライン設定</h3>
-                        <button id="editBaselineBtn" class="btn btn-secondary">
-                            <span class="material-icons-round">edit</span>
-                            ベースラインを編集
-                        </button>
-                    </div>
-                    
-                    <!-- Tier 1記事詳細データ -->
-                    <details style="margin-top: 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: white;">
-                        <summary style="cursor: pointer; padding: 1rem; background: #f9fafb; border-radius: 8px 8px 0 0; font-weight: 600;">
-                            Tier 1対象20記事の現状パフォーマンス（2025年12月）
-                        </summary>
-                        <div id="tier1ArticlesTable" style="padding: 1rem; overflow-x: auto;">
-                            <!-- テーブルが動的に生成される -->
-                        </div>
-                    </details>
-                </div>
-                
-                <!-- エビデンス記録表セクション -->
-                <div class="evidence-section" style="margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3>エビデンス記録表（月次更新）</h3>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button id="addEvidenceBtn" class="btn btn-primary">
-                                <span class="material-icons-round">add</span>
-                                月次データを追加
-                            </button>
-                            <button id="exportEvidenceCsvBtn" class="btn btn-secondary">
-                                <span class="material-icons-round">download</span>
-                                CSVエクスポート
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- エビデンス記録表 -->
-                    <div id="evidenceTable" style="background: white; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
-                        <!-- テーブルが動的に生成される -->
-                    </div>
-                    
-                    <!-- 定点観測グラフ -->
-                    <div style="margin-top: 2rem;">
-                        <h4>定点観測グラフ</h4>
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: 300px;">
-                            <canvas id="evidenceChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- プラン一覧 -->
-                <h3 style="margin-bottom: 1rem;">プラン一覧</h3>
-                <div id="plansList" class="plans-list">
-                    <!-- プランカードが動的に追加される -->
-                </div>
-            </div>
-
-            <!-- Doタブコンテンツ -->
-            <div id="doTab" class="tab-content">
-                <h2>Do <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">施策実行 & リライト</span></h2>
                 
                 <!-- 記事一覧 -->
                 <div class="article-list-section">

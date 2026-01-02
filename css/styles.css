@@ -118,14 +118,18 @@ body {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: #f8fafc;
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
 }
 
 /* メインコンテンツ */
