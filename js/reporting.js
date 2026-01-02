@@ -352,8 +352,3 @@ class ReportingSystem {
 
 // グローバルインスタンスは index.html で作成
 
-// DOMContentLoaded時に初期化
-document.addEventListener('DOMContentLoaded', () => {
-    reportingSystem = new ReportingSystem();
-});
-
