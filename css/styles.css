@@ -820,7 +820,6 @@ body {
     flex: 1;
     min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
     overflow: hidden; /* はみ出しを防ぐ */
-    max-height: calc(100% - 100px); /* AIサポートセクションのスペースを確保 */
 }
 
 .rewrite-sidebar {
@@ -1100,10 +1099,11 @@ body {
     border-left: none;
     border-radius: 1rem;
     padding: 1.5rem;
-    margin-top: 1.5rem;
+    margin-top: 0;
     box-shadow: var(--shadow);
     border: 1px solid #fde68a;
     position: relative;
+    flex-shrink: 0; /* 縮小しない */
 }
 
 .ai-guidance::before {
