@@ -833,10 +833,23 @@ body {
 
 .rewrite-sidebar h3 {
     font-size: 1.1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     color: var(--text-primary);
-    padding-bottom: 1rem;
+    padding-bottom: 0.8rem;
     border-bottom: 1px solid var(--border-color);
+}
+
+.improvement-section {
+    margin-top: 1.5rem;
+}
+
+.improvement-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .checklist-items {

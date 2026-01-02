@@ -544,15 +544,24 @@ ${article.keyword}について、重要なポイントをまとめました。
 
         container.innerHTML = '';
         
+        // チェック状態を保存するオブジェクト（手動チェック用）
+        if (!this.manualChecks) {
+            this.manualChecks = {};
+        }
+        
         this.checklistItems.forEach(item => {
             const div = document.createElement('div');
             div.className = 'checklist-item';
             div.dataset.itemId = item.id;
             
-            const checked = item.check(content);
+            // 自動チェック結果
+            const autoChecked = item.check(content);
+            // 手動チェック状態（優先）または自動チェック結果
+            const isChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
+            
             div.innerHTML = `
                 <div class="checklist-checkbox">
-                    <span class="material-icons-round ${checked ? 'checked' : ''}">${checked ? 'check_circle' : 'radio_button_unchecked'}</span>
+                    <span class="material-icons-round ${isChecked ? 'checked' : ''}" data-checked="${isChecked}">${isChecked ? 'check_circle' : 'radio_button_unchecked'}</span>
                 </div>
                 <div class="checklist-content">
                     <div class="checklist-label">${item.label}</div>
@@ -560,11 +569,26 @@ ${article.keyword}について、重要なポイントをまとめました。
                 </div>
             `;
             
-            div.addEventListener('click', () => {
+            // チェックボックスのクリックイベント（手動チェック切り替え）
+            const checkbox = div.querySelector('.checklist-checkbox');
+            checkbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const currentChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
+                const newChecked = !currentChecked;
+                this.manualChecks[item.id] = newChecked;
+                this.updateChecklistItem(div, item.id, newChecked);
+                this.updateScore();
+            });
+            
+            // 項目全体のクリックイベント（ガイダンス表示）
+            div.addEventListener('click', (e) => {
+                if (e.target.closest('.checklist-checkbox')) return; // チェックボックスクリック時はスキップ
+                
                 const guidanceDiv = document.getElementById('aiGuidance');
                 if (guidanceDiv) {
+                    const currentChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
                     guidanceDiv.innerHTML = `
-                        <h4>${item.label}</h4>
+                        <h4><span class="material-icons-round" style="color: ${currentChecked ? 'var(--success-color)' : 'var(--danger-color)'}">${currentChecked ? 'check_circle' : 'error'}</span> ${item.label}</h4>
                         <p>${item.guidance}</p>
                     `;
                 }
@@ -572,20 +596,94 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             container.appendChild(div);
         });
+        
+        // スコアを更新
+        this.updateScore();
+    }
+
+    updateChecklistItem(itemElement, itemId, isChecked) {
+        const icon = itemElement.querySelector('.material-icons-round');
+        if (icon) {
+            icon.textContent = isChecked ? 'check_circle' : 'radio_button_unchecked';
+            icon.classList.toggle('checked', isChecked);
+            icon.dataset.checked = isChecked;
+        }
+    }
+
+    updateScore() {
+        const totalItems = this.checklistItems.length;
+        let checkedCount = 0;
+        
+        this.checklistItems.forEach(item => {
+            const isChecked = this.manualChecks && this.manualChecks[item.id] !== undefined 
+                ? this.manualChecks[item.id] 
+                : item.check(this.getCurrentContent());
+            if (isChecked) checkedCount++;
+        });
+        
+        const score = Math.round((checkedCount / totalItems) * 100);
+        const rank = this.getRank(score);
+        
+        // スコア表示を更新
+        const scoreNumber = document.getElementById('scoreNumber');
+        const scoreRank = document.getElementById('scoreRank');
+        const checkedCountEl = document.getElementById('checkedCount');
+        const totalCountEl = document.getElementById('totalCount');
+        const scoreBarFill = document.getElementById('scoreBarFill');
+        
+        if (scoreNumber) scoreNumber.textContent = score;
+        if (scoreRank) {
+            scoreRank.textContent = rank;
+            scoreRank.className = `rank-value rank-${rank.toLowerCase()}`;
+        }
+        if (checkedCountEl) checkedCountEl.textContent = checkedCount;
+        if (totalCountEl) totalCountEl.textContent = totalItems;
+        if (scoreBarFill) scoreBarFill.style.width = `${score}%`;
+    }
+
+    getRank(score) {
+        if (score >= 90) return 'S';
+        if (score >= 80) return 'A';
+        if (score >= 70) return 'B';
+        if (score >= 60) return 'C';
+        return 'D';
+    }
+
+    getCurrentContent() {
+        // 現在のエディタの内容を取得
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+        
+        if (isVisualMode && this.quill) {
+            const quillEditor = this.quill.root.querySelector('.ql-editor');
+            const htmlContent = quillEditor ? quillEditor.innerHTML : this.quill.root.innerHTML;
+            return this.htmlToMarkdown(htmlContent);
+        } else {
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor && htmlEditor.value) {
+                return this.htmlToMarkdown(htmlEditor.value);
+            }
+        }
+        return '';
     }
 
     updateChecklist(article, content) {
+        // 手動チェックが設定されていない項目のみ自動チェックを更新
         this.checklistItems.forEach(item => {
             const div = document.querySelector(`[data-item-id="${item.id}"]`);
             if (!div) return;
             
-            const checked = item.check(content);
-            const icon = div.querySelector('.material-icons-round');
-            if (icon) {
-                icon.textContent = checked ? 'check_circle' : 'radio_button_unchecked';
-                icon.classList.toggle('checked', checked);
+            // 手動チェックが設定されている場合はスキップ
+            if (this.manualChecks && this.manualChecks[item.id] !== undefined) {
+                return;
             }
+            
+            const checked = item.check(content);
+            this.updateChecklistItem(div, item.id, checked);
         });
+        
+        // スコアを更新
+        this.updateScore();
     }
 
     async saveArticle() {
