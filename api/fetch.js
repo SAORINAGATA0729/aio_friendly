@@ -44,14 +44,36 @@ module.exports = async function handler(req, res) {
 
         const htmlContent = await response.text();
 
+        // HTML内のH1タグを確認（デバッグ用）
+        const h1Matches = htmlContent.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
+        console.log(`[DEBUG] Found ${h1Matches ? h1Matches.length : 0} H1 tags in HTML`);
+        if (h1Matches) {
+            h1Matches.forEach((h1, index) => {
+                console.log(`[DEBUG] H1 ${index + 1}: ${h1.substring(0, 100)}`);
+            });
+        }
+
         // HTMLをMarkdownに変換
         const markdownContent = htmlToMarkdown(htmlContent);
+
+        // Markdown内のH1を確認（デバッグ用）
+        const markdownH1Matches = markdownContent.match(/^#\s+.+$/gm);
+        console.log(`[DEBUG] Found ${markdownH1Matches ? markdownH1Matches.length : 0} H1 in Markdown`);
+        if (markdownH1Matches) {
+            markdownH1Matches.forEach((h1, index) => {
+                console.log(`[DEBUG] Markdown H1 ${index + 1}: ${h1.substring(0, 100)}`);
+            });
+        }
 
         // レスポンスを返す
         res.status(200).json({
             success: true,
             url: targetUrl,
-            content: markdownContent
+            content: markdownContent,
+            debug: {
+                htmlH1Count: h1Matches ? h1Matches.length : 0,
+                markdownH1Count: markdownH1Matches ? markdownH1Matches.length : 0
+            }
         });
 
     } catch (error) {
@@ -74,13 +96,26 @@ function htmlToMarkdown(html) {
     }
     
     let content = mainMatch ? mainMatch[1] : html;
+    
+    // 抽出されたコンテンツ内のH1タグを確認（デバッグ用）
+    const extractedH1Matches = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
+    console.log(`[DEBUG] Found ${extractedH1Matches ? extractedH1Matches.length : 0} H1 tags in extracted content`);
 
     // スクリプトとスタイルを削除
     content = content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
-    // 見出し
-    content = content.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '\n# $1\n');
+    // 見出し（最初のH1のみを保持し、2つ目以降はH2に変換）
+    let h1Count = 0;
+    content = content.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (match, text) => {
+        h1Count++;
+        if (h1Count === 1) {
+            return '\n# ' + text.trim() + '\n';
+        } else {
+            console.log(`[DEBUG] Converting duplicate H1 to H2: ${text.trim().substring(0, 50)}`);
+            return '\n## ' + text.trim() + '\n';
+        }
+    });
     content = content.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '\n## $1\n');
     content = content.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '\n### $1\n');
     content = content.replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '\n#### $1\n');
