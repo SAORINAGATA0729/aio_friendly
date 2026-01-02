@@ -473,6 +473,46 @@
         </div>
     </div>
 
+    <!-- エクスポートモーダル -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>エクスポート</h2>
+                <button class="modal-close" id="closeExportModal">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1.5rem; color: #4b5563;">
+                    記事を以下の形式でダウンロードできます。
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="export-option-btn" data-format="pdf">
+                        <span class="material-icons-round">picture_as_pdf</span>
+                        <div>
+                            <div style="font-weight: 600;">PDF形式</div>
+                            <div style="font-size: 0.85rem; color: #6b7280;">PDFファイルとしてダウンロード</div>
+                        </div>
+                    </button>
+                    <button class="export-option-btn" data-format="docx">
+                        <span class="material-icons-round">description</span>
+                        <div>
+                            <div style="font-weight: 600;">Word形式 (.docx)</div>
+                            <div style="font-size: 0.85rem; color: #6b7280;">Microsoft Wordで開ける形式</div>
+                        </div>
+                    </button>
+                    <button class="export-option-btn" data-format="html">
+                        <span class="material-icons-round">code</span>
+                        <div>
+                            <div style="font-weight: 600;">HTML形式</div>
+                            <div style="font-size: 0.85rem; color: #6b7280;">Googleドキュメントにインポート可能</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- スクリプト -->
     <script src="js/data-manager.js"></script>
     <script src="js/dashboard.js"></script>

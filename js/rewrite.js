@@ -856,6 +856,8 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     async exportArticle(format) {
+        console.log('exportArticle called with format:', format);
+        
         if (!this.currentArticle) {
             alert('記事が選択されていません。');
             return;
@@ -875,9 +877,11 @@ ${article.keyword}について、重要なポイントをまとめました。
                 htmlContent = quillEditor ? quillEditor.innerHTML : this.quill.root.innerHTML;
                 title = this.currentArticle.title;
                 
+                console.log('Visual mode - HTML content length:', htmlContent ? htmlContent.length : 0);
+                
                 // 空のコンテンツチェック
-                if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>') {
-                    alert('エクスポートするコンテンツがありません。');
+                if (!htmlContent || htmlContent.trim() === '' || htmlContent === '<p><br></p>' || htmlContent === '<p></p>') {
+                    alert('エクスポートするコンテンツがありません。記事を編集してください。');
                     return;
                 }
             } else {
@@ -886,18 +890,22 @@ ${article.keyword}について、重要なポイントをまとめました。
                     htmlContent = htmlEditor.value.trim();
                     title = this.currentArticle.title;
                     
+                    console.log('HTML mode - HTML content length:', htmlContent ? htmlContent.length : 0);
+                    
                     if (!htmlContent) {
-                        alert('エクスポートするコンテンツがありません。');
+                        alert('エクスポートするコンテンツがありません。記事を編集してください。');
                         return;
                     }
                 } else {
-                    alert('エクスポートするコンテンツがありません。');
+                    alert('エクスポートするコンテンツがありません。記事を編集してください。');
                     return;
                 }
             }
 
             const slug = this.getSlugFromUrl(this.currentArticle.url);
             const filename = `${slug || 'article'}`;
+
+            console.log('Exporting:', format, 'Title:', title, 'Filename:', filename);
 
             switch (format) {
                 case 'pdf':
@@ -914,7 +922,7 @@ ${article.keyword}について、重要なポイントをまとめました。
             }
         } catch (error) {
             console.error('エクスポートエラー:', error);
-            alert('エクスポートに失敗しました: ' + error.message);
+            alert('エクスポートに失敗しました: ' + (error.message || error.toString()));
         }
     }
 
