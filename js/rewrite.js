@@ -357,7 +357,9 @@ class RewriteSystem {
             visualTab?.classList.add('active');
             htmlTab?.classList.remove('active');
             visualContainer?.classList.add('active');
-            htmlContainer?.style.setProperty('display', 'none');
+            htmlContainer?.classList.remove('active');
+            // インラインスタイルを削除してCSSクラスで制御
+            htmlContainer?.style.removeProperty('display');
             
             // コンテンツの同期をスキップしない場合のみ、HTMLエディタの内容をQuillに反映
             if (!skipContentSync && this.quill && htmlEditor && htmlEditor.value) {
@@ -391,8 +393,10 @@ class RewriteSystem {
             // HTMLモードに切り替え
             htmlTab?.classList.add('active');
             visualTab?.classList.remove('active');
-            htmlContainer?.style.setProperty('display', 'block');
+            htmlContainer?.classList.add('active');
             visualContainer?.classList.remove('active');
+            // インラインスタイルを削除してCSSクラスで制御
+            htmlContainer?.style.removeProperty('display');
             
             // コンテンツの同期をスキップしない場合のみ、Quillの内容をHTMLエディタに反映
             if (!skipContentSync && this.quill && htmlEditor) {
