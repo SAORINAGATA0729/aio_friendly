@@ -290,7 +290,6 @@ class Dashboard {
         const planModal = document.getElementById('planModal');
         const closePlanModal = document.getElementById('closePlanModal');
         const planForm = document.getElementById('planForm');
-        const addUrlBtn = document.getElementById('addUrlBtn');
         const cancelPlanBtn = document.getElementById('cancelPlanBtn');
         const importCsvBtn = document.getElementById('importCsvBtn');
         const exportCsvTemplateBtn = document.getElementById('exportCsvTemplateBtn');
@@ -311,12 +310,6 @@ class Dashboard {
         if (cancelPlanBtn && planModal) {
             cancelPlanBtn.addEventListener('click', () => {
                 planModal.classList.remove('active');
-            });
-        }
-
-        if (addUrlBtn) {
-            addUrlBtn.addEventListener('click', () => {
-                this.addUrlInput();
             });
         }
 
@@ -359,9 +352,9 @@ class Dashboard {
         }
         
         form.reset();
-        const urlContainer = document.getElementById('articleUrlsContainer');
-        if (urlContainer) {
-            urlContainer.innerHTML = '';
+        const urlTextarea = document.getElementById('articleUrlsTextarea');
+        if (urlTextarea) {
+            urlTextarea.value = '';
         }
         
         if (planId) {
@@ -374,8 +367,6 @@ class Dashboard {
         } else {
             if (title) title.textContent = '新規プラン作成';
             delete form.dataset.planId;
-            // URL入力欄を1つ追加
-            this.addUrlInput();
         }
         
         modal.classList.add('active');
@@ -417,14 +408,11 @@ class Dashboard {
         document.getElementById('planTraffic').value = plan.metrics?.traffic || '';
         document.getElementById('planBrandClicks').value = plan.metrics?.brandClicks || '';
         
-        const urlContainer = document.getElementById('articleUrlsContainer');
-        if (urlContainer) {
-            urlContainer.innerHTML = '';
-            if (plan.articleUrls && plan.articleUrls.length > 0) {
-                plan.articleUrls.forEach(url => this.addUrlInput(url));
-            } else {
-                this.addUrlInput();
-            }
+        const urlTextarea = document.getElementById('articleUrlsTextarea');
+        if (urlTextarea && plan.articleUrls && plan.articleUrls.length > 0) {
+            urlTextarea.value = plan.articleUrls.join('\n');
+        } else if (urlTextarea) {
+            urlTextarea.value = '';
         }
     }
 
@@ -433,6 +421,15 @@ class Dashboard {
         if (!form) return;
         
         const planId = form.dataset.planId;
+        
+        // テキストエリアからURLを取得（改行区切り）
+        const urlTextarea = document.getElementById('articleUrlsTextarea');
+        const articleUrls = urlTextarea && urlTextarea.value
+            ? urlTextarea.value
+                .split('\n')
+                .map(url => url.trim())
+                .filter(url => url !== '' && url.length > 0)
+            : [];
         
         const planData = {
             id: planId || `plan-${Date.now()}`,
@@ -446,9 +443,7 @@ class Dashboard {
                 traffic: parseInt(document.getElementById('planTraffic').value) || 0,
                 brandClicks: parseInt(document.getElementById('planBrandClicks').value) || 0
             },
-            articleUrls: Array.from(document.querySelectorAll('.article-url-input'))
-                .map(input => input.value)
-                .filter(url => url.trim() !== ''),
+            articleUrls: articleUrls,
             updatedAt: new Date().toISOString()
         };
         
