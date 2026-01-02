@@ -432,28 +432,16 @@ class Dashboard {
             console.log('記事がクリックされました:', article.title);
             console.log('rewriteSystem:', typeof rewriteSystem);
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:398',message:'Article clicked: Checking rewriteSystem',data:{hasRewriteSystem:typeof window.rewriteSystem !== 'undefined',rewriteSystemExists:!!window.rewriteSystem,hasOpenUrlModal:window.rewriteSystem && typeof window.rewriteSystem.openUrlModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             
             // rewriteSystemが初期化されるまで待つ
             if (typeof window.rewriteSystem === 'undefined' || !window.rewriteSystem) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:401',message:'Article clicked: rewriteSystem not found, waiting',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 console.warn('rewriteSystemが初期化されていません。少し待ってから再試行してください。');
                 // 少し待ってから再試行
                 setTimeout(async () => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:406',message:'Article clicked: Retry after timeout',data:{hasRewriteSystem:typeof window.rewriteSystem !== 'undefined',rewriteSystemExists:!!window.rewriteSystem,hasOpenUrlModal:window.rewriteSystem && typeof window.rewriteSystem.openUrlModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && window.rewriteSystem.openUrlModal) {
                         console.log('再試行: rewriteSystemが見つかりました');
                         await window.rewriteSystem.openUrlModal(article);
                     } else {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:410',message:'Article clicked: rewriteSystem still not found',data:{hasRewriteSystem:typeof window.rewriteSystem !== 'undefined',rewriteSystemExists:!!window.rewriteSystem,hasOpenUrlModal:window.rewriteSystem && typeof window.rewriteSystem.openUrlModal},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        // #endregion
                         console.error('rewriteSystemが見つかりません');
                         alert('システムの初期化に失敗しました。ページをリロードしてください。');
                     }
@@ -463,19 +451,10 @@ class Dashboard {
             
             // URL入力モーダルを開く
             try {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:420',message:'Article clicked: Calling openUrlModal',data:{articleId:article.id,articleTitle:article.title},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 console.log('openUrlModalを呼び出します');
                 await window.rewriteSystem.openUrlModal(article);
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:423',message:'Article clicked: openUrlModal completed',data:{timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 console.log('openUrlModalが完了しました');
             } catch (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:426',message:'Article clicked: Error opening article',data:{error:error.message,stack:error.stack},timestamp:Date.now()},sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 console.error('記事を開く際にエラーが発生しました:', error);
                 alert('記事を開く際にエラーが発生しました: ' + error.message);
             }
