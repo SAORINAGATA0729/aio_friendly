@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIO_PDCA爆速システム - 簡単起動</title>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        h1 {
+            color: #2196f3;
+            border-bottom: 3px solid #2196f3;
+            padding-bottom: 10px;
+        }
+        .step {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+        .code {
+            background: #212121;
+            color: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .button {
+            display: inline-block;
+            background: #2196f3;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 AIO_PDCA爆速システム 起動ガイド</h1>
+    
+    <div class="warning">
+        <strong>⚠️ 重要:</strong> このファイルを直接開いても動作しません。必ずローカルサーバーで起動してください。
+    </div>
+
+    <div class="step">
+        <h2>📋 方法1: VS CodeのLive Server（最も簡単）</h2>
+        <ol>
+            <li>VS Codeでこのフォルダを開く</li>
+            <li>VS Codeの拡張機能で「Live Server」をインストール（まだの場合）</li>
+            <li><code>index.html</code>を右クリック → 「Open with Live Server」</li>
+            <li>自動的にブラウザで開きます ✅</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>📋 方法2: Pythonで起動</h2>
+        <p>ターミナルで以下のコマンドを実行：</p>
+        <div class="code">
+cd "月次定例/2026年/1月/analysis_aio/Tier1_AIO/AIO_PDCA爆速システム"<br>
+python3 -m http.server 8000
+        </div>
+        <p>その後、ブラウザで以下にアクセス：</p>
+        <div class="code">
+http://localhost:8000
+        </div>
+    </div>
+
+    <div class="step">
+        <h2>📋 方法3: Node.jsで起動</h2>
+        <p>ターミナルで以下のコマンドを実行：</p>
+        <div class="code">
+cd "月次定例/2026年/1月/analysis_aio/Tier1_AIO/AIO_PDCA爆速システム"<br>
+npx http-server -p 8000
+        </div>
+        <p>その後、ブラウザで以下にアクセス：</p>
+        <div class="code">
+http://localhost:8000
+        </div>
+    </div>
+
+    <div class="step">
+        <h2>🔧 トラブルシューティング</h2>
+        <h3>「アクセスできない」場合</h3>
+        <ul>
+            <li>ターミナルで「サーバーが起動しました」というメッセージが表示されているか確認</li>
+            <li>ブラウザのアドレスバーが <code>http://localhost:8000</code> になっているか確認（<code>file://</code> ではない）</li>
+            <li>ポート8000が使用中の場合は、別のポート（8080など）を試す</li>
+        </ul>
+        
+        <h3>「データが読み込めない」場合</h3>
+        <ul>
+            <li>ブラウザの開発者ツール（F12）を開いてConsoleタブでエラーを確認</li>
+            <li><code>data/progress.json</code> と <code>data/baseline.json</code> が存在するか確認</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <a href="index.html" class="button">システムを開く（サーバー起動後）</a>
+    </div>
+
+    <div class="step">
+        <h2>📁 現在のファイルパス</h2>
+        <p>このファイルは以下の場所にあります：</p>
+        <div class="code" id="filePath">
+読み込み中...
+        </div>
+    </div>
+
+    <script>
+        // 現在のファイルパスを表示
+        document.getElementById('filePath').textContent = window.location.href;
+        
+        // file://プロトコルの場合は警告
+        if (window.location.protocol === 'file:') {
+            document.body.insertAdjacentHTML('afterbegin', `
+                <div style="background: #f44336; color: white; padding: 20px; margin-bottom: 20px; border-radius: 8px;">
+                    <strong>❌ エラー:</strong> ファイルを直接開いています（file://プロトコル）。<br>
+                    この方法では動作しません。上記の方法でローカルサーバーを起動してください。
+                </div>
+            `);
+        }
+    </script>
+</body>
+</html>
+

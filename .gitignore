@@ -1,0 +1,29 @@
+# .gitignore
+
+# データファイル（個人情報を含む可能性があるため）
+data/progress.json
+data/baseline.json
+data/articles/*.md
+data/monitoring/*.json
+
+# バックアップファイル
+*.bak
+*.backup
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# エディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ログファイル
+*.log
+
+# 一時ファイル
+*.tmp
+*.temp
+
