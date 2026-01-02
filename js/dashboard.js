@@ -771,10 +771,31 @@ class Dashboard {
             const trafficEl = document.getElementById('trafficClicks');
             const brandEl = document.getElementById('brandClicks');
             
-            if (aioEl) aioEl.textContent = (this.baselineData.metrics.aioCitations || 0).toLocaleString();
-            if (rankEl) rankEl.textContent = (this.baselineData.metrics.avgRanking || 0).toFixed(2);
-            if (trafficEl) trafficEl.textContent = (this.baselineData.metrics.traffic || 0).toLocaleString();
-            if (brandEl) brandEl.textContent = (this.baselineData.metrics.brandClicks || 0).toLocaleString();
+            console.log('[DEBUG] renderBaseline: Updating Overview cards', {
+                aioCitations: this.baselineData.metrics.aioCitations,
+                avgRanking: this.baselineData.metrics.avgRanking,
+                traffic: this.baselineData.metrics.traffic,
+                brandClicks: this.baselineData.metrics.brandClicks
+            });
+            
+            if (aioEl) {
+                aioEl.textContent = (this.baselineData.metrics.aioCitations || 0).toLocaleString();
+                console.log('[DEBUG] Updated aioCitationCount:', aioEl.textContent);
+            }
+            if (rankEl) {
+                rankEl.textContent = (this.baselineData.metrics.avgRanking || 0).toFixed(2);
+                console.log('[DEBUG] Updated searchRankingAvg:', rankEl.textContent);
+            }
+            if (trafficEl) {
+                trafficEl.textContent = (this.baselineData.metrics.traffic || 0).toLocaleString();
+                console.log('[DEBUG] Updated trafficClicks:', trafficEl.textContent);
+            }
+            if (brandEl) {
+                brandEl.textContent = (this.baselineData.metrics.brandClicks || 0).toLocaleString();
+                console.log('[DEBUG] Updated brandClicks:', brandEl.textContent);
+            } else {
+                console.warn('[WARN] brandClicks element not found!');
+            }
         } else {
             // デフォルト値を表示
             const aioEl = document.getElementById('aioCitationCount');
@@ -782,10 +803,17 @@ class Dashboard {
             const trafficEl = document.getElementById('trafficClicks');
             const brandEl = document.getElementById('brandClicks');
             
+            console.log('[DEBUG] renderBaseline: Using default values');
+            
             if (aioEl) aioEl.textContent = '857';
             if (rankEl) rankEl.textContent = '4.88';
             if (trafficEl) trafficEl.textContent = '102,000';
-            if (brandEl) brandEl.textContent = '22';
+            if (brandEl) {
+                brandEl.textContent = '22';
+                console.log('[DEBUG] Set default brandClicks:', brandEl.textContent);
+            } else {
+                console.warn('[WARN] brandClicks element not found for default value!');
+            }
         }
         
         // Tier 1記事テーブルを表示（Planタブ用 - 現在はPlanタブにないのでコメントアウト）

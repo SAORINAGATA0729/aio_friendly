@@ -238,6 +238,12 @@ body {
     margin-bottom: 2.5rem;
 }
 
+/* ブランド認知度カードが確実に表示されるように */
+.dashboard-card:last-child {
+    display: block !important;
+    visibility: visible !important;
+}
+
 .dashboard-card {
     background: var(--bg-card);
     border-radius: 1rem;
