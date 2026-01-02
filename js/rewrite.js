@@ -271,21 +271,34 @@ class RewriteSystem {
             }
         }
 
-        const editor = document.getElementById('markdownEditor');
-        if (editor) {
-            editor.value = content;
-            editor.style.display = 'block';
-            const preview = document.getElementById('markdownPreview');
-            if (preview) preview.style.display = 'none';
-
-            this.renderChecklist(article, content);
-
-            editor.addEventListener('input', () => {
-                this.updateChecklist(article, editor.value);
-            });
+        // Quillエディタにコンテンツを設定（MarkdownをHTMLに変換）
+        if (this.quill) {
+            const htmlContent = this.markdownToHtml(content);
+            this.quill.root.innerHTML = htmlContent;
             
-            this.updateChecklist(article, content);
+            // Quillエディタの変更を監視してチェックリストを更新
+            this.quill.on('text-change', () => {
+                const htmlContent = this.quill.root.innerHTML;
+                const markdownContent = this.htmlToMarkdown(htmlContent);
+                this.updateChecklist(article, markdownContent);
+            });
+        } else {
+            // フォールバック：従来のtextarea
+            const editor = document.getElementById('markdownEditor');
+            if (editor) {
+                editor.value = content;
+                editor.style.display = 'block';
+                const preview = document.getElementById('markdownPreview');
+                if (preview) preview.style.display = 'none';
+
+                editor.addEventListener('input', () => {
+                    this.updateChecklist(article, editor.value);
+                });
+            }
         }
+        
+        this.renderChecklist(article, content);
+        this.updateChecklist(article, content);
     }
 
     getSlugFromUrl(url) {
