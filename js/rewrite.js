@@ -716,4 +716,276 @@ ${article.keyword}について、重要なポイントをまとめました。
         
         return html;
     }
+
+    async exportArticle(format) {
+        if (!this.currentArticle) {
+            alert('記事が選択されていません。');
+            return;
+        }
+
+        // 現在の編集モードに応じてコンテンツを取得
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+        
+        let htmlContent;
+        let title;
+        
+        if (isVisualMode && this.quill) {
+            htmlContent = this.quill.root.innerHTML;
+            title = this.currentArticle.title;
+        } else {
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor && htmlEditor.value) {
+                htmlContent = htmlEditor.value;
+                title = this.currentArticle.title;
+            } else {
+                alert('エクスポートするコンテンツがありません。');
+                return;
+            }
+        }
+
+        const slug = this.getSlugFromUrl(this.currentArticle.url);
+        const filename = `${slug || 'article'}`;
+
+        try {
+            switch (format) {
+                case 'pdf':
+                    await this.exportToPDF(htmlContent, title, filename);
+                    break;
+                case 'docx':
+                    await this.exportToWord(htmlContent, title, filename);
+                    break;
+                case 'html':
+                    this.exportToHTML(htmlContent, title, filename);
+                    break;
+                default:
+                    alert('不明な形式です。');
+            }
+        } catch (error) {
+            console.error('エクスポートエラー:', error);
+            alert('エクスポートに失敗しました: ' + error.message);
+        }
+    }
+
+    async exportToPDF(htmlContent, title, filename) {
+        // HTMLを整形してPDF化
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="ja">
+            <head>
+                <meta charset="UTF-8">
+                <title>${title}</title>
+                <style>
+                    body {
+                        font-family: 'Noto Sans JP', sans-serif;
+                        padding: 2rem;
+                        line-height: 1.8;
+                        color: #333;
+                    }
+                    h1 { font-size: 2rem; margin-top: 2rem; margin-bottom: 1rem; }
+                    h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.8rem; }
+                    h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.6rem; }
+                    h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+                    p { margin-bottom: 1rem; }
+                    img { max-width: 100%; height: auto; }
+                    ul, ol { margin-left: 2rem; margin-bottom: 1rem; }
+                </style>
+            </head>
+            <body>
+                <h1>${title}</h1>
+                ${htmlContent}
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (typeof html2pdf !== 'undefined') {
+            const element = printWindow.document.body;
+            const opt = {
+                margin: 1,
+                filename: `${filename}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+            await html2pdf().set(opt).from(element).save();
+            printWindow.close();
+        } else {
+            printWindow.print();
+        }
+    }
+
+    async exportToWord(htmlContent, title, filename) {
+        // docx.jsが利用可能かチェック
+        if (typeof docx === 'undefined') {
+            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。');
+            return;
+        }
+
+        // HTMLをパースしてdocx形式に変換
+        const doc = new docx.Document({
+            sections: [{
+                properties: {},
+                children: [
+                    new docx.Paragraph({
+                        text: title,
+                        heading: docx.HeadingLevel.HEADING_1,
+                        spacing: { after: 400 }
+                    }),
+                    ...this.htmlToDocxElements(htmlContent)
+                ]
+            }]
+        });
+
+        try {
+            const blob = await docx.Packer.toBlob(doc);
+            if (typeof saveAs !== 'undefined') {
+                saveAs(blob, `${filename}.docx`);
+            } else {
+                // フォールバック
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.docx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        } catch (error) {
+            console.error('Wordエクスポートエラー:', error);
+            alert('Word形式のエクスポートに失敗しました。HTML形式をお試しください。');
+        }
+    }
+
+    htmlToDocxElements(html) {
+        // 簡易的なHTML→docx要素変換
+        const elements = [];
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        const processNode = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent.trim();
+                if (text) {
+                    return new docx.TextRun(text);
+                }
+                return null;
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                switch (tagName) {
+                    case 'h1':
+                        return new docx.Paragraph({
+                            text: node.textContent,
+                            heading: docx.HeadingLevel.HEADING_1,
+                            spacing: { after: 400 }
+                        });
+                    case 'h2':
+                        return new docx.Paragraph({
+                            text: node.textContent,
+                            heading: docx.HeadingLevel.HEADING_2,
+                            spacing: { after: 300 }
+                        });
+                    case 'h3':
+                        return new docx.Paragraph({
+                            text: node.textContent,
+                            heading: docx.HeadingLevel.HEADING_3,
+                            spacing: { after: 200 }
+                        });
+                    case 'p':
+                        const runs = Array.from(node.childNodes)
+                            .map(processNode)
+                            .filter(n => n !== null);
+                        return new docx.Paragraph({
+                            children: runs.length > 0 ? runs : [new docx.TextRun('')],
+                            spacing: { after: 200 }
+                        });
+                    case 'strong':
+                    case 'b':
+                        return new docx.TextRun({
+                            text: node.textContent,
+                            bold: true
+                        });
+                    case 'em':
+                    case 'i':
+                        return new docx.TextRun({
+                            text: node.textContent,
+                            italics: true
+                        });
+                    case 'ul':
+                    case 'ol':
+                        const listItems = Array.from(node.querySelectorAll('li'))
+                            .map(li => new docx.Paragraph({
+                                text: li.textContent,
+                                bullet: { level: 0 }
+                            }));
+                        return listItems;
+                    case 'li':
+                        return new docx.Paragraph({
+                            text: node.textContent,
+                            bullet: { level: 0 }
+                        });
+                    default:
+                        // 子要素を処理
+                        const children = Array.from(node.childNodes)
+                            .map(processNode)
+                            .filter(n => n !== null);
+                        return children.length > 0 ? children : null;
+                }
+            }
+            return null;
+        };
+
+        const result = Array.from(tempDiv.childNodes)
+            .map(processNode)
+            .filter(n => n !== null)
+            .flat();
+
+        return result.length > 0 ? result : [new docx.Paragraph({ text: '' })];
+    }
+
+    exportToHTML(htmlContent, title, filename) {
+        // HTMLファイルとしてダウンロード（Googleドキュメントにインポート可能）
+        const fullHTML = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.8;
+            color: #333;
+        }
+        h1 { font-size: 2rem; margin-top: 2rem; margin-bottom: 1rem; }
+        h2 { font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.8rem; }
+        h3 { font-size: 1.25rem; margin-top: 1.25rem; margin-bottom: 0.6rem; }
+        h4 { font-size: 1.1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+        p { margin-bottom: 1rem; }
+        img { max-width: 100%; height: auto; }
+        ul, ol { margin-left: 2rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <h1>${title}</h1>
+    ${htmlContent}
+</body>
+</html>`;
+
+        const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 }
