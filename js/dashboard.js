@@ -676,11 +676,26 @@ class Dashboard {
                 if (planId) {
                     this.loadPlanArticles(planId);
                 } else {
-                    // プランが選択されていない場合は、デフォルトの記事一覧を表示
-                    // プラン選択を解除
+                    // プランが選択されていない場合は、記事一覧を非表示にする
                     this.selectedPlanId = null;
                     this.currentPlanArticles = [];
-                    this.renderArticleList('all');
+                    
+                    // 記事一覧セクションを非表示
+                    const articleListSection = document.querySelector('.article-list-section');
+                    if (articleListSection) {
+                        articleListSection.style.display = 'none';
+                    }
+                    
+                    // 記事一覧をクリア
+                    const articleList = document.getElementById('articleList');
+                    if (articleList) {
+                        articleList.innerHTML = '';
+                    }
+                    
+                    // ヘッダーも削除
+                    const existingHeaders = document.querySelectorAll('.article-list-header');
+                    existingHeaders.forEach(header => header.remove());
+                    
                     // 進捗状況もデフォルトに戻す
                     this.updateProgress();
                 }
@@ -812,6 +827,12 @@ class Dashboard {
     renderPlanArticleList(articles) {
         const articleList = document.getElementById('articleList');
         if (!articleList) return;
+        
+        // 記事一覧セクションを表示
+        const articleListSection = document.querySelector('.article-list-section');
+        if (articleListSection) {
+            articleListSection.style.display = 'block';
+        }
         
         // ヘッダーを更新（既存のヘッダーをすべて削除して新しく作成）
         const existingHeaders = document.querySelectorAll('.article-list-header');
