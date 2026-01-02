@@ -1573,18 +1573,14 @@ class Dashboard {
             
             if (tabName === 'do') {
                 console.log('Doタブが選択されました。');
-                // プランが選択されていない場合は記事一覧を非表示
+                // プランが選択されていない場合は通常の記事一覧を表示
                 if (!this.selectedPlanId) {
                     const articleListSection = document.querySelector('.article-list-section');
                     if (articleListSection) {
-                        articleListSection.style.display = 'none';
+                        articleListSection.style.display = 'block';
                     }
-                    const articleList = document.getElementById('articleList');
-                    if (articleList) {
-                        articleList.innerHTML = '';
-                    }
-                    const existingHeaders = document.querySelectorAll('.article-list-header');
-                    existingHeaders.forEach(header => header.remove());
+                    // 通常の記事一覧を表示
+                    this.renderArticleList('all');
                 }
             } else if (tabName === 'plan') {
                 // Planタブが選択されたらプラン一覧を表示
