@@ -504,25 +504,29 @@ class RewriteSystem {
         }
 
         const slug = this.getSlugFromUrl(article.url);
-        let content = await dataManager.loadMarkdown(`${slug}.md`);
+        let content = null;
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:505',message:'openRewriteModal: Initial content check',data:{hasContent:!!content,contentLength:content?.length,contentPreview:content?.substring(0,200),hasFetchedContent:!!fetchedContent,fetchedContentPreview:fetchedContent?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
-        if (!content) {
-            if (fetchedContent) {
-                // fetchedContentに既にH1が含まれている場合は追加しない
-                const hasH1 = fetchedContent.trim().startsWith('# ');
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:512',message:'openRewriteModal: Checking fetchedContent for H1',data:{hasH1:hasH1,fetchedContentStart:fetchedContent.trim().substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
-                if (hasH1) {
-                    content = fetchedContent;
-                } else {
-                    content = `# ${article.title}\n\n${fetchedContent}`;
-                }
+        // fetchedContentが存在する場合は、それを優先的に使用（実際のWebサイトから取得した最新の内容）
+        if (fetchedContent) {
+            // fetchedContentに既にH1が含まれている場合は追加しない
+            const hasH1 = fetchedContent.trim().startsWith('# ');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:510',message:'openRewriteModal: Using fetchedContent (priority)',data:{hasH1:hasH1,fetchedContentLength:fetchedContent.length,fetchedContentPreview:fetchedContent.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            if (hasH1) {
+                content = fetchedContent;
             } else {
+                content = `# ${article.title}\n\n${fetchedContent}`;
+            }
+        } else {
+            // fetchedContentが存在しない場合のみ、保存されているMarkdownファイルを読み込む
+            content = await dataManager.loadMarkdown(`${slug}.md`);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:520',message:'openRewriteModal: Using saved markdown file',data:{hasContent:!!content,contentLength:content?.length,contentPreview:content?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            
+            if (!content) {
+                // 保存されているファイルも存在しない場合は、テンプレートを作成
                 content = this.createArticleTemplate(article);
             }
         }
