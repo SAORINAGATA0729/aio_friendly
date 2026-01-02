@@ -151,46 +151,39 @@
                     </div>
                 </div>
                 
-                <!-- 改修進捗状況 -->
-                <div class="progress-section" style="background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; border-radius: 1rem; box-shadow: var(--shadow);">
-                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 700; color: var(--text-primary);">改修進捗状況</h3>
-                    <div class="progress-summary">
-                        <div class="progress-item">
-                            <span class="progress-label">完了</span>
-                            <div style="display: flex; align-items: baseline;">
-                                <span class="progress-value" id="progressCompleted">0</span>
-                                <span class="progress-unit">本</span>
-                            </div>
-                        </div>
-                        <div class="progress-item">
-                            <span class="progress-label">進行中</span>
-                            <div style="display: flex; align-items: baseline;">
-                                <span class="progress-value" id="progressInProgress">0</span>
-                                <span class="progress-unit">本</span>
-                            </div>
-                        </div>
-                        <div class="progress-item">
-                            <span class="progress-label">未着手</span>
-                            <div style="display: flex; align-items: baseline;">
-                                <span class="progress-value" id="progressNotStarted">20</span>
-                                <span class="progress-unit">本</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
-                    </div>
-                </div>
-                
                 <!-- 記事一覧 -->
                 <div class="article-list-section">
                     <div class="section-header">
-                        <h3>改修対象記事一覧</h3>
-                        <div class="filter-buttons">
-                            <button class="filter-btn active" data-filter="all">すべて</button>
-                            <button class="filter-btn" data-filter="notStarted">未着手</button>
-                            <button class="filter-btn" data-filter="inProgress">進行中</button>
-                            <button class="filter-btn" data-filter="completed">完了</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <h3>改修対象記事一覧</h3>
+                            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                                <!-- 進捗状況 -->
+                                <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 1rem; background: #f8fafc; border-radius: 0.5rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                        <span style="font-size: 0.85rem; color: #6b7280;">完了</span>
+                                        <span style="font-weight: 700; color: #059669;" id="progressCompleted">0</span>
+                                        <span style="font-size: 0.75rem; color: #6b7280;">本</span>
+                                    </div>
+                                    <div style="width: 1px; height: 20px; background: #e5e7eb;"></div>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                        <span style="font-size: 0.85rem; color: #6b7280;">進行中</span>
+                                        <span style="font-weight: 700; color: #d97706;" id="progressInProgress">0</span>
+                                        <span style="font-size: 0.75rem; color: #6b7280;">本</span>
+                                    </div>
+                                    <div style="width: 1px; height: 20px; background: #e5e7eb;"></div>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem;">
+                                        <span style="font-size: 0.85rem; color: #6b7280;">未着手</span>
+                                        <span style="font-weight: 700; color: #6b7280;" id="progressNotStarted">0</span>
+                                        <span style="font-size: 0.75rem; color: #6b7280;">本</span>
+                                    </div>
+                                </div>
+                                <div class="filter-buttons">
+                                    <button class="filter-btn active" data-filter="all">すべて</button>
+                                    <button class="filter-btn" data-filter="notStarted">未着手</button>
+                                    <button class="filter-btn" data-filter="inProgress">進行中</button>
+                                    <button class="filter-btn" data-filter="completed">完了</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div id="articleList" class="article-list">

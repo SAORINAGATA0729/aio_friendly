@@ -747,25 +747,27 @@ class Dashboard {
     updateProgressFromArticles(articles) {
         if (!articles || articles.length === 0) {
             // デフォルト値を設定
-            document.getElementById('progressCompleted').textContent = '0';
-            document.getElementById('progressInProgress').textContent = '0';
-            document.getElementById('progressNotStarted').textContent = '0';
-            document.getElementById('progressBarFill').style.width = '0%';
+            const completedEl = document.getElementById('progressCompleted');
+            const inProgressEl = document.getElementById('progressInProgress');
+            const notStartedEl = document.getElementById('progressNotStarted');
+            
+            if (completedEl) completedEl.textContent = '0';
+            if (inProgressEl) inProgressEl.textContent = '0';
+            if (notStartedEl) notStartedEl.textContent = '0';
             return;
         }
         
         const completed = articles.filter(a => a.status === '完了').length;
         const inProgress = articles.filter(a => a.status === '進行中').length;
         const notStarted = articles.filter(a => a.status === '未着手').length;
-        const total = articles.length;
         
-        document.getElementById('progressCompleted').textContent = completed;
-        document.getElementById('progressInProgress').textContent = inProgress;
-        document.getElementById('progressNotStarted').textContent = notStarted;
+        const completedEl = document.getElementById('progressCompleted');
+        const inProgressEl = document.getElementById('progressInProgress');
+        const notStartedEl = document.getElementById('progressNotStarted');
         
-        // 進捗バー
-        const percentage = total > 0 ? (completed / total) * 100 : 0;
-        document.getElementById('progressBarFill').style.width = `${percentage}%`;
+        if (completedEl) completedEl.textContent = completed;
+        if (inProgressEl) inProgressEl.textContent = inProgress;
+        if (notStartedEl) notStartedEl.textContent = notStarted;
     }
     
     extractTitleFromUrl(url) {
@@ -1889,18 +1891,26 @@ class Dashboard {
         // 進捗サマリーを更新
         this.updateProgressSummary();
         
-        if (!this.progressData || !this.progressData.summary) return;
+        if (!this.progressData || !this.progressData.summary) {
+            // デフォルト値を設定
+            const completedEl = document.getElementById('progressCompleted');
+            const inProgressEl = document.getElementById('progressInProgress');
+            const notStartedEl = document.getElementById('progressNotStarted');
+            
+            if (completedEl) completedEl.textContent = '0';
+            if (inProgressEl) inProgressEl.textContent = '0';
+            if (notStartedEl) notStartedEl.textContent = '0';
+            return;
+        }
 
         const summary = this.progressData.summary;
-        document.getElementById('progressCompleted').textContent = summary.completed || 0;
-        document.getElementById('progressInProgress').textContent = summary.inProgress || 0;
-        document.getElementById('progressNotStarted').textContent = summary.notStarted || 0;
-
-        // 進捗バー
-        const total = summary.total || 20;
-        const completed = summary.completed || 0;
-        const percentage = total > 0 ? (completed / total) * 100 : 0;
-        document.getElementById('progressBarFill').style.width = `${percentage}%`;
+        const completedEl = document.getElementById('progressCompleted');
+        const inProgressEl = document.getElementById('progressInProgress');
+        const notStartedEl = document.getElementById('progressNotStarted');
+        
+        if (completedEl) completedEl.textContent = summary.completed || 0;
+        if (inProgressEl) inProgressEl.textContent = summary.inProgress || 0;
+        if (notStartedEl) notStartedEl.textContent = summary.notStarted || 0;
     }
 
     renderArticleList(filter = 'all') {
@@ -1964,6 +1974,9 @@ class Dashboard {
             const item = this.createArticleItem(article);
             articleList.appendChild(item);
         });
+        
+        // 進捗状況を更新
+        this.updateProgressFromArticles(articles);
     }
 
     createArticleItem(article) {
