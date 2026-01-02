@@ -584,14 +584,49 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     markdownToHtml(markdown) {
-        // 簡易的なMarkdown to HTML変換
-        return markdown
-            .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
-            .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
-            .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
-            .replace(/^\*\s+(.+)$/gm, '<li>$1</li>')
-            .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/^(.+)$/gm, '<p>$1</p>');
+        // Markdown to HTML変換（Quill用）
+        let html = markdown;
+        
+        // 見出し
+        html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+        html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+        
+        // 画像（ALTタグ対応）
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        
+        // リンク
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        
+        // 太字
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        
+        // 斜体
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        
+        // リスト
+        html = html.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
+        html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+        
+        // 段落（空行で区切る）
+        html = html.split('\n\n').map(para => {
+            para = para.trim();
+            if (!para) return '';
+            if (para.startsWith('<h') || para.startsWith('<li') || para.startsWith('<ul') || para.startsWith('<ol')) {
+                return para;
+            }
+            return `<p>${para}</p>`;
+        }).join('\n');
+        
+        // リストをulで囲む
+        html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
+            return `<ul>${match}</ul>`;
+        });
+        
+        // 改行をbrに変換
+        html = html.replace(/\n/g, '<br>');
+        
+        return html;
     }
 }
