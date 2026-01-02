@@ -127,6 +127,60 @@ class Dashboard {
         console.log('setupTabs完了');
     }
 
+    getStatusClass(status) {
+        return status === '完了' ? 'completed' : 
+               status === '進行中' ? 'inProgress' : 'notStarted';
+    }
+
+    async updateArticleStatus(articleId, newStatus) {
+        if (!this.progressData || !this.progressData.articles) {
+            console.error('進捗データが読み込まれていません');
+            return;
+        }
+
+        const article = this.progressData.articles.find(a => a.id === articleId);
+        if (!article) {
+            console.error('記事が見つかりません:', articleId);
+            return;
+        }
+
+        // ステータスを更新
+        article.status = newStatus;
+        article.lastModified = new Date().toISOString();
+
+        // 進捗サマリーを更新
+        this.updateProgressSummary();
+
+        // データを保存
+        try {
+            await dataManager.saveProgress(this.progressData);
+            console.log('ステータスを更新しました:', articleId, newStatus);
+            
+            // 一覧を再描画
+            const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
+            this.renderArticleList(currentFilter);
+            
+            // 進捗を更新
+            this.updateProgress();
+        } catch (error) {
+            console.error('ステータスの更新に失敗しました:', error);
+            alert('ステータスの更新に失敗しました: ' + error.message);
+        }
+    }
+
+    updateProgressSummary() {
+        if (!this.progressData || !this.progressData.articles) return;
+
+        const summary = {
+            total: this.progressData.articles.length,
+            completed: this.progressData.articles.filter(a => a.status === '完了').length,
+            inProgress: this.progressData.articles.filter(a => a.status === '進行中').length,
+            notStarted: this.progressData.articles.filter(a => a.status === '未着手').length
+        };
+
+        this.progressData.summary = summary;
+    }
+
     switchTab(tabName) {
         console.log('=== switchTab called ===', tabName);
         // タブの切り替え
@@ -208,6 +262,9 @@ class Dashboard {
     }
 
     updateProgress() {
+        // 進捗サマリーを更新
+        this.updateProgressSummary();
+        
         if (!this.progressData || !this.progressData.summary) return;
 
         const summary = this.progressData.summary;
@@ -305,7 +362,21 @@ class Dashboard {
                 </div>
             </div>
             <div style="display: flex; justify-content: center;">
-                <span class="article-status ${statusClass}">${article.status}</span>
+                <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 0.5rem;
+                    border: 1px solid var(--border-color);
+                    background: white;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: var(--transition);
+                    min-width: 100px;
+                ">
+                    <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
+                    <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
+                    <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
+                </select>
             </div>
             <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                 <span class="material-icons-round" style="font-size: 16px; color: var(--primary-color);">auto_awesome</span>
