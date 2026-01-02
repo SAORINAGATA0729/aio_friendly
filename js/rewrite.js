@@ -119,14 +119,25 @@ class RewriteSystem {
         const proceedBtn = document.getElementById('proceedToEditorBtn');
         const autoFetchBtn = document.getElementById('autoFetchBtn');
 
+        // 既存のイベントリスナーを削除するために、ボタンをクローンして置き換える
+        if (autoFetchBtn && !autoFetchBtn.dataset.listenerAttached) {
+            autoFetchBtn.dataset.listenerAttached = 'true';
+        }
+
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
+            // 既存のリスナーを削除してから追加
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            newCloseBtn.addEventListener('click', () => {
                 modal.classList.remove('active');
             });
         }
 
         if (closeUrlBtn) {
-            closeUrlBtn.addEventListener('click', () => {
+            // 既存のリスナーを削除してから追加
+            const newCloseUrlBtn = closeUrlBtn.cloneNode(true);
+            closeUrlBtn.parentNode.replaceChild(newCloseUrlBtn, closeUrlBtn);
+            newCloseUrlBtn.addEventListener('click', () => {
                 urlModal.classList.remove('active');
             });
         }
@@ -148,7 +159,10 @@ class RewriteSystem {
         }
 
         if (openUrlBtn) {
-            openUrlBtn.addEventListener('click', () => {
+            // 既存のリスナーを削除してから追加
+            const newOpenUrlBtn = openUrlBtn.cloneNode(true);
+            openUrlBtn.parentNode.replaceChild(newOpenUrlBtn, openUrlBtn);
+            newOpenUrlBtn.addEventListener('click', () => {
                 const url = document.getElementById('articleUrlInput').value;
                 if (url) {
                     window.open(url, '_blank');
@@ -157,78 +171,18 @@ class RewriteSystem {
         }
 
         if (proceedBtn) {
-            proceedBtn.addEventListener('click', () => {
+            // 既存のリスナーを削除してから追加
+            const newProceedBtn = proceedBtn.cloneNode(true);
+            proceedBtn.parentNode.replaceChild(newProceedBtn, proceedBtn);
+            newProceedBtn.addEventListener('click', () => {
                 urlModal.classList.remove('active');
                 this.openRewriteModal(this.currentArticle);
             });
         }
 
         // 自動取得ボタンの処理
-        if (autoFetchBtn) {
-            autoFetchBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const url = document.getElementById('articleUrlInput').value;
-                if (!url) {
-                    alert('URLが入力されていません。');
-                    return;
-                }
-
-                const statusDiv = document.getElementById('fetchStatus');
-                if (!statusDiv) return;
-                
-                statusDiv.innerHTML = '<span style="color: var(--primary-color);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle; animation: spin 1s linear infinite;">sync</span> 記事を取得中...</span>';
-                
-                try {
-                    // ローカル環境かVercel環境かを自動検出
-                    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    const apiUrl = isLocal 
-                        ? `http://localhost:8000/api/fetch?url=${encodeURIComponent(url)}`
-                        : `/api/fetch?url=${encodeURIComponent(url)}`;
-                    
-                    console.log(`[DEBUG] Fetching from: ${apiUrl}`);
-                    const response = await fetch(apiUrl);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTPエラー: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-
-                    if (data.success && data.content) {
-                        statusDiv.innerHTML = '<span style="color: var(--success-color);">✓ 取得成功！エディタを開きます...</span>';
-                        
-                        // URLモーダルを閉じる
-                        urlModal.classList.remove('active');
-                        
-                        // 少し待ってからエディタを開く（アニメーション完了を待つ）
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                        
-                        // エディタを開く
-                        try {
-                            await this.openRewriteModal(this.currentArticle, data.content);
-                            console.log('[DEBUG] エディタを開きました');
-                        } catch (modalError) {
-                            console.error('エディタを開く際にエラー:', modalError);
-                            alert('エディタを開く際にエラーが発生しました。ページをリロードして再試行してください。');
-                        }
-                    } else {
-                        throw new Error(data.error || 'コンテンツを取得できませんでした');
-                    }
-                } catch (error) {
-                    console.error('Fetch error:', error);
-                    statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${error.message}<br><br><button id="retryFetchBtn" style="margin-top: 10px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">再試行</button><br><br>手動でコピーする場合は「次へ進む」ボタンをクリックしてください。</span>`;
-                    
-                    // 再試行ボタンのイベントリスナーを追加
-                    const retryBtn = document.getElementById('retryFetchBtn');
-                    if (retryBtn) {
-                        retryBtn.addEventListener('click', () => {
-                            autoFetchBtn.click();
-                        });
-                    }
-                }
-            });
+        if (autoFetchBtn && !autoFetchBtn.dataset.listenerAttached) {
+            this.setupAutoFetchButton(autoFetchBtn);
         }
 
         // 検索機能のイベントリスナー設定
@@ -722,10 +676,14 @@ class RewriteSystem {
         if (hasSavedContent) {
             // 保存済みがある場合：選択肢を表示
             if (autoFetchBtn) {
-                autoFetchBtn.innerHTML = `
-                    <span class="material-icons-round">auto_fix_high</span>
-                    記事内容を自動取得して編集（一からやり直す）
-                `;
+                // イベントリスナーを再設定（ボタンの内容も更新）
+                const newBtn = this.setupAutoFetchButton(autoFetchBtn);
+                if (newBtn) {
+                    newBtn.innerHTML = `
+                        <span class="material-icons-round">auto_fix_high</span>
+                        記事内容を自動取得して編集（一からやり直す）
+                    `;
+                }
             }
             
             // 保存済みを引き継ぐボタンを追加（既存のボタンの前に挿入）
@@ -747,16 +705,98 @@ class RewriteSystem {
         } else {
             // 保存済みがない場合：通常の表示
             if (autoFetchBtn) {
-                autoFetchBtn.innerHTML = `
-                    <span class="material-icons-round">auto_fix_high</span>
-                    記事内容を自動取得して編集
-                `;
+                // イベントリスナーを再設定（ボタンの内容も更新）
+                const newBtn = this.setupAutoFetchButton(autoFetchBtn);
+                if (newBtn) {
+                    newBtn.innerHTML = `
+                        <span class="material-icons-round">auto_fix_high</span>
+                        記事内容を自動取得して編集
+                    `;
+                }
             }
             
             // 保存済みボタンを削除
             const loadSavedBtn = document.getElementById('loadSavedBtn');
             if (loadSavedBtn) loadSavedBtn.remove();
         }
+    }
+    
+    setupAutoFetchButton(autoFetchBtn) {
+        // 既存のイベントリスナーを削除してから追加（innerHTML変更でリスナーが削除されるため）
+        const urlModal = document.getElementById('urlModal');
+        
+        // ボタンをクローンして置き換える（既存のリスナーを削除）
+        const newBtn = autoFetchBtn.cloneNode(true);
+        autoFetchBtn.parentNode.replaceChild(newBtn, autoFetchBtn);
+        newBtn.dataset.listenerAttached = 'true';
+        
+        newBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const url = document.getElementById('articleUrlInput').value;
+            if (!url) {
+                alert('URLが入力されていません。');
+                return;
+            }
+
+            const statusDiv = document.getElementById('fetchStatus');
+            if (!statusDiv) return;
+            
+            statusDiv.innerHTML = '<span style="color: var(--primary-color);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle; animation: spin 1s linear infinite;">sync</span> 記事を取得中...</span>';
+            
+            try {
+                // ローカル環境かVercel環境かを自動検出
+                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const apiUrl = isLocal 
+                    ? `http://localhost:8000/api/fetch?url=${encodeURIComponent(url)}`
+                    : `/api/fetch?url=${encodeURIComponent(url)}`;
+                
+                console.log(`[DEBUG] Fetching from: ${apiUrl}`);
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTPエラー: ${response.status}`);
+                }
+                
+                const data = await response.json();
+
+                if (data.success && data.content) {
+                    statusDiv.innerHTML = '<span style="color: var(--success-color);">✓ 取得成功！エディタを開きます...</span>';
+                    
+                    // URLモーダルを閉じる
+                    if (urlModal) urlModal.classList.remove('active');
+                    
+                    // 少し待ってからエディタを開く（アニメーション完了を待つ）
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
+                    // エディタを開く
+                    try {
+                        await this.openRewriteModal(this.currentArticle, data.content);
+                        console.log('[DEBUG] エディタを開きました');
+                    } catch (modalError) {
+                        console.error('エディタを開く際にエラー:', modalError);
+                        alert('エディタを開く際にエラーが発生しました。ページをリロードして再試行してください。');
+                    }
+                } else {
+                    throw new Error(data.error || 'コンテンツを取得できませんでした');
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${error.message}<br><br><button id="retryFetchBtn" style="margin-top: 10px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">再試行</button><br><br>手動でコピーする場合は「次へ進む」ボタンをクリックしてください。</span>`;
+                
+                // 再試行ボタンのイベントリスナーを追加
+                const retryBtn = document.getElementById('retryFetchBtn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', () => {
+                        newBtn.click();
+                    });
+                }
+            }
+        });
+        
+        // グローバル参照を更新（updateUrlModalUIで使用するため）
+        return newBtn;
     }
 
     async loadSavedAndOpenEditor() {
