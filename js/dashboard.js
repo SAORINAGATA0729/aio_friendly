@@ -855,16 +855,22 @@ class Dashboard {
         
         articleList.innerHTML = '';
         
+        // フィルタリング済みの記事を表示
         articles.forEach(article => {
             const item = this.createPlanArticleItem(article);
             articleList.appendChild(item);
         });
         
-        // フィルターボタンの動作も更新
-        this.updateFilterButtons();
+        // フィルターボタンの動作も更新（イベント委譲で処理するため、ここでは何もしない）
+        // this.updateFilterButtons(); // 削除
         
-        // 進捗状況を更新
-        this.updateProgressFromArticles(articles);
+        // 進捗状況を更新（フィルタリング前のプランの全記事で計算）
+        // 重要：articlesはフィルタリング済みだが、進捗は全記事で計算
+        if (this.selectedPlanId && this.currentPlanArticles.length > 0) {
+            this.updateProgressFromArticles(this.currentPlanArticles);
+        } else {
+            this.updateProgressFromArticles(articles);
+        }
     }
     
     // --- 記事ごとの数値入力テーブルの実装メソッド ---
@@ -2320,15 +2326,39 @@ class Dashboard {
     }
 
     setupEventListeners() {
-        // フィルターボタン
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const filter = btn.dataset.filter;
-                this.renderArticleList(filter);
+        // フィルターボタン（イベント委譲を使用）
+        const articleListSection = document.querySelector('.article-list-section');
+        if (articleListSection) {
+            articleListSection.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-btn')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // アクティブクラスを更新
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    
+                    const filter = e.target.dataset.filter;
+                    
+                    // プランが選択されている場合は、プランの記事一覧をフィルタリング
+                    if (this.selectedPlanId && this.currentPlanArticles.length > 0) {
+                        // フィルタリング済みの記事を取得
+                        const filteredArticles = this.currentPlanArticles.filter(article => {
+                            if (filter === 'all') return true;
+                            if (filter === 'notStarted') return article.status === '未着手';
+                            if (filter === 'inProgress') return article.status === '進行中';
+                            if (filter === 'completed') return article.status === '完了';
+                            return true;
+                        });
+                        // フィルタリング済み記事で一覧を表示
+                        this.renderPlanArticleList(filteredArticles);
+                    } else {
+                        // プランが選択されていない場合は通常の記事一覧を表示
+                        this.renderArticleList(filter);
+                    }
+                }
             });
-        });
+        }
 
         // 仮説立案フォーム（削除）
         // const hypothesisForm = document.getElementById('hypothesisForm');
