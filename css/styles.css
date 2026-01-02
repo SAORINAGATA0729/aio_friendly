@@ -898,6 +898,78 @@ body {
     border-bottom: 1px solid var(--border-color);
     background: #f8fafc;
     display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* 編集モード切り替えタブ */
+.editor-mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid transparent;
+}
+
+.mode-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+.mode-tab:hover {
+    color: var(--primary-color);
+    background: rgba(79, 70, 229, 0.05);
+}
+
+.mode-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.mode-tab .material-icons-round {
+    font-size: 18px;
+}
+
+/* エディタモードコンテナ */
+.editor-mode-container {
+    display: none;
+    flex: 1;
+    overflow: hidden;
+}
+
+.editor-mode-container.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* HTMLエディタ */
+.html-editor {
+    flex: 1;
+    width: 100%;
+    padding: 1.5rem;
+    border: none;
+    font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    background: #ffffff;
+    color: #334155;
+    overflow-y: auto;
+}
+
+.html-editor:focus {
+    outline: none;
+}
+    display: flex;
     gap: 1rem;
 }
 

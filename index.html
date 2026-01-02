@@ -400,16 +400,33 @@
                     </div>
                     <div class="rewrite-editor">
                         <div class="editor-toolbar">
+                            <!-- 編集モード切り替えタブ -->
+                            <div class="editor-mode-tabs">
+                                <button class="mode-tab active" data-mode="visual" id="visualModeTab">
+                                    <span class="material-icons-round">visibility</span>
+                                    ビジュアル
+                                </button>
+                                <button class="mode-tab" data-mode="html" id="htmlModeTab">
+                                    <span class="material-icons-round">code</span>
+                                    HTML
+                                </button>
+                            </div>
+                            <div style="flex: 1;"></div>
                             <button class="toolbar-btn" data-action="save">
                                 <span class="material-icons-round">save</span>
                                 保存して完了
                             </button>
                         </div>
-                        <!-- Quill Rich Text Editor -->
-                        <div id="quillEditor" style="height: 500px; background: white; border-radius: 8px;"></div>
+                        <!-- ビジュアルモード（Quill Rich Text Editor） -->
+                        <div id="visualEditorContainer" class="editor-mode-container active">
+                            <div id="quillEditor" style="height: 500px; background: white; border-radius: 8px;"></div>
+                        </div>
+                        <!-- HTMLモード（テキストエディタ） -->
+                        <div id="htmlEditorContainer" class="editor-mode-container" style="display: none;">
+                            <textarea id="htmlEditor" class="html-editor" placeholder="HTML形式で記事を編集してください..."></textarea>
+                        </div>
                         <!-- Hidden textarea for storing content -->
                         <textarea id="markdownEditor" style="display: none;"></textarea>
-                        <div id="markdownPreview" class="markdown-preview" style="display: none;"></div>
                     </div>
                 </div>
                 <div id="aiGuidance" class="ai-guidance">

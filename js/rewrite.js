@@ -198,24 +198,65 @@ class RewriteSystem {
     }
 
     setupEditor() {
-        // Quillエディタを初期化
+        // Quillエディタを初期化（画像のALTタグ対応）
         const editorContainer = document.getElementById('quillEditor');
         if (editorContainer && typeof Quill !== 'undefined') {
+            // カスタム画像ハンドラー（ALTタグ対応）
+            const Image = Quill.import('formats/image');
+            Image.sanitize = function(url) {
+                return url;
+            };
+            
             this.quill = new Quill('#quillEditor', {
                 theme: 'snow',
                 modules: {
-                    toolbar: [
-                        [{ 'header': [1, 2, 3, 4, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'color': [] }, { 'background': [] }],
-                        ['link', 'image'],
-                        ['blockquote', 'code-block'],
-                        ['clean']
-                    ]
+                    toolbar: {
+                        container: [
+                            [{ 'header': [1, 2, 3, 4, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            ['link', 'image'],
+                            ['blockquote', 'code-block'],
+                            ['clean']
+                        ],
+                        handlers: {
+                            'image': () => {
+                                this.handleImageUpload();
+                            }
+                        }
+                    }
                 },
                 placeholder: '記事を編集してください...',
                 formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block']
+            });
+        }
+
+        // 編集モード切り替えタブ
+        const visualTab = document.getElementById('visualModeTab');
+        const htmlTab = document.getElementById('htmlModeTab');
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const htmlContainer = document.getElementById('htmlEditorContainer');
+        const htmlEditor = document.getElementById('htmlEditor');
+
+        if (visualTab && htmlTab) {
+            visualTab.addEventListener('click', () => {
+                this.switchEditorMode('visual');
+            });
+
+            htmlTab.addEventListener('click', () => {
+                this.switchEditorMode('html');
+            });
+        }
+
+        // HTMLエディタの変更を監視
+        if (htmlEditor) {
+            htmlEditor.addEventListener('input', () => {
+                if (this.currentArticle) {
+                    const htmlContent = htmlEditor.value;
+                    const markdownContent = this.htmlToMarkdown(htmlContent);
+                    this.updateChecklist(this.currentArticle, markdownContent);
+                }
             });
         }
 
@@ -224,6 +265,62 @@ class RewriteSystem {
             saveBtn.addEventListener('click', async () => {
                 await this.saveArticle();
             });
+        }
+    }
+
+    switchEditorMode(mode) {
+        const visualTab = document.getElementById('visualModeTab');
+        const htmlTab = document.getElementById('htmlModeTab');
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const htmlContainer = document.getElementById('htmlEditorContainer');
+        const htmlEditor = document.getElementById('htmlEditor');
+
+        if (mode === 'visual') {
+            // ビジュアルモードに切り替え
+            visualTab?.classList.add('active');
+            htmlTab?.classList.remove('active');
+            visualContainer?.classList.add('active');
+            htmlContainer?.style.setProperty('display', 'none');
+            
+            // HTMLエディタの内容をQuillに反映
+            if (this.quill && htmlEditor) {
+                const htmlContent = htmlEditor.value;
+                this.quill.root.innerHTML = htmlContent;
+            }
+        } else {
+            // HTMLモードに切り替え
+            htmlTab?.classList.add('active');
+            visualTab?.classList.remove('active');
+            htmlContainer?.style.setProperty('display', 'block');
+            visualContainer?.classList.remove('active');
+            
+            // Quillの内容をHTMLエディタに反映
+            if (this.quill && htmlEditor) {
+                const htmlContent = this.quill.root.innerHTML;
+                htmlEditor.value = htmlContent;
+            }
+        }
+    }
+
+    handleImageUpload() {
+        // 画像URL入力用のモーダルを表示
+        const imageUrl = prompt('画像のURLを入力してください:');
+        if (!imageUrl) return;
+
+        const imageAlt = prompt('画像のALTテキスト（説明）を入力してください:') || '';
+        
+        if (this.quill) {
+            const range = this.quill.getSelection(true);
+            this.quill.insertEmbed(range.index, 'image', imageUrl, 'user');
+            
+            // ALTタグを設定（Quillのカスタム属性として）
+            setTimeout(() => {
+                const img = this.quill.root.querySelector(`img[src="${imageUrl}"]`);
+                if (img && imageAlt) {
+                    img.setAttribute('alt', imageAlt);
+                    img.setAttribute('data-alt', imageAlt);
+                }
+            }, 100);
         }
     }
 
@@ -398,15 +495,26 @@ ${article.keyword}について、重要なポイントをまとめました。
 
         let content;
         
-        // Quillエディタからコンテンツを取得（HTMLをMarkdownに変換）
-        if (this.quill) {
+        // 現在の編集モードに応じてコンテンツを取得
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+        
+        if (isVisualMode && this.quill) {
+            // ビジュアルモード：QuillエディタからHTMLを取得してMarkdownに変換
             const htmlContent = this.quill.root.innerHTML;
             content = this.htmlToMarkdown(htmlContent);
         } else {
-            // フォールバック：従来のtextarea
-            const editor = document.getElementById('markdownEditor');
-            if (!editor) return;
-            content = editor.value;
+            // HTMLモード：HTMLエディタから直接取得してMarkdownに変換
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor && htmlEditor.value) {
+                const htmlContent = htmlEditor.value;
+                content = this.htmlToMarkdown(htmlContent);
+            } else {
+                // フォールバック：従来のtextarea
+                const editor = document.getElementById('markdownEditor');
+                if (!editor) return;
+                content = editor.value;
+            }
         }
         const slug = this.getSlugFromUrl(this.currentArticle.url);
         
