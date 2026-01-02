@@ -1074,40 +1074,34 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     async exportToWord(htmlContent, title, filename) {
-        // docx.jsが利用可能かチェック（複数の方法を試す）
-        let docxLib = null;
-        
-        // 方法1: グローバル変数docx
-        if (typeof docx !== 'undefined') {
-            docxLib = docx;
-            console.log('[DEBUG] exportToWord: Using global docx variable');
-        }
-        // 方法2: window.docx
-        else if (typeof window !== 'undefined' && typeof window.docx !== 'undefined') {
-            docxLib = window.docx;
-            console.log('[DEBUG] exportToWord: Using window.docx');
-        }
-        // 方法3: 動的インポートを試す
-        else {
+        // docx.jsを動的インポートで読み込む（ES6モジュール形式）
+        let docxLib;
+        try {
+            // 動的インポートを使用してdocx.jsを読み込む
+            const docxModule = await import('https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm');
+            docxLib = docxModule;
+            console.log('[DEBUG] exportToWord: docx.js loaded via dynamic import');
+        } catch (importError) {
+            console.error('[ERROR] exportToWord: Failed to load docx.js:', importError);
+            // フォールバック: unpkgを試す
             try {
-                // 動的インポートを試す（ES6モジュール）
-                const docxModule = await import('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js');
-                if (docxModule && docxModule.default) {
-                    docxLib = docxModule.default;
-                    console.log('[DEBUG] exportToWord: Using dynamic import');
-                }
-            } catch (importError) {
-                console.error('[ERROR] exportToWord: Dynamic import failed:', importError);
+                const docxModule2 = await import('https://unpkg.com/docx@8.5.0/build/index.js');
+                docxLib = docxModule2;
+                console.log('[DEBUG] exportToWord: docx.js loaded via unpkg');
+            } catch (importError2) {
+                console.error('[ERROR] exportToWord: All import methods failed:', importError2);
+                alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。\n\n現在、docx.jsの読み込みに失敗しています。\n\n別の方法として、HTML形式またはPDF形式でのエクスポートをお試しください。\n\nHTML形式でエクスポートしたファイルは、Microsoft Wordで開いて保存することでWord形式に変換できます。');
+                return;
             }
         }
         
-        if (!docxLib) {
-            console.error('[ERROR] exportToWord: docx.js not found. typeof docx:', typeof docx, 'typeof window.docx:', typeof window.docx);
-            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。\n\n別の方法として、HTML形式またはPDF形式でのエクスポートをお試しください。');
+        if (!docxLib || !docxLib.Document) {
+            console.error('[ERROR] exportToWord: docx.Document not found');
+            alert('Word形式のエクスポートに失敗しました。docx.jsライブラリが正しく読み込まれていません。\n\nHTML形式またはPDF形式でのエクスポートをお試しください。');
             return;
         }
         
-        console.log('[DEBUG] exportToWord: docxLib found:', !!docxLib, 'has Document:', typeof docxLib.Document);
+        console.log('[DEBUG] exportToWord: docxLib ready, has Document:', typeof docxLib.Document);
 
         // HTMLをパースしてdocx形式に変換
         const doc = new docxLib.Document({
