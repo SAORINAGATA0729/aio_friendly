@@ -1106,7 +1106,9 @@ ${article.keyword}について、重要なポイントをまとめました。
         if (scoreNumber) scoreNumber.textContent = score;
         if (scoreRank) {
             scoreRank.textContent = rank;
-            scoreRank.className = `rank-value rank-${rank.toLowerCase()}`;
+            // 既存のクラスを維持しつつ、ランククラスを追加・更新
+            scoreRank.className = scoreRank.className.replace(/rank-[SABCD]/g, '').trim();
+            scoreRank.classList.add(`rank-${rank}`);
         }
         if (checkedCountEl) checkedCountEl.textContent = checkedCount;
         if (totalCountEl) totalCountEl.textContent = totalItems;
