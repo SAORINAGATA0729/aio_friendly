@@ -347,6 +347,5 @@ class DataManager {
     }
 }
 
-// グローバルインスタンス
-const dataManager = new DataManager();
+// グローバルインスタンスは index.html で作成（重複宣言を避けるため）
 
