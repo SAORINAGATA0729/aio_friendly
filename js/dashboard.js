@@ -16,6 +16,13 @@ class Dashboard {
         this.setupTabs();
         this.updateDashboard();
         this.setupEventListeners();
+        
+        // データが読み込まれたら、現在のタブのコンテンツを表示
+        if (this.currentTab === 'do' && this.progressData) {
+            setTimeout(() => {
+                this.renderArticleList();
+            }, 500);
+        }
     }
 
     async loadData() {
@@ -103,24 +110,33 @@ class Dashboard {
         document.querySelectorAll('.pdca-tab').forEach(tab => {
             tab.classList.remove('active');
         });
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        const targetTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
 
         // コンテンツの切り替え
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
-        document.getElementById(`${tabName}Tab`).classList.add('active');
+        const targetContent = document.getElementById(`${tabName}Tab`);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
 
         this.currentTab = tabName;
 
-        // タブごとの初期化
-        if (tabName === 'do') {
-            this.renderArticleList();
-        } else if (tabName === 'check') {
-            this.renderComparisonChart();
-        } else if (tabName === 'action') {
-            this.renderResults();
-        }
+        // タブごとの初期化（少し遅延させてDOMの更新を確実にする）
+        setTimeout(() => {
+            if (tabName === 'do') {
+                console.log('Doタブが選択されました。記事一覧を表示します...');
+                this.renderArticleList();
+            } else if (tabName === 'check') {
+                this.renderComparisonChart();
+            } else if (tabName === 'action') {
+                this.renderResults();
+            }
+        }, 100);
     }
 
     updateDashboard() {
