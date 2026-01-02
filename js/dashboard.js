@@ -176,66 +176,34 @@ class Dashboard {
     }
 
     switchTab(tabName) {
-        console.log('[DEBUG] ========== switchTab called ==========');
-        console.log('[DEBUG] tabName:', tabName);
-        console.log('[DEBUG] this:', this);
-        console.log('[DEBUG] this.currentTab:', this.currentTab);
-        
+        console.log('=== switchTab called ===', tabName);
         // タブの切り替え
-        const allTabs = document.querySelectorAll('.pdca-tab');
-        console.log('[DEBUG] All tabs found:', allTabs.length);
-        console.log('[DEBUG] All tabs:', Array.from(allTabs).map(t => ({
-            tab: t.dataset.tab,
-            classes: t.className,
-            hasActive: t.classList.contains('active')
-        })));
-        
-        allTabs.forEach(tab => {
+        document.querySelectorAll('.pdca-tab').forEach(tab => {
             tab.classList.remove('active');
         });
-        
         const targetTab = document.querySelector(`[data-tab="${tabName}"]`);
-        console.log('[DEBUG] Target tab found:', !!targetTab);
-        console.log('[DEBUG] Target tab element:', targetTab);
         if (targetTab) {
             targetTab.classList.add('active');
-            console.log('[DEBUG] Tab activated:', tabName);
-            console.log('[DEBUG] Tab classes after activation:', targetTab.className);
+            console.log('タブをアクティブにしました:', tabName);
         } else {
-            console.error('[ERROR] Tab not found:', tabName);
-            console.error('[ERROR] Available tabs:', Array.from(document.querySelectorAll('.pdca-tab')).map(t => t.dataset.tab));
+            console.error('タブが見つかりません:', tabName);
             return;
         }
 
         // コンテンツの切り替え
-        const allContents = document.querySelectorAll('.tab-content');
-        console.log('[DEBUG] All contents found:', allContents.length);
-        console.log('[DEBUG] All contents:', Array.from(allContents).map(c => ({
-            id: c.id,
-            classes: c.className,
-            hasActive: c.classList.contains('active')
-        })));
-        
-        allContents.forEach(content => {
+        document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
-        
         const targetContent = document.getElementById(`${tabName}Tab`);
-        console.log('[DEBUG] Target content ID:', `${tabName}Tab`);
-        console.log('[DEBUG] Target content found:', !!targetContent);
-        console.log('[DEBUG] Target content element:', targetContent);
         if (targetContent) {
             targetContent.classList.add('active');
-            console.log('[DEBUG] Content activated:', `${tabName}Tab`);
-            console.log('[DEBUG] Content classes after activation:', targetContent.className);
+            console.log('コンテンツをアクティブにしました:', `${tabName}Tab`);
         } else {
-            console.error('[ERROR] Content not found:', `${tabName}Tab`);
-            console.error('[ERROR] Available contents:', Array.from(document.querySelectorAll('.tab-content')).map(c => c.id));
+            console.error('コンテンツが見つかりません:', `${tabName}Tab`);
             return;
         }
 
         this.currentTab = tabName;
-        console.log('[DEBUG] ========== switchTab completed ==========');
 
         // タブごとの初期化（少し遅延させてDOMの更新を確実にする）
         setTimeout(() => {
