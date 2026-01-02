@@ -497,8 +497,8 @@ class RewriteSystem {
             htmlEditor.value = htmlContent;
         }
         
-        // デフォルトでビジュアルモードを表示
-        this.switchEditorMode('visual');
+        // デフォルトでビジュアルモードを表示（初期設定時の同期をスキップ）
+        this.switchEditorMode('visual', true);
         
         this.renderChecklist(article, content);
         this.updateChecklist(article, content);
@@ -811,6 +811,13 @@ ${article.keyword}について、重要なポイントをまとめました。
     markdownToHtml(markdown) {
         // Markdown to HTML変換（Quill用）
         let html = markdown;
+        
+        // 既にHTMLタグが含まれている場合は変換をスキップ（重複を防ぐ）
+        const hasHtmlTags = /<[h1-6]|<img|<p>/i.test(html);
+        if (hasHtmlTags) {
+            // HTMLタグが既にある場合は、そのまま返す（重複変換を防ぐ）
+            return html.trim();
+        }
         
         // 見出し
         html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
