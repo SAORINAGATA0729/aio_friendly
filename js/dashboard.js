@@ -813,11 +813,9 @@ class Dashboard {
         const articleList = document.getElementById('articleList');
         if (!articleList) return;
         
-        // ヘッダーを更新（既存のヘッダーを削除して新しく作成）
-        const existingHeader = document.querySelector('.article-list-header');
-        if (existingHeader) {
-            existingHeader.remove();
-        }
+        // ヘッダーを更新（既存のヘッダーをすべて削除して新しく作成）
+        const existingHeaders = document.querySelectorAll('.article-list-header');
+        existingHeaders.forEach(header => header.remove());
         
         const header = document.createElement('div');
         header.className = 'article-list-header plan-mode';
