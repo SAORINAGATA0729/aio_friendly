@@ -677,6 +677,9 @@ class Dashboard {
                     this.loadPlanArticles(planId);
                 } else {
                     // プランが選択されていない場合は、デフォルトの記事一覧を表示
+                    // プラン選択を解除
+                    this.selectedPlanId = null;
+                    this.currentPlanArticles = [];
                     this.renderArticleList('all');
                     // 進捗状況もデフォルトに戻す
                     this.updateProgress();
@@ -710,13 +713,28 @@ class Dashboard {
             return;
         }
         
+        // 選択されたプランIDを保存
+        this.selectedPlanId = planId;
+        
         // プランの記事URLから記事データを作成
         const planArticles = plan.articleUrls.map((url, index) => {
             // 既存の記事データから該当するものを探す
             const existingArticle = this.progressData?.articles?.find(a => a.url === url);
             
+            // プランの記事メトリクスから該当する記事のメトリクスを取得
+            const articleMetric = plan.articleMetrics?.find(m => m.name === url || m.name === existingArticle?.title);
+            
             if (existingArticle) {
-                return existingArticle;
+                // 既存記事にメトリクス情報を追加
+                return {
+                    ...existingArticle,
+                    planId: planId,
+                    clicks: articleMetric?.clicks || existingArticle.clicks || 0,
+                    impressions: articleMetric?.impressions || existingArticle.impressions || 0,
+                    ctr: articleMetric?.ctr || existingArticle.ctr || 0,
+                    position: articleMetric?.position || existingArticle.position || 0,
+                    aioRank: existingArticle.aioRank || 'C'
+                };
             } else {
                 // 新規記事データを作成
                 return {
@@ -726,6 +744,11 @@ class Dashboard {
                     keyword: '',
                     status: '未着手',
                     citationCount: 0,
+                    clicks: articleMetric?.clicks || 0,
+                    impressions: articleMetric?.impressions || 0,
+                    ctr: articleMetric?.ctr || 0,
+                    position: articleMetric?.position || 0,
+                    aioRank: 'C',
                     scores: {
                         before: { total: 0, level: 'C' },
                         after: { total: 0, level: 'C' }
@@ -784,28 +807,37 @@ class Dashboard {
         const articleList = document.getElementById('articleList');
         if (!articleList) return;
         
-        // ヘッダーを追加（初回のみ）
-        if (!document.querySelector('.article-list-header')) {
-            const header = document.createElement('div');
-            header.className = 'article-list-header';
-            header.innerHTML = `
-                <div>記事情報</div>
-                <div style="text-align: center;">ステータス</div>
-                <div style="text-align: center;">AIO引用数</div>
-                <div style="text-align: center;">スコア</div>
-            `;
-            articleList.parentNode.insertBefore(header, articleList);
+        // ヘッダーを更新（既存のヘッダーを削除して新しく作成）
+        const existingHeader = document.querySelector('.article-list-header');
+        if (existingHeader) {
+            existingHeader.remove();
         }
+        
+        const header = document.createElement('div');
+        header.className = 'article-list-header plan-mode';
+        header.innerHTML = `
+            <div>記事情報</div>
+            <div style="text-align: center;">ステータス</div>
+            <div style="text-align: center;">クリック数</div>
+            <div style="text-align: center;">表示回数</div>
+            <div style="text-align: center;">CTR (%)</div>
+            <div style="text-align: center;">順位</div>
+            <div style="text-align: center;">AIOランク</div>
+        `;
+        articleList.parentNode.insertBefore(header, articleList);
         
         articleList.innerHTML = '';
         
         articles.forEach(article => {
-            const item = this.createArticleItem(article);
+            const item = this.createPlanArticleItem(article);
             articleList.appendChild(item);
         });
         
         // フィルターボタンの動作も更新
         this.updateFilterButtons();
+        
+        // 進捗状況を更新
+        this.updateProgressFromArticles(articles);
     }
     
     // --- 記事ごとの数値入力テーブルの実装メソッド ---
@@ -1310,9 +1342,21 @@ class Dashboard {
             await dataManager.saveProgress(this.progressData);
             console.log('ステータスを更新しました:', articleId, newStatus);
             
-            // 一覧を再描画（進捗状況も自動更新される）
-            const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
-            this.renderArticleList(currentFilter);
+            // プランが選択されている場合は、プランの記事一覧を再描画
+            if (this.selectedPlanId) {
+                // currentPlanArticlesも更新
+                const updatedArticle = this.currentPlanArticles.find(a => a.id === articleId);
+                if (updatedArticle) {
+                    updatedArticle.status = newStatus;
+                }
+                this.renderPlanArticleList(this.currentPlanArticles);
+                // 進捗状況を更新
+                this.updateProgressFromArticles(this.currentPlanArticles);
+            } else {
+                // プランが選択されていない場合は通常の記事一覧を表示
+                const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
+                this.renderArticleList(currentFilter);
+            }
         } catch (error) {
             console.error('ステータスの更新に失敗しました:', error);
             alert('ステータスの更新に失敗しました: ' + error.message);
@@ -2100,6 +2144,149 @@ class Dashboard {
                 e.stopPropagation();
             });
         }
+        return item;
+    }
+
+    createPlanArticleItem(article) {
+        const item = document.createElement('div');
+        item.className = 'article-item plan-mode';
+        item.dataset.articleId = article.id;
+
+        const statusClass = article.status === '完了' ? 'completed' : 
+                           article.status === '進行中' ? 'inProgress' : 'notStarted';
+
+        const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
+        const scoreLevel = score.level.toLowerCase();
+
+        item.innerHTML = `
+            <div class="article-info">
+                <div class="article-title">${article.title}</div>
+                <div class="article-meta">
+                    <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
+                    ${article.keyword || ''}
+                </div>
+            </div>
+            <div style="display: flex; justify-content: center;">
+                <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 0.5rem;
+                    border: 1px solid var(--border-color);
+                    background: white;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: var(--transition);
+                    min-width: 100px;
+                ">
+                    <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
+                    <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
+                    <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <span style="
+                    padding: 0.3rem 0.5rem;
+                    border: 1px solid var(--border-color);
+                    border-radius: 0.4rem;
+                    font-size: 0.85rem;
+                    text-align: center;
+                    background: #f3f4f6;
+                    color: var(--text-primary);
+                    font-weight: 600;
+                    min-width: 80px;
+                ">
+                    ${(article.clicks || 0).toLocaleString()}
+                </span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <span style="
+                    padding: 0.3rem 0.5rem;
+                    border: 1px solid var(--border-color);
+                    border-radius: 0.4rem;
+                    font-size: 0.85rem;
+                    text-align: center;
+                    background: #f3f4f6;
+                    color: var(--text-primary);
+                    font-weight: 600;
+                    min-width: 80px;
+                ">
+                    ${(article.impressions || 0).toLocaleString()}
+                </span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <span style="
+                    padding: 0.3rem 0.5rem;
+                    border: 1px solid var(--border-color);
+                    border-radius: 0.4rem;
+                    font-size: 0.85rem;
+                    text-align: center;
+                    background: #f3f4f6;
+                    color: var(--text-primary);
+                    font-weight: 600;
+                    min-width: 70px;
+                ">
+                    ${(article.ctr || 0).toFixed(2)}%
+                </span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <span style="
+                    padding: 0.3rem 0.5rem;
+                    border: 1px solid var(--border-color);
+                    border-radius: 0.4rem;
+                    font-size: 0.85rem;
+                    text-align: center;
+                    background: #f3f4f6;
+                    color: var(--text-primary);
+                    font-weight: 600;
+                    min-width: 60px;
+                ">
+                    ${(article.position || 0).toFixed(1)}
+                </span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <span class="article-score-display" data-article-id="${article.id}" 
+                    style="
+                        padding: 0.3rem 0.5rem;
+                        border-radius: 0.4rem;
+                        border: 1px solid var(--border-color);
+                        background: #f3f4f6;
+                        color: var(--text-primary);
+                        font-size: 0.85rem;
+                        font-weight: 600;
+                        text-align: center;
+                        min-width: 70px;
+                    ">
+                    ${article.aioRank || score.level || 'C'}
+                </span>
+            </div>
+        `;
+
+        // 記事情報部分のみクリック可能にする
+        const articleInfo = item.querySelector('.article-info');
+        if (articleInfo) {
+            articleInfo.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('記事がクリックされました:', article.title);
+                if (window.rewriteSystem) {
+                    await window.rewriteSystem.openUrlModal(article);
+                } else {
+                    console.error('rewriteSystemが利用できません');
+                }
+            });
+        }
+
+        // ステータス変更のイベントリスナー
+        const statusSelect = item.querySelector('.article-status-select');
+        if (statusSelect) {
+            statusSelect.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newStatus = e.target.value;
+                await this.updateArticleStatus(article.id, newStatus);
+            });
+        }
+
         return item;
     }
 

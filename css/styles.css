@@ -530,6 +530,11 @@ body {
     margin-bottom: 0.5rem;
 }
 
+/* プラン選択時の7列レイアウト */
+.article-list-header.plan-mode {
+    grid-template-columns: 3fr 1fr 0.8fr 0.8fr 0.7fr 0.7fr 0.7fr;
+}
+
 .article-item {
     display: grid;
     grid-template-columns: 3fr 1fr 1fr 1fr;
@@ -540,6 +545,11 @@ body {
     padding: 1rem 1.5rem;
     cursor: pointer;
     transition: var(--transition);
+}
+
+/* プラン選択時の7列レイアウト */
+.article-item.plan-mode {
+    grid-template-columns: 3fr 1fr 0.8fr 0.8fr 0.7fr 0.7fr 0.7fr;
 }
 
 .article-item:hover {
