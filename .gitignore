@@ -1,8 +1,8 @@
 # .gitignore
 
 # データファイル（個人情報を含む可能性があるため）
-data/progress.json
-data/baseline.json
+# data/progress.json  # 初期データとして必要なので含める
+# data/baseline.json  # 初期データとして必要なので含める
 data/articles/*.md
 data/monitoring/*.json
 

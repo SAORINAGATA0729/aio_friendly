@@ -1,0 +1,279 @@
+{
+  "version": "1.0.0",
+  "recordedDate": "2026-01-01",
+  "period": {
+    "start": "2025-12-01",
+    "end": "2025-12-31",
+    "description": "2025年12月（1ヶ月）"
+  },
+  "aioCitations": {
+    "googleAIOverview": {
+      "count": 857,
+      "pages": 99,
+      "recordedDate": "2025-12"
+    },
+    "chatGPT": {
+      "count": 328,
+      "pages": 140,
+      "recordedDate": "2025-12"
+    },
+    "perplexity": {
+      "count": 158,
+      "pages": 54,
+      "recordedDate": "2025-12"
+    },
+    "gemini": {
+      "count": 0,
+      "pages": 0,
+      "recordedDate": "2025-12"
+    },
+    "copilot": {
+      "count": 39,
+      "pages": 20,
+      "recordedDate": "2025-12"
+    }
+  },
+  "searchRanking": {
+    "tier1Pages": {
+      "totalClicks": 80834,
+      "totalImpressions": 3227698,
+      "averageCTR": 2.50,
+      "averagePosition": 4.88,
+      "pages": [
+        {
+          "url": "giftee.biz/columns/happy-receive/",
+          "keyword": "もらって嬉しいギフトカード",
+          "position": 10.70,
+          "clicks": 52676,
+          "impressions": 460283,
+          "ctr": 11.44
+        },
+        {
+          "url": "giftee.biz/columns/giftcertificate/",
+          "keyword": "商品券 種類",
+          "position": 6.57,
+          "clicks": 4816,
+          "impressions": 179548,
+          "ctr": 2.68
+        },
+        {
+          "url": "giftee.biz/columns/departmentstore-giftcertificate/",
+          "keyword": "全国百貨店共通商品券",
+          "position": 3.29,
+          "clicks": 3238,
+          "impressions": 209285,
+          "ctr": 1.55
+        },
+        {
+          "url": "giftee.biz/columns/jcbgiftcard/",
+          "keyword": "jcbギフトカード",
+          "position": 3.85,
+          "clicks": 4445,
+          "impressions": 507159,
+          "ctr": 0.88
+        },
+        {
+          "url": "giftee.biz/columns/amazon-giftcard/",
+          "keyword": "amazonギフトカード",
+          "position": 5.40,
+          "clicks": 3530,
+          "impressions": 366780,
+          "ctr": 0.96
+        },
+        {
+          "url": "giftee.biz/columns/quocard/",
+          "keyword": "quoカード",
+          "position": 6.10,
+          "clicks": 2965,
+          "impressions": 449750,
+          "ctr": 0.66
+        },
+        {
+          "url": "giftee.biz/columns/rakutengiftcard/",
+          "keyword": "楽天ギフトカード",
+          "position": 5.25,
+          "clicks": 1105,
+          "impressions": 86989,
+          "ctr": 1.27
+        },
+        {
+          "url": "giftee.biz/columns/linegift/",
+          "keyword": "lineギフト",
+          "position": 4.66,
+          "clicks": 1892,
+          "impressions": 244576,
+          "ctr": 0.77
+        },
+        {
+          "url": "giftee.biz/columns/jtbgift/",
+          "keyword": "jtb旅行券",
+          "position": 3.46,
+          "clicks": 1434,
+          "impressions": 117017,
+          "ctr": 1.23
+        },
+        {
+          "url": "giftee.biz/columns/shohinken-place/",
+          "keyword": "商品券 購入",
+          "position": 3.25,
+          "clicks": 1093,
+          "impressions": 82595,
+          "ctr": 1.32
+        },
+        {
+          "url": "giftee.biz/columns/paypaygiftcard/",
+          "keyword": "paypayギフトカード",
+          "position": 3.74,
+          "clicks": 945,
+          "impressions": 72113,
+          "ctr": 1.31
+        },
+        {
+          "url": "giftee.biz/columns/apology-item/",
+          "keyword": "お詫びの品",
+          "position": 3.64,
+          "clicks": 533,
+          "impressions": 60672,
+          "ctr": 0.88
+        },
+        {
+          "url": "giftee.biz/columns/visagiftcard/",
+          "keyword": "visaギフトカード",
+          "position": 4.87,
+          "clicks": 836,
+          "impressions": 78270,
+          "ctr": 1.07
+        },
+        {
+          "url": "giftee.biz/columns/anniversary-celebration/",
+          "keyword": "周年記念",
+          "position": 5.35,
+          "clicks": 239,
+          "impressions": 11950,
+          "ctr": 2.00
+        },
+        {
+          "url": "giftee.biz/columns/giftcertificate-mail/",
+          "keyword": "商品券 郵送",
+          "position": 3.22,
+          "clicks": 415,
+          "impressions": 42060,
+          "ctr": 0.99
+        },
+        {
+          "url": "giftee.biz/columns/aeongiftcard/",
+          "keyword": "イオンギフトカード",
+          "position": 3.74,
+          "clicks": 127,
+          "impressions": 42520,
+          "ctr": 0.30
+        },
+        {
+          "url": "giftee.biz/columns/uniqlo-gift-card/",
+          "keyword": "ユニクロギフトカード",
+          "position": 5.52,
+          "clicks": 148,
+          "impressions": 72191,
+          "ctr": 0.21
+        },
+        {
+          "url": "giftee.biz/columns/toshocard-gift/",
+          "keyword": "図書カード",
+          "position": 5.88,
+          "clicks": 46,
+          "impressions": 33087,
+          "ctr": 0.14
+        },
+        {
+          "url": "giftee.biz/columns/googleplaygiftcards/",
+          "keyword": "google playカード",
+          "position": 4.27,
+          "clicks": 123,
+          "impressions": 43082,
+          "ctr": 0.29
+        },
+        {
+          "url": "giftee.biz/columns/applegiftcards/",
+          "keyword": "アップルギフトカード",
+          "position": 4.87,
+          "clicks": 228,
+          "impressions": 67771,
+          "ctr": 0.34
+        }
+      ]
+    }
+  },
+  "traffic": {
+    "totalClicks": 102000,
+    "totalImpressions": 4090000,
+    "averageCTR": 2.5,
+    "averagePosition": 5.7,
+    "note": "「ページ: +/columns/」フィルタがかかっている可能性あり"
+  },
+  "brandRecognition": {
+    "totalClicks": 22,
+    "totalImpressions": 846,
+    "averageCTR": 2.6,
+    "averagePosition": 7.5,
+    "keywords": [
+      {
+        "keyword": "giftee",
+        "clicks": null,
+        "impressions": null,
+        "ctr": null,
+        "position": null
+      },
+      {
+        "keyword": "giftee for Business",
+        "clicks": null,
+        "impressions": null,
+        "ctr": null,
+        "position": null
+      },
+      {
+        "keyword": "giftee ビジネス",
+        "clicks": null,
+        "impressions": null,
+        "ctr": null,
+        "position": null
+      },
+      {
+        "keyword": "giftee 法人",
+        "clicks": null,
+        "impressions": null,
+        "ctr": null,
+        "position": null
+      },
+      {
+        "keyword": "ギフティ ビジネス",
+        "clicks": null,
+        "impressions": null,
+        "ctr": null,
+        "position": null
+      }
+    ]
+  },
+  "goals": {
+    "aioCitations": {
+      "current": 857,
+      "target": 1200,
+      "description": "Google AI Overview引用数"
+    },
+    "searchRanking": {
+      "current": 4.88,
+      "target": 5.0,
+      "description": "平均掲載順位（下がるほど良い）"
+    },
+    "traffic": {
+      "current": 102000,
+      "target": null,
+      "description": "総クリック数（増加傾向を確認）"
+    },
+    "brandRecognition": {
+      "current": 22,
+      "target": null,
+      "description": "指名検索クリック数（増加傾向を確認）"
+    }
+  }
+}
+
