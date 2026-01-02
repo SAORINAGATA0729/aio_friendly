@@ -724,11 +724,20 @@ class Dashboard {
     }
     
     loadPlanArticles(planId) {
+        console.log('loadPlanArticles called with planId:', planId);
         const plan = this.plans.find(p => p.id === planId);
-        if (!plan || !plan.articleUrls || plan.articleUrls.length === 0) {
+        if (!plan) {
+            console.error('プランが見つかりません:', planId);
+            alert('プランが見つかりません。');
+            return;
+        }
+        
+        if (!plan.articleUrls || plan.articleUrls.length === 0) {
             alert('このプランには記事URLが設定されていません。');
             return;
         }
+        
+        console.log('プランの記事URL数:', plan.articleUrls.length);
         
         // 選択されたプランIDを保存
         this.selectedPlanId = planId;
@@ -782,15 +791,23 @@ class Dashboard {
             }
         });
         
+        console.log('プランの記事数:', planArticles.length);
+        console.log('プランの記事ステータス:', planArticles.map(a => ({ title: a.title, status: a.status })));
+        
         // プランの記事を一時的に保存して表示
         this.currentPlanArticles = planArticles;
         this.renderPlanArticleList(planArticles);
         
         // 進捗状況を更新（選択したプランの記事に基づいて）
+        console.log('進捗状況を更新します。記事数:', planArticles.length);
         this.updateProgressFromArticles(planArticles);
     }
     
     updateProgressFromArticles(articles) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:806',message:'updateProgressFromArticles called',data:{articlesCount:articles?.length,articleStatuses:articles?.map(a=>a.status)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        
         console.log('updateProgressFromArticles called with articles:', articles?.length);
         if (!articles || articles.length === 0) {
             // デフォルト値を設定
@@ -802,6 +819,9 @@ class Dashboard {
             if (inProgressEl) inProgressEl.textContent = '0';
             if (notStartedEl) notStartedEl.textContent = '0';
             console.log('記事が空のため、進捗を0に設定しました');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:818',message:'articles empty, setting zeros',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
             return;
         }
         
@@ -809,31 +829,57 @@ class Dashboard {
         const inProgress = articles.filter(a => a.status === '進行中').length;
         const notStarted = articles.filter(a => a.status === '未着手').length;
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:821',message:'calculated status counts',data:{completed,inProgress,notStarted,total:articles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        
         console.log('進捗計算結果:', { completed, inProgress, notStarted, total: articles.length });
         
         const completedEl = document.getElementById('progressCompleted');
         const inProgressEl = document.getElementById('progressInProgress');
         const notStartedEl = document.getElementById('progressNotStarted');
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:826',message:'DOM elements found',data:{completedElFound:!!completedEl,inProgressElFound:!!inProgressEl,notStartedElFound:!!notStartedEl},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         if (completedEl) {
             completedEl.textContent = completed;
             console.log('完了数を更新:', completed);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:832',message:'updated completedEl',data:{completed,completedElTextContent:completedEl.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         } else {
             console.error('progressCompleted要素が見つかりません');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:835',message:'progressCompleted element not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         }
         
         if (inProgressEl) {
             inProgressEl.textContent = inProgress;
             console.log('進行中数を更新:', inProgress);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:838',message:'updated inProgressEl',data:{inProgress,inProgressElTextContent:inProgressEl.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         } else {
             console.error('progressInProgress要素が見つかりません');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:842',message:'progressInProgress element not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         }
         
         if (notStartedEl) {
             notStartedEl.textContent = notStarted;
             console.log('未着手数を更新:', notStarted);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:845',message:'updated notStartedEl',data:{notStarted,notStartedElTextContent:notStartedEl.textContent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         } else {
             console.error('progressNotStarted要素が見つかりません');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:849',message:'progressNotStarted element not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         }
     }
     
@@ -1373,20 +1419,35 @@ class Dashboard {
     }
 
     async updateArticleStatus(articleId, newStatus) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1388',message:'updateArticleStatus called',data:{articleId,newStatus,selectedPlanId:this.selectedPlanId,currentPlanArticlesCount:this.currentPlanArticles?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         if (!this.progressData || !this.progressData.articles) {
             console.error('進捗データが読み込まれていません');
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1390',message:'progressData missing',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             return;
         }
 
         const article = this.progressData.articles.find(a => a.id === articleId);
         if (!article) {
             console.error('記事が見つかりません:', articleId);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1396',message:'article not found',data:{articleId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             return;
         }
 
         // ステータスを更新
+        const oldStatus = article.status;
         article.status = newStatus;
         article.lastModified = new Date().toISOString();
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1401',message:'status updated in progressData',data:{articleId,oldStatus,newStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
 
         // 進捗サマリーを更新
         this.updateProgressSummary();
@@ -1398,6 +1459,10 @@ class Dashboard {
             
             // プランが選択されている場合は、プランの記事一覧を再描画
             if (this.selectedPlanId) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1413',message:'plan selected, updating currentPlanArticles',data:{selectedPlanId:this.selectedPlanId,currentPlanArticlesCount:this.currentPlanArticles?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                
                 // currentPlanArticlesも更新（progressDataから最新の状態を反映）
                 // 記事IDの型を統一してマッチング（文字列と数値の両方に対応）
                 const updatedArticle = this.currentPlanArticles.find(a => 
@@ -1407,18 +1472,42 @@ class Dashboard {
                     updatedArticle.status = newStatus;
                     // progressDataから最新の情報を反映
                     Object.assign(updatedArticle, article);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1420',message:'updated article in currentPlanArticles',data:{articleId,newStatus,updatedArticleStatus:updatedArticle.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
                 } else {
                     // 見つからない場合は、URLでマッチングを試みる
                     const articleByUrl = this.currentPlanArticles.find(a => a.url === article.url);
                     if (articleByUrl) {
                         articleByUrl.status = newStatus;
                         Object.assign(articleByUrl, article);
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1427',message:'updated article by URL in currentPlanArticles',data:{articleId,newStatus,articleByUrlStatus:articleByUrl.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
+                    } else {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1430',message:'article not found in currentPlanArticles',data:{articleId,articleUrl:article.url,currentPlanArticlesIds:this.currentPlanArticles.map(a=>a.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
                     }
                 }
                 
                 // プランを再読み込みせず、currentPlanArticlesを直接更新して再描画
                 // これによりドロップダウンの値がリセットされない
+                // #region agent log
+                const statusCountsBefore = {
+                    completed: this.currentPlanArticles.filter(a => a.status === '完了').length,
+                    inProgress: this.currentPlanArticles.filter(a => a.status === '進行中').length,
+                    notStarted: this.currentPlanArticles.filter(a => a.status === '未着手').length
+                };
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1434',message:'before renderPlanArticleList',data:{statusCountsBefore,currentPlanArticlesCount:this.currentPlanArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                
                 this.renderPlanArticleList(this.currentPlanArticles);
+                
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1436',message:'calling updateProgressFromArticles',data:{currentPlanArticlesCount:this.currentPlanArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                
                 // 進捗状況を更新（プランの記事に基づいて）
                 this.updateProgressFromArticles(this.currentPlanArticles);
             } else {
@@ -2333,7 +2422,17 @@ class Dashboard {
         // ステータス変更のイベントリスナー
         const statusSelect = item.querySelector('.article-status-select');
         if (statusSelect) {
+            // クリックイベントを停止（親要素のクリックイベントを防ぐ）
+            statusSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
+            // 変更イベントを設定
             statusSelect.addEventListener('change', async (e) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:2431',message:'plan article status select change event',data:{articleId:article.id,newStatus:e.target.value,oldStatus:article.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                
                 e.stopPropagation();
                 const newStatus = e.target.value;
                 // ステータス変更時にクラスを更新して色を反映
@@ -2351,7 +2450,10 @@ class Dashboard {
         const doTab = document.getElementById('doTab');
         if (doTab) {
             // 既存のイベントリスナーを削除してから再設定（重複を防ぐ）
-            doTab.removeEventListener('click', this.handleFilterClick);
+            if (this.handleFilterClick) {
+                doTab.removeEventListener('click', this.handleFilterClick);
+            }
+            // アロー関数でthisをバインド
             this.handleFilterClick = (e) => {
                 if (e.target.classList.contains('filter-btn')) {
                     e.preventDefault();
