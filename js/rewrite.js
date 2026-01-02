@@ -603,6 +603,12 @@ class RewriteSystem {
     removeDuplicateH1AndEyeCatch(content) {
         if (!content) return content;
         
+        // #region agent log
+        const initialH1Count = (content.match(/^#\s+/gm) || []).length;
+        const initialImgCount = (content.match(/^!\[.*?\]\(.*?\)/gm) || []).length;
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:595',message:'removeDuplicateH1AndEyeCatch: Before processing',data:{contentLength:content.length,initialH1Count:initialH1Count,initialImgCount:initialImgCount,contentPreview:content.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'})}).catch(()=>{});
+        // #endregion
+        
         const lines = content.split('\n');
         let h1Found = false;
         let eyeCatchFound = false;
@@ -618,10 +624,16 @@ class RewriteSystem {
                     // 最初のH1は保持
                     result.push(line);
                     h1Found = true;
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:610',message:'removeDuplicateH1AndEyeCatch: First H1 found',data:{lineNumber:i,line:line},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'M'})}).catch(()=>{});
+                    // #endregion
                 } else {
                     // 2つ目以降のH1はH2に変換
                     const h2Line = line.replace(/^#\s+/, '## ');
                     result.push(h2Line);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:616',message:'removeDuplicateH1AndEyeCatch: Duplicate H1 converted to H2',data:{lineNumber:i,originalLine:line,convertedLine:h2Line},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'N'})}).catch(()=>{});
+                    // #endregion
                 }
             }
             // アイキャッチ画像のチェック（Markdown形式: ![alt](url)）
@@ -630,6 +642,9 @@ class RewriteSystem {
                     // H1の直後の最初の画像をアイキャッチとして保持
                     result.push(line);
                     eyeCatchFound = true;
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:625',message:'removeDuplicateH1AndEyeCatch: First eye-catch image found',data:{lineNumber:i,line:line},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'O'})}).catch(()=>{});
+                    // #endregion
                 } else if (!eyeCatchFound && i < 10) {
                     // 最初の10行以内の画像もアイキャッチとして扱う
                     result.push(line);
@@ -645,7 +660,14 @@ class RewriteSystem {
             }
         }
         
-        return result.join('\n');
+        const processedContent = result.join('\n');
+        // #region agent log
+        const finalH1Count = (processedContent.match(/^#\s+/gm) || []).length;
+        const finalImgCount = (processedContent.match(/^!\[.*?\]\(.*?\)/gm) || []).length;
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:645',message:'removeDuplicateH1AndEyeCatch: After processing',data:{processedContentLength:processedContent.length,finalH1Count:finalH1Count,finalImgCount:finalImgCount,processedContentPreview:processedContent.substring(0,500),h1Found:h1Found,eyeCatchFound:eyeCatchFound},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'P'})}).catch(()=>{});
+        // #endregion
+        
+        return processedContent;
     }
 
     createArticleTemplate(article) {
