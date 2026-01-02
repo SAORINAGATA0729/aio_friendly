@@ -393,9 +393,10 @@ class RewriteSystem {
                 fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:363',message:'switchEditorMode: Syncing HTML to Quill',data:{skipContentSync:skipContentSync,mode:mode,htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,300),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
                 // #endregion
                 if (htmlContent) {
-                    // QuillのAPIを使ってHTMLコンテンツを設定（正しい方法）
-                    const delta = this.quill.clipboard.convert({ html: htmlContent });
-                    this.quill.setContents(delta);
+                    // QuillのAPIを使ってHTMLコンテンツを設定
+                    // dangerouslyPasteHTMLを使用することで、HTMLタグを正しく解釈してDeltaに変換
+                    this.quill.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                    
                     // #region agent log
                     const quillEditor = this.quill.root.querySelector('.ql-editor');
                     fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:377',message:'switchEditorMode: After setting Quill content',data:{quillEditorInnerHTML:quillEditor?.innerHTML?.substring(0,500),quillContentLength:quillEditor?.innerHTML?.length,h1Count:(quillEditor?.innerHTML?.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor?.innerHTML?.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
@@ -599,10 +600,9 @@ class RewriteSystem {
             fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:548',message:'openRewriteModal: Before setting Quill content',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
             // #endregion
             
-            // QuillのAPIを使ってHTMLコンテンツを設定（正しい方法）
-            // dangerouslyPasteHTMLはQuillが推奨するHTML設定方法
-            const delta = this.quill.clipboard.convert({ html: htmlContent });
-            this.quill.setContents(delta);
+            // QuillのAPIを使ってHTMLコンテンツを設定
+            // dangerouslyPasteHTMLはHTMLをDeltaに変換して挿入する正規の方法
+            this.quill.clipboard.dangerouslyPasteHTML(0, htmlContent);
             
             // #region agent log
             const quillEditor = this.quill.root.querySelector('.ql-editor');
