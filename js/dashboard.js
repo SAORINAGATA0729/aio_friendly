@@ -95,11 +95,16 @@ class Dashboard {
             }
             
             // データ読み込み完了後、Doタブがアクティブな場合は記事一覧を表示
-            if (this.progressData && this.progressData.articles && this.currentTab === 'do') {
-                console.log('データ読み込み完了。Doタブがアクティブなので記事一覧を表示します...');
-                setTimeout(() => {
-                    this.renderArticleList();
-                }, 200);
+            if (this.progressData && this.progressData.articles) {
+                console.log('データ読み込み完了。記事数:', this.progressData.articles.length);
+                // 現在アクティブなタブを確認
+                const activeTab = document.querySelector('.pdca-tab.active');
+                if (activeTab && activeTab.dataset.tab === 'do') {
+                    console.log('Doタブがアクティブなので記事一覧を表示します...');
+                    setTimeout(() => {
+                        this.renderArticleList();
+                    }, 300);
+                }
             }
         } catch (error) {
             console.error('データ読み込みエラー:', error);
@@ -108,12 +113,18 @@ class Dashboard {
 
     setupTabs() {
         const tabs = document.querySelectorAll('.pdca-tab');
+        console.log('setupTabs: タブ数:', tabs.length);
         tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabName = tab.dataset.tab;
+            const tabName = tab.dataset.tab;
+            console.log('タブを設定:', tabName);
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('タブがクリックされました:', tabName);
                 this.switchTab(tabName);
             });
         });
+        console.log('setupTabs完了');
     }
 
     switchTab(tabName) {
