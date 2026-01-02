@@ -2061,17 +2061,7 @@ class Dashboard {
                 </div>
             </div>
             <div style="display: flex; justify-content: center;">
-                <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
-                    padding: 0.4rem 0.8rem;
-                    border-radius: 0.5rem;
-                    border: 1px solid var(--border-color);
-                    background: white;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: var(--transition);
-                    min-width: 100px;
-                ">
+                <select class="article-status-select ${statusClass}" data-article-id="${article.id}">
                     <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
                     <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
                     <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
