@@ -535,16 +535,12 @@ class RewriteSystem {
         
         // fetchedContentが存在する場合は、それを優先的に使用（実際のWebサイトから取得した最新の内容）
         if (fetchedContent) {
-            // fetchedContentに既にH1が含まれている場合は追加しない
-            const hasH1 = fetchedContent.trim().startsWith('# ');
+            // fetchedContentをそのまま使用（H1の追加はしない）
+            // removeDuplicateH1AndEyeCatchで処理されるため、ここでは追加しない
+            content = fetchedContent;
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:510',message:'openRewriteModal: Using fetchedContent (priority)',data:{hasH1:hasH1,fetchedContentLength:fetchedContent.length,fetchedContentPreview:fetchedContent.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:510',message:'openRewriteModal: Using fetchedContent (priority)',data:{fetchedContentLength:fetchedContent.length,fetchedContentPreview:fetchedContent.substring(0,200),h1Count:(fetchedContent.match(/^#\s+/gm)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
             // #endregion
-            if (hasH1) {
-                content = fetchedContent;
-            } else {
-                content = `# ${article.title}\n\n${fetchedContent}`;
-            }
         } else {
             // fetchedContentが存在しない場合のみ、保存されているMarkdownファイルを読み込む
             content = await dataManager.loadMarkdown(`${slug}.md`);
@@ -576,10 +572,16 @@ class RewriteSystem {
         // #endregion
         
         // HTMLエディタにコンテンツを設定（先に設定）
+        // HTMLを整形して改行を追加（見やすくするため）
+        const formattedHtml = htmlContent
+            .replace(/></g, '>\n<') // タグの間に改行を追加
+            .replace(/\n\n+/g, '\n') // 連続する改行を1つに
+            .trim();
+        
         const htmlEditor = document.getElementById('htmlEditor');
         if (htmlEditor) {
             htmlEditor.value = '';
-            htmlEditor.value = htmlContent;
+            htmlEditor.value = formattedHtml;
         }
         
         // デフォルトでビジュアルモードを表示（先に切り替え、同期をスキップ）
@@ -1117,26 +1119,39 @@ ${article.keyword}について、重要なポイントをまとめました。
         // 斜体
         html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
         
-        // リスト
-        html = html.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
-        html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+        // 段落とリストを分けて処理（リストを先に処理）
+        // まず、リスト項目を一時的にマーク
+        html = html.replace(/^-\s+(.+)$/gm, '___LIST_ITEM___$1___END_LIST___');
+        html = html.replace(/^(\d+)\.\s+(.+)$/gm, '___LIST_ITEM___$2___END_LIST___');
         
         // 段落（空行で区切る）
         html = html.split('\n\n').map(para => {
             para = para.trim();
             if (!para) return '';
-            if (para.startsWith('<h') || para.startsWith('<li') || para.startsWith('<ul') || para.startsWith('<ol')) {
+            
+            // リスト項目を含む段落を処理
+            if (para.includes('___LIST_ITEM___')) {
+                const listItems = [];
+                const parts = para.split('___LIST_ITEM___');
+                for (let i = 1; i < parts.length; i++) {
+                    const item = parts[i].split('___END_LIST___')[0];
+                    listItems.push(`<li>${item.trim()}</li>`);
+                }
+                if (listItems.length > 0) {
+                    return `<ul>${listItems.join('')}</ul>`;
+                }
+            }
+            
+            // 見出しやリストタグはそのまま
+            if (para.startsWith('<h') || para.startsWith('<ul') || para.startsWith('<ol') || para.startsWith('<li')) {
                 return para;
             }
+            
+            // その他は段落として処理
             return `<p>${para}</p>`;
         }).join('\n');
         
-        // リストをulで囲む
-        html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
-            return `<ul>${match}</ul>`;
-        });
-        
-        // 改行をbrに変換
+        // 改行をbrに変換（段落内の改行のみ）
         html = html.replace(/\n/g, '<br>');
         
         return html;

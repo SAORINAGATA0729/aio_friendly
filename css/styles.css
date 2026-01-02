@@ -1167,6 +1167,8 @@ body {
     color: #334155;
     overflow-y: auto;
     box-sizing: border-box; /* paddingを含めた高さ計算 */
+    white-space: pre-wrap; /* 改行を保持 */
+    word-wrap: break-word; /* 長い単語を折り返し */
 }
 
 .html-editor:focus {
