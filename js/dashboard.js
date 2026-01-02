@@ -1344,14 +1344,16 @@ class Dashboard {
             
             // プランが選択されている場合は、プランの記事一覧を再描画
             if (this.selectedPlanId) {
-                // currentPlanArticlesも更新
+                // currentPlanArticlesも更新（progressDataから最新の状態を反映）
                 const updatedArticle = this.currentPlanArticles.find(a => a.id === articleId);
                 if (updatedArticle) {
                     updatedArticle.status = newStatus;
+                    // progressDataから最新の情報を反映
+                    Object.assign(updatedArticle, article);
                 }
-                this.renderPlanArticleList(this.currentPlanArticles);
-                // 進捗状況を更新
-                this.updateProgressFromArticles(this.currentPlanArticles);
+                
+                // プランを再読み込みして最新の状態を反映
+                this.loadPlanArticles(this.selectedPlanId);
             } else {
                 // プランが選択されていない場合は通常の記事一覧を表示
                 const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
