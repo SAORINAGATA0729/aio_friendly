@@ -504,10 +504,17 @@ class RewriteSystem {
         const slug = this.getSlugFromUrl(article.url);
         let content = await dataManager.loadMarkdown(`${slug}.md`);
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:505',message:'openRewriteModal: Initial content check',data:{hasContent:!!content,contentLength:content?.length,contentPreview:content?.substring(0,200),hasFetchedContent:!!fetchedContent,fetchedContentPreview:fetchedContent?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         if (!content) {
             if (fetchedContent) {
                 // fetchedContentに既にH1が含まれている場合は追加しない
                 const hasH1 = fetchedContent.trim().startsWith('# ');
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:512',message:'openRewriteModal: Checking fetchedContent for H1',data:{hasH1:hasH1,fetchedContentStart:fetchedContent.trim().substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
                 if (hasH1) {
                     content = fetchedContent;
                 } else {
@@ -518,8 +525,16 @@ class RewriteSystem {
             }
         }
 
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:521',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+
         // コンテンツをMarkdownからHTMLに変換
         const htmlContent = this.markdownToHtml(content);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:525',message:'openRewriteModal: HTML content after markdownToHtml',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         
         // HTMLエディタにコンテンツを設定（先に設定）
         const htmlEditor = document.getElementById('htmlEditor');
@@ -544,8 +559,14 @@ class RewriteSystem {
             if (quillEditor) {
                 // 既存のコンテンツを完全にクリア
                 quillEditor.innerHTML = '';
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:548',message:'openRewriteModal: Before setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML,htmlContentLength:htmlContent.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+                // #endregion
                 // 新しいコンテンツを設定
                 quillEditor.innerHTML = htmlContent;
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:551',message:'openRewriteModal: After setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML.substring(0,500),h1Count:(quillEditor.innerHTML.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor.innerHTML.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+                // #endregion
             } else {
                 this.quill.root.innerHTML = htmlContent;
             }
@@ -885,8 +906,14 @@ ${article.keyword}について、重要なポイントをまとめました。
         // より厳密にチェック：H1タグや画像タグが既に存在する場合
         const hasH1 = /<h1[^>]*>.*?<\/h1>/i.test(html);
         const hasImg = /<img[^>]*>/i.test(html);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:894',message:'markdownToHtml: Checking for existing HTML tags',data:{hasH1:hasH1,hasImg:hasImg,htmlPreview:html.substring(0,300),h1Count:(html.match(/<h1[^>]*>/gi)||[]).length,imgCount:(html.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'})}).catch(()=>{});
+        // #endregion
         if (hasH1 || hasImg) {
             // HTMLタグが既にある場合は、そのまま返す（重複変換を防ぐ）
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:900',message:'markdownToHtml: Returning existing HTML without conversion',data:{htmlLength:html.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
             return html;
         }
         
