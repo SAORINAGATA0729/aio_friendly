@@ -397,6 +397,24 @@
                 <div class="rewrite-container">
                     <div class="rewrite-sidebar">
                         <h3>チェックリスト</h3>
+                        <!-- スコア表示エリア -->
+                        <div id="checklistScore" class="checklist-score">
+                            <div class="score-display">
+                                <div class="score-value">
+                                    <span id="scoreNumber">0</span>
+                                    <span class="score-unit">点</span>
+                                </div>
+                                <div class="score-rank" id="scoreRank">-</div>
+                            </div>
+                            <div class="score-progress">
+                                <div class="score-bar">
+                                    <div class="score-bar-fill" id="scoreBarFill" style="width: 0%"></div>
+                                </div>
+                                <div class="score-text">
+                                    <span id="checkedCount">0</span> / <span id="totalCount">0</span> 項目
+                                </div>
+                            </div>
+                        </div>
                         <div id="checklistItems" class="checklist-items">
                             <!-- チェックリスト項目が動的に生成される -->
                         </div>

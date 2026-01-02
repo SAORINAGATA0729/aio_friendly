@@ -329,7 +329,7 @@ class RewriteSystem {
         });
     }
 
-    switchEditorMode(mode) {
+    switchEditorMode(mode, skipContentSync = false) {
         const visualTab = document.getElementById('visualModeTab');
         const htmlTab = document.getElementById('htmlModeTab');
         const visualContainer = document.getElementById('visualEditorContainer');
@@ -343,13 +343,20 @@ class RewriteSystem {
             visualContainer?.classList.add('active');
             htmlContainer?.style.setProperty('display', 'none');
             
-            // HTMLエディタの内容をQuillに反映（既存のコンテンツをクリアしてから）
-            if (this.quill && htmlEditor) {
-                const htmlContent = htmlEditor.value;
-                // 既存のコンテンツをクリア
-                this.quill.setText('');
-                // 新しいコンテンツを設定
-                this.quill.root.innerHTML = htmlContent;
+            // コンテンツの同期をスキップしない場合のみ、HTMLエディタの内容をQuillに反映
+            if (!skipContentSync && this.quill && htmlEditor && htmlEditor.value) {
+                const htmlContent = htmlEditor.value.trim();
+                if (htmlContent) {
+                    // 既存のコンテンツをクリア
+                    this.quill.setText('');
+                    // Quillのエディタ要素を取得
+                    const quillEditor = this.quill.root.querySelector('.ql-editor');
+                    if (quillEditor) {
+                        quillEditor.innerHTML = htmlContent;
+                    } else {
+                        this.quill.root.innerHTML = htmlContent;
+                    }
+                }
             }
         } else {
             // HTMLモードに切り替え
@@ -358,10 +365,19 @@ class RewriteSystem {
             htmlContainer?.style.setProperty('display', 'block');
             visualContainer?.classList.remove('active');
             
-            // Quillの内容をHTMLエディタに反映
-            if (this.quill && htmlEditor) {
-                const htmlContent = this.quill.root.innerHTML;
-                htmlEditor.value = htmlContent;
+            // コンテンツの同期をスキップしない場合のみ、Quillの内容をHTMLエディタに反映
+            if (!skipContentSync && this.quill && htmlEditor) {
+                // Quillの内容を取得（.ql-editorの内容を直接取得）
+                const quillEditor = this.quill.root.querySelector('.ql-editor');
+                const htmlContent = quillEditor ? quillEditor.innerHTML : this.quill.root.innerHTML;
+                
+                // 空の段落や不要な要素をクリーンアップ
+                let cleanedHtml = htmlContent
+                    .replace(/<p><br><\/p>/g, '') // 空の段落を削除
+                    .replace(/<p>\s*<\/p>/g, '') // 空白のみの段落を削除
+                    .trim();
+                
+                htmlEditor.value = cleanedHtml || '';
             }
         }
     }
