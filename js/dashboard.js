@@ -46,6 +46,7 @@ class Dashboard {
                             if (response.ok) {
                                 this.progressData = await response.json();
                                 console.log('progress.jsonの読み込み成功:', path);
+                                console.log('読み込んだ記事数:', this.progressData?.articles?.length);
                                 break;
                             } else {
                                 console.warn(`${path} の読み込み失敗: ${response.status}`);
@@ -90,6 +91,14 @@ class Dashboard {
                     console.error('baseline.jsonの読み込みエラー:', error);
                 }
             }
+            
+            // データ読み込み完了後、Doタブがアクティブな場合は記事一覧を表示
+            if (this.progressData && this.progressData.articles && this.currentTab === 'do') {
+                console.log('データ読み込み完了。Doタブがアクティブなので記事一覧を表示します...');
+                setTimeout(() => {
+                    this.renderArticleList();
+                }, 200);
+            }
         } catch (error) {
             console.error('データ読み込みエラー:', error);
         }
@@ -106,6 +115,7 @@ class Dashboard {
     }
 
     switchTab(tabName) {
+        console.log('switchTab called with:', tabName);
         // タブの切り替え
         document.querySelectorAll('.pdca-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -113,6 +123,9 @@ class Dashboard {
         const targetTab = document.querySelector(`[data-tab="${tabName}"]`);
         if (targetTab) {
             targetTab.classList.add('active');
+            console.log('タブをアクティブにしました:', tabName);
+        } else {
+            console.error('タブが見つかりません:', tabName);
         }
 
         // コンテンツの切り替え
@@ -122,14 +135,20 @@ class Dashboard {
         const targetContent = document.getElementById(`${tabName}Tab`);
         if (targetContent) {
             targetContent.classList.add('active');
+            console.log('コンテンツをアクティブにしました:', `${tabName}Tab`);
+        } else {
+            console.error('コンテンツが見つかりません:', `${tabName}Tab`);
         }
 
         this.currentTab = tabName;
 
         // タブごとの初期化（少し遅延させてDOMの更新を確実にする）
         setTimeout(() => {
+            console.log('タブ初期化開始, tabName:', tabName, 'progressData:', this.progressData);
             if (tabName === 'do') {
                 console.log('Doタブが選択されました。記事一覧を表示します...');
+                console.log('progressData:', this.progressData);
+                console.log('articles:', this.progressData?.articles);
                 this.renderArticleList();
             } else if (tabName === 'check') {
                 this.renderComparisonChart();
