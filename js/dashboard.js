@@ -2007,18 +2007,19 @@ class Dashboard {
         console.log('articleList要素が見つかりました:', articleList);
         console.log('記事数:', this.progressData.articles.length);
         
-        // ヘッダーを追加（初回のみ）
-        if (!document.querySelector('.article-list-header')) {
-            const header = document.createElement('div');
-            header.className = 'article-list-header';
-            header.innerHTML = `
-                <div>記事情報</div>
-                <div style="text-align: center;">ステータス</div>
-                <div style="text-align: center;">AIO引用数</div>
-                <div style="text-align: center;">スコア</div>
-            `;
-            articleList.parentNode.insertBefore(header, articleList);
-        }
+        // ヘッダーを追加（既存のヘッダーを削除して通常モードのヘッダーを作成）
+        const existingHeaders = document.querySelectorAll('.article-list-header');
+        existingHeaders.forEach(header => header.remove());
+        
+        const header = document.createElement('div');
+        header.className = 'article-list-header';
+        header.innerHTML = `
+            <div>記事情報</div>
+            <div style="text-align: center;">ステータス</div>
+            <div style="text-align: center;">AIO引用数</div>
+            <div style="text-align: center;">スコア</div>
+        `;
+        articleList.parentNode.insertBefore(header, articleList);
         
         articleList.innerHTML = '';
 
