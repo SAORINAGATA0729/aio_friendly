@@ -521,18 +521,17 @@ class RewriteSystem {
         // コンテンツをMarkdownからHTMLに変換
         const htmlContent = this.markdownToHtml(content);
         
-        console.log('[DEBUG] openRewriteModal: HTML content length:', htmlContent.length);
-        console.log('[DEBUG] openRewriteModal: HTML content preview:', htmlContent.substring(0, 300));
-        
         // HTMLエディタにコンテンツを設定（先に設定）
         const htmlEditor = document.getElementById('htmlEditor');
         if (htmlEditor) {
             htmlEditor.value = '';
             htmlEditor.value = htmlContent;
-            console.log('[DEBUG] openRewriteModal: HTML editor value set, length:', htmlEditor.value.length);
         }
         
-        // Quillエディタをクリアしてからコンテンツを設定
+        // デフォルトでビジュアルモードを表示（先に切り替え、同期をスキップ）
+        this.switchEditorMode('visual', true);
+        
+        // Quillエディタをクリアしてからコンテンツを設定（モード切り替え後）
         if (this.quill) {
             // 既存のイベントリスナーを削除（重複を防ぐ）
             this.quill.off('text-change');
@@ -545,14 +544,10 @@ class RewriteSystem {
             if (quillEditor) {
                 // 既存のコンテンツを完全にクリア
                 quillEditor.innerHTML = '';
-                console.log('[DEBUG] openRewriteModal: Quill editor innerHTML cleared');
                 // 新しいコンテンツを設定
                 quillEditor.innerHTML = htmlContent;
-                console.log('[DEBUG] openRewriteModal: Quill editor innerHTML set, length:', quillEditor.innerHTML.length);
-                console.log('[DEBUG] openRewriteModal: Quill editor preview:', quillEditor.innerHTML.substring(0, 300));
             } else {
                 this.quill.root.innerHTML = htmlContent;
-                console.log('[DEBUG] openRewriteModal: Quill root innerHTML set');
             }
             
             // Quillエディタの変更を監視してチェックリストを更新
@@ -562,10 +557,6 @@ class RewriteSystem {
                 this.updateChecklist(article, markdownContent);
             });
         }
-        
-        // デフォルトでビジュアルモードを表示（初期設定時の同期をスキップ）
-        this.switchEditorMode('visual', true);
-        console.log('[DEBUG] openRewriteModal: Switched to visual mode');
         
         this.renderChecklist(article, content);
         this.updateChecklist(article, content);
