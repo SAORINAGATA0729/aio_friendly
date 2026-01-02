@@ -319,13 +319,21 @@ class RewriteSystem {
             });
         }
 
-        // エクスポートオプションボタン
-        document.querySelectorAll('.export-option-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const format = btn.dataset.format;
-                await this.exportArticle(format);
-                if (exportModal) exportModal.classList.remove('active');
-            });
+        // エクスポートオプションボタン（動的に追加される要素なので、イベント委譲を使用）
+        document.addEventListener('click', async (e) => {
+            const exportBtn = e.target.closest('.export-option-btn');
+            if (exportBtn) {
+                const format = exportBtn.dataset.format;
+                if (format) {
+                    try {
+                        await this.exportArticle(format);
+                        if (exportModal) exportModal.classList.remove('active');
+                    } catch (error) {
+                        console.error('エクスポートエラー:', error);
+                        alert('エクスポートに失敗しました: ' + error.message);
+                    }
+                }
+            }
         });
     }
 
