@@ -368,9 +368,11 @@ class RewriteSystem {
             }
         }
 
-        // Quillエディタにコンテンツを設定（MarkdownをHTMLに変換）
+        // コンテンツをMarkdownからHTMLに変換
+        const htmlContent = this.markdownToHtml(content);
+        
+        // Quillエディタにコンテンツを設定
         if (this.quill) {
-            const htmlContent = this.markdownToHtml(content);
             this.quill.root.innerHTML = htmlContent;
             
             // Quillエディタの変更を監視してチェックリストを更新
@@ -379,20 +381,16 @@ class RewriteSystem {
                 const markdownContent = this.htmlToMarkdown(htmlContent);
                 this.updateChecklist(article, markdownContent);
             });
-        } else {
-            // フォールバック：従来のtextarea
-            const editor = document.getElementById('markdownEditor');
-            if (editor) {
-                editor.value = content;
-                editor.style.display = 'block';
-                const preview = document.getElementById('markdownPreview');
-                if (preview) preview.style.display = 'none';
-
-                editor.addEventListener('input', () => {
-                    this.updateChecklist(article, editor.value);
-                });
-            }
         }
+        
+        // HTMLエディタにもコンテンツを設定
+        const htmlEditor = document.getElementById('htmlEditor');
+        if (htmlEditor) {
+            htmlEditor.value = htmlContent;
+        }
+        
+        // デフォルトでビジュアルモードを表示
+        this.switchEditorMode('visual');
         
         this.renderChecklist(article, content);
         this.updateChecklist(article, content);
@@ -539,10 +537,10 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     htmlToMarkdown(html) {
-        // HTMLをMarkdownに変換（QuillのHTML出力用）
+        // HTMLをMarkdownに変換（QuillのHTML出力用、ALTタグ対応）
         let markdown = html;
         
-        // 見出し
+        // 見出し（Quillのクラス名にも対応）
         markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
         markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
         markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
@@ -550,6 +548,7 @@ ${article.keyword}について、重要なポイントをまとめました。
         
         // 段落
         markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n');
+        markdown = markdown.replace(/<p><br><\/p>/gi, '\n');
         
         // リスト
         markdown = markdown.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1');
@@ -558,14 +557,32 @@ ${article.keyword}について、重要なポイントをまとめました。
         markdown = markdown.replace(/<ol[^>]*>/gi, '');
         markdown = markdown.replace(/<\/ol>/gi, '');
         
+        // 画像（ALTタグ対応）
+        markdown = markdown.replace(/<img[^>]*src="([^"]*)"[^>]*(?:alt="([^"]*)")?[^>]*>/gi, (match, src, alt) => {
+            const altText = alt || '';
+            return `![${altText}](${src})`;
+        });
+        
         // 太字・斜体
         markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
         markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
         markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
         markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+        markdown = markdown.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>'); // 下線はそのまま
+        markdown = markdown.replace(/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~'); // 取り消し線
         
         // リンク
         markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+        
+        // 引用
+        markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '\n> $1\n');
+        
+        // コードブロック
+        markdown = markdown.replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gi, '\n```\n$1\n```\n');
+        markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+        
+        // 改行
+        markdown = markdown.replace(/<br\s*\/?>/gi, '\n');
         
         // その他のタグを削除
         markdown = markdown.replace(/<[^>]+>/g, '');
@@ -575,10 +592,12 @@ ${article.keyword}について、重要なポイントをまとめました。
                           .replace(/&amp;/g, '&')
                           .replace(/&lt;/g, '<')
                           .replace(/&gt;/g, '>')
-                          .replace(/&quot;/g, '"');
+                          .replace(/&quot;/g, '"')
+                          .replace(/&#39;/g, "'");
         
         // 連続する空行を整理
-        markdown = markdown.replace(/\n\s*\n/g, '\n\n');
+        markdown = markdown.replace(/\n\s*\n\s*\n/g, '\n\n');
+        markdown = markdown.replace(/^\s+|\s+$/g, '');
         
         return markdown.trim();
     }
