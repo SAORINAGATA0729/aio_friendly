@@ -230,6 +230,182 @@ class RewriteSystem {
                 }
             });
         }
+
+        // 検索機能のイベントリスナー設定
+        const searchToggleBtn = document.getElementById('searchToggleBtn');
+        const searchCloseBtn = document.getElementById('searchCloseBtn');
+        const searchPrevBtn = document.getElementById('searchPrevBtn');
+        const searchNextBtn = document.getElementById('searchNextBtn');
+        const searchInput = document.getElementById('searchInput');
+
+        if (searchToggleBtn) {
+            searchToggleBtn.addEventListener('click', () => this.toggleSearch());
+        }
+        
+        if (searchCloseBtn) {
+            searchCloseBtn.addEventListener('click', () => this.closeSearch());
+        }
+        
+        if (searchPrevBtn) {
+            searchPrevBtn.addEventListener('click', () => this.navigateSearch(-1));
+        }
+        
+        if (searchNextBtn) {
+            searchNextBtn.addEventListener('click', () => this.navigateSearch(1));
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.performSearch(e.target.value));
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        this.navigateSearch(-1);
+                    } else {
+                        this.navigateSearch(1);
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'Escape') {
+                    this.closeSearch();
+                    e.preventDefault();
+                    // フォーカスをエディタに戻す
+                    if (this.quill && document.getElementById('visualEditorContainer').classList.contains('active')) {
+                        this.quill.focus();
+                    } else {
+                        document.getElementById('htmlEditor').focus();
+                    }
+                }
+            });
+        }
+        
+        // キーボードショートカット (Cmd+F / Ctrl+F)
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                if (modal.classList.contains('active')) {
+                    e.preventDefault();
+                    this.toggleSearch(true);
+                }
+            }
+        });
+    }
+
+    // 検索機能関連メソッド
+    toggleSearch(forceOpen = false) {
+        const searchBar = document.getElementById('searchBar');
+        const searchInput = document.getElementById('searchInput');
+        
+        if (!searchBar) return;
+        
+        if (forceOpen || searchBar.style.display === 'none') {
+            searchBar.style.display = 'flex';
+            this.searchState.isActive = true;
+            setTimeout(() => {
+                if (searchInput) searchInput.focus();
+            }, 50);
+            
+            // 既にテキストがある場合は検索実行
+            if (searchInput && searchInput.value) {
+                this.performSearch(searchInput.value);
+            }
+        } else {
+            this.closeSearch();
+        }
+    }
+    
+    closeSearch() {
+        const searchBar = document.getElementById('searchBar');
+        if (searchBar) {
+            searchBar.style.display = 'none';
+        }
+        this.searchState.isActive = false;
+    }
+    
+    performSearch(query) {
+        this.searchState.query = query;
+        this.searchState.matches = [];
+        this.searchState.currentIndex = -1;
+        
+        if (!query) {
+            const countEl = document.getElementById('searchCount');
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+        
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+        
+        if (isVisualMode && this.quill) {
+            const text = this.quill.getText();
+            let index = text.toLowerCase().indexOf(query.toLowerCase());
+            while (index !== -1) {
+                this.searchState.matches.push({ index, length: query.length });
+                index = text.toLowerCase().indexOf(query.toLowerCase(), index + 1);
+            }
+        } else {
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor) {
+                const text = htmlEditor.value;
+                let index = text.toLowerCase().indexOf(query.toLowerCase());
+                while (index !== -1) {
+                    this.searchState.matches.push({ index, length: query.length });
+                    index = text.toLowerCase().indexOf(query.toLowerCase(), index + 1);
+                }
+            }
+        }
+        
+        this.updateSearchDisplay();
+        
+        if (this.searchState.matches.length > 0) {
+            this.navigateSearch(1);
+        }
+    }
+    
+    navigateSearch(direction) {
+        if (this.searchState.matches.length === 0) return;
+        
+        if (direction > 0) {
+            this.searchState.currentIndex = (this.searchState.currentIndex + 1) % this.searchState.matches.length;
+        } else {
+            this.searchState.currentIndex = (this.searchState.currentIndex - 1 + this.searchState.matches.length) % this.searchState.matches.length;
+        }
+        
+        this.updateSearchDisplay();
+        this.highlightCurrentMatch();
+    }
+    
+    updateSearchDisplay() {
+        const countEl = document.getElementById('searchCount');
+        if (countEl) {
+            if (this.searchState.matches.length > 0) {
+                countEl.textContent = `${this.searchState.currentIndex + 1} / ${this.searchState.matches.length}`;
+            } else if (this.searchState.query) {
+                countEl.textContent = 'なし';
+            } else {
+                countEl.textContent = '';
+            }
+        }
+    }
+    
+    highlightCurrentMatch() {
+        const match = this.searchState.matches[this.searchState.currentIndex];
+        if (!match) return;
+        
+        const visualContainer = document.getElementById('visualEditorContainer');
+        const isVisualMode = visualContainer && visualContainer.classList.contains('active');
+        
+        if (isVisualMode && this.quill) {
+            this.quill.setSelection(match.index, match.length);
+        } else {
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor) {
+                htmlEditor.focus();
+                htmlEditor.setSelectionRange(match.index, match.index + match.length);
+                
+                const textBefore = htmlEditor.value.substring(0, match.index);
+                const lines = textBefore.split('\n').length;
+                const lineHeight = 20; 
+                htmlEditor.scrollTop = (lines - 5) * lineHeight;
+            }
+        }
     }
 
     setupEditor() {
