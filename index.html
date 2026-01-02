@@ -516,12 +516,16 @@
     <!-- スクリプト -->
     <script src="/js/data-manager.js"></script>
     <script src="/js/dashboard.js"></script>
-    <script src="/js/rewrite.js"></script>
+    <script src="/js/rewrite.js" onerror="window.rewriteJsLoadError = true; console.error('❌ rewrite.jsの読み込みに失敗しました');"></script>
     <script src="/js/monitoring.js"></script>
     <script src="/js/reporting.js"></script>
     
     <!-- 初期化 -->
     <script>
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:525',message:'Script loading check - Before DOMContentLoaded',data:{Dashboard:typeof Dashboard,RewriteSystem:typeof RewriteSystem,MonitoringSystem:typeof MonitoringSystem,ReportingSystem:typeof ReportingSystem,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         // グローバル変数としてインスタンスを作成（windowオブジェクトに直接代入）
         window.dashboard = null;
         window.rewriteSystem = null;
@@ -531,33 +535,65 @@
         // スクリプトが読み込まれるまで待つ関数
         async function waitForScripts(maxWaitTime = 10000) {
             const startTime = Date.now();
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:535',message:'waitForScripts: Starting wait',data:{maxWaitTime:maxWaitTime},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            
             while (Date.now() - startTime < maxWaitTime) {
-                if (typeof Dashboard !== 'undefined' && 
-                    typeof RewriteSystem !== 'undefined' && 
-                    typeof MonitoringSystem !== 'undefined' && 
-                    typeof ReportingSystem !== 'undefined') {
+                const elapsed = Date.now() - startTime;
+                const DashboardDefined = typeof Dashboard !== 'undefined';
+                const RewriteSystemDefined = typeof RewriteSystem !== 'undefined';
+                const MonitoringSystemDefined = typeof MonitoringSystem !== 'undefined';
+                const ReportingSystemDefined = typeof ReportingSystem !== 'undefined';
+                
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:545',message:'waitForScripts: Checking script availability',data:{elapsed:elapsed,DashboardDefined:DashboardDefined,RewriteSystemDefined:RewriteSystemDefined,MonitoringSystemDefined:MonitoringSystemDefined,ReportingSystemDefined:ReportingSystemDefined,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                
+                if (DashboardDefined && RewriteSystemDefined && MonitoringSystemDefined && ReportingSystemDefined) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:550',message:'waitForScripts: All scripts loaded',data:{elapsed:elapsed},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+                    // #endregion
                     console.log('✅ すべてのスクリプトが読み込まれました');
                     return true;
                 }
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:560',message:'waitForScripts: Timeout',data:{elapsed:Date.now()-startTime,DashboardDefined:typeof Dashboard !== 'undefined',RewriteSystemDefined:typeof RewriteSystem !== 'undefined',MonitoringSystemDefined:typeof MonitoringSystem !== 'undefined',ReportingSystemDefined:typeof ReportingSystem !== 'undefined',rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
             return false;
         }
 
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:565',message:'DOMContentLoaded: Starting initialization',data:{Dashboard:typeof Dashboard,RewriteSystem:typeof RewriteSystem,MonitoringSystem:typeof MonitoringSystem,ReportingSystem:typeof ReportingSystem,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+                // #endregion
+                
                 console.log('システムの初期化を開始します...');
                 
                 // スクリプトが読み込まれるまで待つ
                 console.log('スクリプトの読み込みを待機中...');
                 const scriptsLoaded = await waitForScripts();
+                
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:575',message:'DOMContentLoaded: After waitForScripts',data:{scriptsLoaded:scriptsLoaded,Dashboard:typeof Dashboard,RewriteSystem:typeof RewriteSystem,MonitoringSystem:typeof MonitoringSystem,ReportingSystem:typeof ReportingSystem,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+                // #endregion
+                
                 if (!scriptsLoaded) {
                     const missingScripts = [];
                     if (typeof Dashboard === 'undefined') missingScripts.push('Dashboard (js/dashboard.js)');
                     if (typeof RewriteSystem === 'undefined') missingScripts.push('RewriteSystem (js/rewrite.js)');
                     if (typeof MonitoringSystem === 'undefined') missingScripts.push('MonitoringSystem (js/monitoring.js)');
                     if (typeof ReportingSystem === 'undefined') missingScripts.push('ReportingSystem (js/reporting.js)');
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:585',message:'DOMContentLoaded: Scripts not loaded error',data:{missingScripts:missingScripts,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+                    // #endregion
+                    
                     throw new Error('以下のスクリプトが読み込まれていません: ' + missingScripts.join(', '));
                 }
                 
