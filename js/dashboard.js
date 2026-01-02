@@ -791,6 +791,7 @@ class Dashboard {
     }
     
     updateProgressFromArticles(articles) {
+        console.log('updateProgressFromArticles called with articles:', articles?.length);
         if (!articles || articles.length === 0) {
             // デフォルト値を設定
             const completedEl = document.getElementById('progressCompleted');
@@ -800,6 +801,7 @@ class Dashboard {
             if (completedEl) completedEl.textContent = '0';
             if (inProgressEl) inProgressEl.textContent = '0';
             if (notStartedEl) notStartedEl.textContent = '0';
+            console.log('記事が空のため、進捗を0に設定しました');
             return;
         }
         
@@ -807,13 +809,32 @@ class Dashboard {
         const inProgress = articles.filter(a => a.status === '進行中').length;
         const notStarted = articles.filter(a => a.status === '未着手').length;
         
+        console.log('進捗計算結果:', { completed, inProgress, notStarted, total: articles.length });
+        
         const completedEl = document.getElementById('progressCompleted');
         const inProgressEl = document.getElementById('progressInProgress');
         const notStartedEl = document.getElementById('progressNotStarted');
         
-        if (completedEl) completedEl.textContent = completed;
-        if (inProgressEl) inProgressEl.textContent = inProgress;
-        if (notStartedEl) notStartedEl.textContent = notStarted;
+        if (completedEl) {
+            completedEl.textContent = completed;
+            console.log('完了数を更新:', completed);
+        } else {
+            console.error('progressCompleted要素が見つかりません');
+        }
+        
+        if (inProgressEl) {
+            inProgressEl.textContent = inProgress;
+            console.log('進行中数を更新:', inProgress);
+        } else {
+            console.error('progressInProgress要素が見つかりません');
+        }
+        
+        if (notStartedEl) {
+            notStartedEl.textContent = notStarted;
+            console.log('未着手数を更新:', notStarted);
+        } else {
+            console.error('progressNotStarted要素が見つかりません');
+        }
     }
     
     extractTitleFromUrl(url) {
@@ -2326,10 +2347,12 @@ class Dashboard {
     }
 
     setupEventListeners() {
-        // フィルターボタン（イベント委譲を使用）
-        const articleListSection = document.querySelector('.article-list-section');
-        if (articleListSection) {
-            articleListSection.addEventListener('click', (e) => {
+        // フィルターボタン（イベント委譲を使用、doTabに設定）
+        const doTab = document.getElementById('doTab');
+        if (doTab) {
+            // 既存のイベントリスナーを削除してから再設定（重複を防ぐ）
+            doTab.removeEventListener('click', this.handleFilterClick);
+            this.handleFilterClick = (e) => {
                 if (e.target.classList.contains('filter-btn')) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -2357,7 +2380,8 @@ class Dashboard {
                         this.renderArticleList(filter);
                     }
                 }
-            });
+            };
+            doTab.addEventListener('click', this.handleFilterClick);
         }
 
         // 仮説立案フォーム（削除）
