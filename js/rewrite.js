@@ -552,6 +552,33 @@ class RewriteSystem {
                 }
             }
         });
+
+        // プレビューボタンのイベントリスナー
+        const previewBtn = document.getElementById('previewBtn');
+        const previewModal = document.getElementById('previewModal');
+        const closePreviewModal = document.getElementById('closePreviewModal');
+        
+        if (previewBtn && previewModal) {
+            previewBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.showPreview();
+            });
+        }
+        
+        if (closePreviewModal && previewModal) {
+            closePreviewModal.addEventListener('click', () => {
+                previewModal.classList.remove('active');
+            });
+        }
+        
+        if (previewModal) {
+            previewModal.addEventListener('click', (e) => {
+                if (e.target === previewModal) {
+                    previewModal.classList.remove('active');
+                }
+            });
+        }
     }
 
     switchEditorMode(mode, skipContentSync = false) {
@@ -656,7 +683,6 @@ class RewriteSystem {
         const urlInput = document.getElementById('articleUrlInput');
         const statusDiv = document.getElementById('fetchStatus');
         
-        
         if (statusDiv) statusDiv.innerHTML = '';
         
         let url = article.url;
@@ -665,10 +691,89 @@ class RewriteSystem {
         }
         
         if (urlInput) urlInput.value = url;
+        
+        // 保存済みのMarkdownがあるかチェック
+        const slug = this.getSlugFromUrl(article.url);
+        const savedContent = await dataManager.loadMarkdown(`${slug}.md`);
+        const hasSavedContent = !!savedContent;
+        
+        // UIを更新
+        this.updateUrlModalUI(hasSavedContent);
+        
         if (urlModal) {
             urlModal.classList.add('active');
-        } else {
         }
+    }
+
+    updateUrlModalUI(hasSavedContent) {
+        const autoFetchBtn = document.getElementById('autoFetchBtn');
+        const openUrlBtn = document.getElementById('openUrlBtn');
+        const proceedToEditorBtn = document.getElementById('proceedToEditorBtn');
+        const buttonContainer = autoFetchBtn?.parentElement;
+        
+        // 「空のエディタで開く」と「ブラウザで開く」を非表示
+        if (openUrlBtn) openUrlBtn.style.display = 'none';
+        if (proceedToEditorBtn) proceedToEditorBtn.style.display = 'none';
+        
+        // 「または」のdivを非表示
+        const orDiv = buttonContainer?.querySelector('.or-divider');
+        if (orDiv) orDiv.style.display = 'none';
+        
+        if (hasSavedContent) {
+            // 保存済みがある場合：選択肢を表示
+            if (autoFetchBtn) {
+                autoFetchBtn.innerHTML = `
+                    <span class="material-icons-round">auto_fix_high</span>
+                    記事内容を自動取得して編集（一からやり直す）
+                `;
+            }
+            
+            // 保存済みを引き継ぐボタンを追加（既存のボタンの前に挿入）
+            if (buttonContainer && !document.getElementById('loadSavedBtn')) {
+                const loadSavedBtn = document.createElement('button');
+                loadSavedBtn.id = 'loadSavedBtn';
+                loadSavedBtn.className = 'btn btn-primary';
+                loadSavedBtn.style.cssText = 'padding: 1rem; font-size: 1.1rem; justify-content: center; background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);';
+                loadSavedBtn.innerHTML = `
+                    <span class="material-icons-round">history</span>
+                    保存済み内容を引き継いで編集
+                `;
+                buttonContainer.insertBefore(loadSavedBtn, autoFetchBtn);
+                
+                loadSavedBtn.addEventListener('click', async () => {
+                    await this.loadSavedAndOpenEditor();
+                });
+            }
+        } else {
+            // 保存済みがない場合：通常の表示
+            if (autoFetchBtn) {
+                autoFetchBtn.innerHTML = `
+                    <span class="material-icons-round">auto_fix_high</span>
+                    記事内容を自動取得して編集
+                `;
+            }
+            
+            // 保存済みボタンを削除
+            const loadSavedBtn = document.getElementById('loadSavedBtn');
+            if (loadSavedBtn) loadSavedBtn.remove();
+        }
+    }
+
+    async loadSavedAndOpenEditor() {
+        const slug = this.getSlugFromUrl(this.currentArticle.url);
+        const savedContent = await dataManager.loadMarkdown(`${slug}.md`);
+        
+        if (!savedContent) {
+            alert('保存済みの内容が見つかりませんでした。');
+            return;
+        }
+        
+        // URLモーダルを閉じる
+        const urlModal = document.getElementById('urlModal');
+        if (urlModal) urlModal.classList.remove('active');
+        
+        // 保存済み内容でエディタを開く
+        await this.openRewriteModal(this.currentArticle, savedContent);
     }
 
     async openRewriteModal(article, fetchedContent = null) {
@@ -850,13 +955,13 @@ class RewriteSystem {
         this.renderChecklist(article, content);
         
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:830',message:'openRewriteModal: After renderChecklist, before updateChecklist',data:{checklistItemsLength:this.checklistItems?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'I'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:853',message:'openRewriteModal: After renderChecklist, before updateChecklist',data:{checklistItemsLength:this.checklistItems?.length,checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'I'})}).catch(()=>{});
         // #endregion
         
         this.updateChecklist(article, content);
         
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:835',message:'openRewriteModal: After updateChecklist',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:859',message:'openRewriteModal: After updateChecklist',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'})}).catch(()=>{});
         // #endregion
         
         // エディタが正しく表示されているか確認
@@ -1162,7 +1267,16 @@ ${article.keyword}について、重要なポイントをまとめました。
         
         // スコア表示を更新
         const checklistScore = document.getElementById('checklistScore');
-        if (!checklistScore) return;
+        if (!checklistScore) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1164',message:'updateScore: checklistScore element NOT FOUND',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            return;
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1167',message:'updateScore: Before HTML structure check',data:{checklistScoreHTML:checklistScore.innerHTML.substring(0,200),checklistScoreText:checklistScore.textContent?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         
         // HTML構造が正しくない場合（単純なテキストになっている場合）、正しい構造を再構築
         const scoreNumber = document.getElementById('scoreNumber');
@@ -1171,8 +1285,15 @@ ${article.keyword}について、重要なポイントをまとめました。
         const totalCountEl = document.getElementById('totalCount');
         const scoreBarFill = document.getElementById('scoreBarFill');
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1175',message:'updateScore: Element existence check',data:{scoreNumberExists:!!scoreNumber,scoreRankExists:!!scoreRank,checkedCountExists:!!checkedCountEl,totalCountExists:!!totalCountEl,scoreBarFillExists:!!scoreBarFill},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
         // HTML構造が正しくない場合、再構築
         if (!scoreNumber || !scoreRank || !checkedCountEl || !totalCountEl || !scoreBarFill) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1176',message:'updateScore: Rebuilding HTML structure',data:{oldHTML:checklistScore.innerHTML.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
             checklistScore.innerHTML = `
                 <div class="score-status">
                     <div class="score-main">
@@ -1196,6 +1317,9 @@ ${article.keyword}について、重要なポイントをまとめました。
                     </div>
                 </div>
             `;
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1199',message:'updateScore: After rebuilding HTML structure',data:{newHTML:checklistScore.innerHTML.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
         }
         
         // 要素を再取得
@@ -1205,16 +1329,27 @@ ${article.keyword}について、重要なポイントをまとめました。
         const totalCountElNew = document.getElementById('totalCount');
         const scoreBarFillEl = document.getElementById('scoreBarFill');
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1207',message:'updateScore: Before updating values',data:{scoreNumberElExists:!!scoreNumberEl,scoreRankElExists:!!scoreRankEl,scoreRankElClassName:scoreRankEl?.className,score:score,rank:rank},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         if (scoreNumberEl) scoreNumberEl.textContent = score;
         if (scoreRankEl) {
             scoreRankEl.textContent = rank;
             // rank-valueクラスを維持しつつ、rank-{rank}クラスを追加
             scoreRankEl.className = 'rank-value';
             scoreRankEl.classList.add(`rank-${rank}`);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1214',message:'updateScore: After updating scoreRank',data:{scoreRankText:scoreRankEl.textContent,scoreRankClassName:scoreRankEl.className,rank:rank},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
         }
         if (checkedCountElNew) checkedCountElNew.textContent = checkedCount;
         if (totalCountElNew) totalCountElNew.textContent = totalItems;
         if (scoreBarFillEl) scoreBarFillEl.style.width = `${score}%`;
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1222',message:'updateScore: Final state',data:{checklistScoreHTML:checklistScore.innerHTML.substring(0,300),scoreRankFinalText:scoreRankEl?.textContent,scoreRankFinalClassName:scoreRankEl?.className},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
     }
 
     getRank(score) {
@@ -1272,8 +1407,16 @@ ${article.keyword}について、重要なポイントをまとめました。
             this.updateChecklistItem(div, item.id, checked);
         });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1275',message:'updateChecklist: Before calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
+        
         // スコアを更新
         this.updateScore();
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1280',message:'updateChecklist: After calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
     }
 
     async saveArticle() {
@@ -2034,6 +2177,166 @@ ${article.keyword}について、重要なポイントをまとめました。
         a.download = `${filename}.md`;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    showPreview() {
+        const previewModal = document.getElementById('previewModal');
+        const previewContent = document.getElementById('previewContent');
+        
+        if (!previewModal || !previewContent) {
+            console.error('プレビューモーダルが見つかりません');
+            return;
+        }
+        
+        // 現在のエディタモードに応じて内容を取得
+        const currentMode = this.getCurrentEditorMode();
+        let htmlContent = '';
+        
+        if (currentMode === 'visual') {
+            // ビジュアルモード：QuillのHTMLを取得
+            const quillEditor = document.querySelector('.ql-editor');
+            if (quillEditor) {
+                htmlContent = quillEditor.innerHTML;
+            }
+        } else {
+            // HTMLモード：HTMLエディタの内容を取得
+            const htmlEditor = document.getElementById('htmlEditor');
+            if (htmlEditor) {
+                htmlContent = htmlEditor.value;
+            }
+        }
+        
+        // HTMLが空の場合は警告
+        if (!htmlContent || htmlContent.trim() === '') {
+            alert('プレビューする内容がありません。');
+            return;
+        }
+        
+        // HTMLを整形してプレビュー表示
+        const formattedHtml = this.formatHtmlForPreview(htmlContent);
+        previewContent.innerHTML = formattedHtml;
+        
+        // モーダルを開く
+        previewModal.classList.add('active');
+    }
+
+    getCurrentEditorMode() {
+        const visualTab = document.getElementById('visualModeTab');
+        if (visualTab && visualTab.classList.contains('active')) {
+            return 'visual';
+        }
+        return 'html';
+    }
+
+    formatHtmlForPreview(html) {
+        // HTMLを整形してプレビュー用に最適化
+        // スタイルを追加して読みやすくする
+        
+        // 基本的なHTML構造を確保
+        let formatted = html;
+        
+        // スタイルタグを追加（まだ追加されていない場合）
+        if (!formatted.includes('<style')) {
+            formatted = `
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        line-height: 1.8;
+                        color: #1f2937;
+                    }
+                    h1 {
+                        font-size: 2rem;
+                        font-weight: 800;
+                        margin: 2rem 0 1rem 0;
+                        padding-bottom: 0.5rem;
+                        border-bottom: 2px solid #e5e7eb;
+                    }
+                    h2 {
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        margin: 1.5rem 0 0.75rem 0;
+                        padding-top: 1rem;
+                    }
+                    h3 {
+                        font-size: 1.25rem;
+                        font-weight: 600;
+                        margin: 1.25rem 0 0.5rem 0;
+                    }
+                    h4 {
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        margin: 1rem 0 0.5rem 0;
+                    }
+                    p {
+                        margin: 1rem 0;
+                    }
+                    ul, ol {
+                        margin: 1rem 0;
+                        padding-left: 2rem;
+                    }
+                    li {
+                        margin: 0.5rem 0;
+                    }
+                    img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 8px;
+                        margin: 1.5rem 0;
+                    }
+                    blockquote {
+                        border-left: 4px solid #3b82f6;
+                        padding-left: 1rem;
+                        margin: 1rem 0;
+                        color: #4b5563;
+                        font-style: italic;
+                    }
+                    code {
+                        background: #f3f4f6;
+                        padding: 0.2rem 0.4rem;
+                        border-radius: 4px;
+                        font-family: 'Courier New', monospace;
+                        font-size: 0.9em;
+                    }
+                    pre {
+                        background: #1f2937;
+                        color: #f9fafb;
+                        padding: 1rem;
+                        border-radius: 8px;
+                        overflow-x: auto;
+                        margin: 1rem 0;
+                    }
+                    pre code {
+                        background: transparent;
+                        padding: 0;
+                        color: inherit;
+                    }
+                    a {
+                        color: #3b82f6;
+                        text-decoration: underline;
+                    }
+                    a:hover {
+                        color: #2563eb;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 1rem 0;
+                    }
+                    th, td {
+                        border: 1px solid #e5e7eb;
+                        padding: 0.75rem;
+                        text-align: left;
+                    }
+                    th {
+                        background: #f9fafb;
+                        font-weight: 600;
+                    }
+                </style>
+                ${formatted}
+            `;
+        }
+        
+        return formatted;
     }
 }
 

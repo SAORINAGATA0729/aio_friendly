@@ -529,6 +529,9 @@ body {
 
 .article-info {
     display: flex;
+    align-items: center;
+    gap: 1rem;
+    display: flex;
     flex-direction: column;
     gap: 4px;
 }
@@ -1234,6 +1237,130 @@ body {
     margin: 0 0.5rem;
     min-width: 40px;
     text-align: center;
+}
+
+/* プレビューモーダル */
+#previewModal .modal-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#previewModal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    background: #f9fafb;
+}
+
+#previewContent {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    line-height: 1.8;
+    color: #1f2937;
+}
+
+#previewContent h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 2rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+#previewContent h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 1.5rem 0 0.75rem 0;
+    padding-top: 1rem;
+}
+
+#previewContent h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem 0;
+}
+
+#previewContent p {
+    margin: 1rem 0;
+}
+
+#previewContent img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+#previewContent ul, #previewContent ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+#previewContent li {
+    margin: 0.5rem 0;
+}
+
+#previewContent blockquote {
+    border-left: 4px solid #3b82f6;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #4b5563;
+    font-style: italic;
+}
+
+#previewContent code {
+    background: #f3f4f6;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+#previewContent pre {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+#previewContent pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+#previewContent a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+#previewContent a:hover {
+    color: #2563eb;
+}
+
+#previewContent table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+#previewContent th, #previewContent td {
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+#previewContent th {
+    background: #f9fafb;
+    font-weight: 600;
 }
 
 /* エディタモードコンテナ */

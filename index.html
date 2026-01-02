@@ -354,19 +354,22 @@
                     </div>
                     
                     <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                        <!-- 保存済みボタンは動的に追加される -->
+                        
                         <!-- 自動取得ボタン -->
                         <button id="autoFetchBtn" class="btn btn-primary" style="padding: 1rem; font-size: 1.1rem; justify-content: center; background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
                             <span class="material-icons-round">auto_fix_high</span>
                             記事内容を自動取得して編集
                         </button>
                         
-                        <div style="position: relative; text-align: center; margin: 10px 0;">
+                        <!-- 「または」のdiv（保存済みがない場合は非表示） -->
+                        <div class="or-divider" style="position: relative; text-align: center; margin: 10px 0; display: none;">
                             <span style="background: #f8fafc; padding: 0 10px; color: #6b7280; font-size: 0.9rem; position: relative; z-index: 1;">または</span>
                             <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: #e5e7eb; z-index: 0;"></div>
                         </div>
 
-                        <!-- 手動用ボタン -->
-                        <div style="display: flex; gap: 10px;">
+                        <!-- 手動用ボタン（非表示にする） -->
+                        <div style="display: none;">
                             <button id="openUrlBtn" class="btn btn-secondary" style="flex: 1; color: var(--text-primary); border-color: var(--border-color); background: white;">
                                 <span class="material-icons-round">open_in_new</span>
                                 ブラウザで開く
@@ -459,6 +462,11 @@
                                 <span class="material-icons-round">search</span>
                                 検索
                             </button>
+                            <!-- プレビューボタンを追加 -->
+                            <button class="toolbar-btn" id="previewBtn" title="プレビュー">
+                                <span class="material-icons-round">preview</span>
+                                プレビュー
+                            </button>
                             <button class="toolbar-btn" data-action="export" id="rewriteExportBtn">
                                 <span class="material-icons-round">download</span>
                                 エクスポート
@@ -526,6 +534,32 @@
                             <div style="font-size: 0.85rem; color: #6b7280;">Markdownファイルとしてダウンロード</div>
                         </div>
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- プレビューモーダル -->
+    <div id="previewModal" class="modal">
+        <div class="modal-content" style="max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2>プレビュー</h2>
+                <button class="modal-close" id="closePreviewModal">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                <div id="previewContent" style="
+                    max-width: 800px;
+                    margin: 0 auto;
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 8px;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                    line-height: 1.8;
+                    color: #1f2937;
+                ">
+                    <!-- プレビュー内容がここに表示されます -->
                 </div>
             </div>
         </div>

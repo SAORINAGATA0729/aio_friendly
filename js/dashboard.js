@@ -376,11 +376,34 @@ class Dashboard {
 
         item.innerHTML = `
             <div class="article-info">
-                <div class="article-title">${article.title}</div>
-                <div class="article-meta">
-                    <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
-                    ${article.keyword}
+                <div style="flex: 1;">
+                    <div class="article-title">${article.title}</div>
+                    <div class="article-meta">
+                        <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
+                        ${article.keyword}
+                    </div>
                 </div>
+                <!-- プレビューボタンを追加 -->
+                <button class="article-preview-btn" data-article-id="${article.id}" 
+                    style="
+                        padding: 0.4rem 0.8rem;
+                        border-radius: 0.4rem;
+                        border: 1px solid var(--border-color);
+                        background: white;
+                        color: var(--text-primary);
+                        font-size: 0.85rem;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.3rem;
+                        transition: var(--transition);
+                    "
+                    title="保存済み内容をプレビュー"
+                    onmouseover="this.style.background='#f1f5f9'"
+                    onmouseout="this.style.background='white'">
+                    <span class="material-icons-round" style="font-size: 16px;">preview</span>
+                    プレビュー
+                </button>
             </div>
             <div style="display: flex; justify-content: center;">
                 <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
@@ -435,11 +458,26 @@ class Dashboard {
             </div>
         `;
 
+        // プレビューボタンのイベントリスナー
+        const previewBtn = item.querySelector('.article-preview-btn');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await this.showArticlePreview(article);
+            });
+        }
+
         // 記事情報部分のみクリック可能にする
         const articleInfo = item.querySelector('.article-info');
         if (articleInfo) {
-            articleInfo.style.cursor = 'pointer';
+            // プレビューボタン以外のクリックのみ処理
             articleInfo.addEventListener('click', async (e) => {
+                // プレビューボタンがクリックされた場合は無視
+                if (e.target.closest('.article-preview-btn')) {
+                    return;
+                }
+                
                 e.preventDefault();
                 e.stopPropagation();
                 
@@ -610,6 +648,172 @@ class Dashboard {
         if (typeof window.reportingSystem !== 'undefined' && window.reportingSystem) {
             window.reportingSystem.renderResults();
         }
+    }
+
+    async showArticlePreview(article) {
+        const slug = this.getSlugFromUrl(article.url);
+        const savedContent = await dataManager.loadMarkdown(`${slug}.md`);
+        
+        if (!savedContent) {
+            alert('保存済みの内容が見つかりませんでした。');
+            return;
+        }
+        
+        // プレビューモーダルを開く（rewrite.jsのプレビューモーダルを再利用）
+        const previewModal = document.getElementById('previewModal');
+        const previewContent = document.getElementById('previewContent');
+        
+        if (!previewModal || !previewContent) {
+            alert('プレビューモーダルが見つかりませんでした。');
+            return;
+        }
+        
+        // MarkdownをHTMLに変換して表示
+        const htmlContent = this.markdownToHtml(savedContent);
+        const formattedHtml = this.formatHtmlForPreview(htmlContent);
+        previewContent.innerHTML = formattedHtml;
+        
+        previewModal.classList.add('active');
+    }
+
+    getSlugFromUrl(url) {
+        try {
+            const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+            return urlObj.pathname.split('/').filter(p => p).join('-') || 'article';
+        } catch {
+            return url.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 50);
+        }
+    }
+
+    markdownToHtml(markdown) {
+        if (!markdown) return '';
+        
+        // 簡易的なMarkdown to HTML変換
+        let html = markdown
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1">')
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2">$1</a>')
+            .replace(/`([^`]+)`/gim, '<code>$1</code>')
+            .replace(/\n\n/gim, '</p><p>')
+            .replace(/\n/gim, '<br>');
+        
+        // 段落タグで囲む
+        html = '<p>' + html + '</p>';
+        
+        return html;
+    }
+
+    formatHtmlForPreview(html) {
+        // HTMLを整形してプレビュー用に最適化
+        let formatted = html;
+        
+        // スタイルタグを追加（まだ追加されていない場合）
+        if (!formatted.includes('<style')) {
+            formatted = `
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        line-height: 1.8;
+                        color: #1f2937;
+                    }
+                    h1 {
+                        font-size: 2rem;
+                        font-weight: 800;
+                        margin: 2rem 0 1rem 0;
+                        padding-bottom: 0.5rem;
+                        border-bottom: 2px solid #e5e7eb;
+                    }
+                    h2 {
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        margin: 1.5rem 0 0.75rem 0;
+                        padding-top: 1rem;
+                    }
+                    h3 {
+                        font-size: 1.25rem;
+                        font-weight: 600;
+                        margin: 1.25rem 0 0.5rem 0;
+                    }
+                    h4 {
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        margin: 1rem 0 0.5rem 0;
+                    }
+                    p {
+                        margin: 1rem 0;
+                    }
+                    ul, ol {
+                        margin: 1rem 0;
+                        padding-left: 2rem;
+                    }
+                    li {
+                        margin: 0.5rem 0;
+                    }
+                    img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 8px;
+                        margin: 1.5rem 0;
+                    }
+                    blockquote {
+                        border-left: 4px solid #3b82f6;
+                        padding-left: 1rem;
+                        margin: 1rem 0;
+                        color: #4b5563;
+                        font-style: italic;
+                    }
+                    code {
+                        background: #f3f4f6;
+                        padding: 0.2rem 0.4rem;
+                        border-radius: 4px;
+                        font-family: 'Courier New', monospace;
+                        font-size: 0.9em;
+                    }
+                    pre {
+                        background: #1f2937;
+                        color: #f9fafb;
+                        padding: 1rem;
+                        border-radius: 8px;
+                        overflow-x: auto;
+                        margin: 1rem 0;
+                    }
+                    pre code {
+                        background: transparent;
+                        padding: 0;
+                        color: inherit;
+                    }
+                    a {
+                        color: #3b82f6;
+                        text-decoration: underline;
+                    }
+                    a:hover {
+                        color: #2563eb;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 1rem 0;
+                    }
+                    th, td {
+                        border: 1px solid #e5e7eb;
+                        padding: 0.75rem;
+                        text-align: left;
+                    }
+                    th {
+                        background: #f9fafb;
+                        font-weight: 600;
+                    }
+                </style>
+                ${formatted}
+            `;
+        }
+        
+        return formatted;
     }
 }
 

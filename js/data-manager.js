@@ -116,24 +116,46 @@ class DataManager {
             const storageKey = `${this.storageKeys.articles}${filename}`;
             const stored = localStorage.getItem(storageKey);
             if (stored) {
-                return stored;
+                return stored; // Markdown文字列を返す
             }
-
-            const response = await fetch(`${this.basePath}${this.articlesPath}${filename}`);
-            if (response.ok) {
-                const text = await response.text();
-                localStorage.setItem(storageKey, text);
-                return text;
+            
+            // File System Access APIを試行
+            if ('showOpenFilePicker' in window) {
+                try {
+                    const fileHandle = await this.getFileHandle(`${this.articlesPath}${filename}`);
+                    const file = await fileHandle.getFile();
+                    const text = await file.text();
+                    // ローカルストレージにも保存
+                    localStorage.setItem(storageKey, text);
+                    return text;
+                } catch (fsError) {
+                    console.warn('[WARN] loadMarkdown: File System Access API failed:', fsError);
+                }
             }
+            
+            // フォールバック: fetchで読み込み
+            try {
+                const response = await fetch(`${this.basePath}${this.articlesPath}${filename}`);
+                if (response.ok) {
+                    const text = await response.text();
+                    localStorage.setItem(storageKey, text);
+                    return text;
+                }
+            } catch (fetchError) {
+                console.warn('[WARN] loadMarkdown: Fetch failed:', fetchError);
+            }
+            
+            return null; // ファイルが見つからない
         } catch (error) {
             console.error(`Markdown読み込みエラー (${filename}):`, error);
+            // 最後の試み：ローカルストレージから読み込み
             const storageKey = `${this.storageKeys.articles}${filename}`;
             const stored = localStorage.getItem(storageKey);
             if (stored) {
                 return stored;
             }
+            return null;
         }
-        return '';
     }
 
     /**
