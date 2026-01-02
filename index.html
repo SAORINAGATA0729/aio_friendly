@@ -429,11 +429,7 @@
     
     <!-- 初期化 -->
     <script>
-        // グローバル変数としてインスタンスを作成（data-manager.jsで既に作成されている場合は上書きしない）
-        if (typeof dataManager === 'undefined') {
-            var dataManager = new DataManager();
-        }
-        
+        // グローバル変数としてインスタンスを作成
         let dashboard;
         let rewriteSystem;
         let monitoringSystem;
