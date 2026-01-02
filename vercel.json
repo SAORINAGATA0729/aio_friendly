@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/((?!css|js|data|images|fonts|.*\\.(css|js|json|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)).*)",
-      "destination": "/index.html"
-    }
-  ]
-}
