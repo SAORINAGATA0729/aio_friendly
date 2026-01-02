@@ -13,15 +13,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <!-- docx.js for Word export -->
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+    <!-- UMDビルドを使用してグローバル変数として利用可能にする -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js" type="module"></script>
     <script>
         // docx.jsがグローバル変数として利用可能か確認
         window.addEventListener('load', () => {
-            if (typeof docx === 'undefined') {
-                console.warn('docx.jsが読み込まれていません');
-            } else {
-                console.log('docx.jsが読み込まれました');
-            }
+            setTimeout(() => {
+                console.log('docx.js check:', {
+                    'typeof docx': typeof docx,
+                    'typeof window.docx': typeof window.docx,
+                    'window.docx': window.docx
+                });
+                if (typeof docx === 'undefined' && typeof window.docx === 'undefined') {
+                    console.warn('docx.jsが読み込まれていません。別のCDNを試します...');
+                    // フォールバック: unpkgのUMDビルドを試す
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/docx@8.5.0/build/index.js';
+                    script.onload = () => {
+                        console.log('docx.js (unpkg) loaded:', typeof docx, typeof window.docx);
+                    };
+                    script.onerror = () => {
+                        console.error('docx.jsの読み込みに失敗しました');
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    console.log('docx.jsが読み込まれました');
+                }
+            }, 1000);
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>

@@ -1074,19 +1074,40 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     async exportToWord(htmlContent, title, filename) {
-        // docx.jsが利用可能かチェック
-        if (typeof docx === 'undefined' && typeof window.docx === 'undefined') {
-            console.error('docx.js not found. typeof docx:', typeof docx, 'typeof window.docx:', typeof window.docx);
-            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。');
+        // docx.jsが利用可能かチェック（複数の方法を試す）
+        let docxLib = null;
+        
+        // 方法1: グローバル変数docx
+        if (typeof docx !== 'undefined') {
+            docxLib = docx;
+            console.log('[DEBUG] exportToWord: Using global docx variable');
+        }
+        // 方法2: window.docx
+        else if (typeof window !== 'undefined' && typeof window.docx !== 'undefined') {
+            docxLib = window.docx;
+            console.log('[DEBUG] exportToWord: Using window.docx');
+        }
+        // 方法3: 動的インポートを試す
+        else {
+            try {
+                // 動的インポートを試す（ES6モジュール）
+                const docxModule = await import('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js');
+                if (docxModule && docxModule.default) {
+                    docxLib = docxModule.default;
+                    console.log('[DEBUG] exportToWord: Using dynamic import');
+                }
+            } catch (importError) {
+                console.error('[ERROR] exportToWord: Dynamic import failed:', importError);
+            }
+        }
+        
+        if (!docxLib) {
+            console.error('[ERROR] exportToWord: docx.js not found. typeof docx:', typeof docx, 'typeof window.docx:', typeof window.docx);
+            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。\n\n別の方法として、HTML形式またはPDF形式でのエクスポートをお試しください。');
             return;
         }
         
-        // docxをグローバル変数から取得
-        const docxLib = typeof docx !== 'undefined' ? docx : window.docx;
-        if (!docxLib) {
-            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。');
-            return;
-        }
+        console.log('[DEBUG] exportToWord: docxLib found:', !!docxLib, 'has Document:', typeof docxLib.Document);
 
         // HTMLをパースしてdocx形式に変換
         const doc = new docxLib.Document({
