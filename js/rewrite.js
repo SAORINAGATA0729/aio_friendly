@@ -888,13 +888,15 @@ ${article.keyword}について、重要なポイントをまとめました。
 
     markdownToHtml(markdown) {
         // Markdown to HTML変換（Quill用）
-        let html = markdown;
+        let html = markdown.trim();
         
         // 既にHTMLタグが含まれている場合は変換をスキップ（重複を防ぐ）
-        const hasHtmlTags = /<[h1-6]|<img|<p>/i.test(html);
-        if (hasHtmlTags) {
+        // より厳密にチェック：H1タグや画像タグが既に存在する場合
+        const hasH1 = /<h1[^>]*>.*?<\/h1>/i.test(html);
+        const hasImg = /<img[^>]*>/i.test(html);
+        if (hasH1 || hasImg) {
             // HTMLタグが既にある場合は、そのまま返す（重複変換を防ぐ）
-            return html.trim();
+            return html;
         }
         
         // 見出し
