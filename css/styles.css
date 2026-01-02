@@ -1025,11 +1025,19 @@ body {
     height: 100%; /* 親要素の高さいっぱいに */
 }
 
+/* HTMLエディタコンテナ */
+#htmlEditorContainer {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 /* HTMLエディタ */
 .html-editor {
     flex: 1;
     width: 100%;
-    height: 100%; /* 親要素の高さいっぱいに */
     min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
     padding: 1.5rem;
     border: none;
