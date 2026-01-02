@@ -324,10 +324,17 @@ body {
 .progress-section {
     background: var(--bg-card);
     border-radius: 1rem;
-    padding: 2rem;
+    padding: 1.5rem 2rem;
     box-shadow: var(--shadow);
     margin-bottom: 2rem;
     border: 1px solid var(--border-color);
+}
+
+.progress-section h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .progress-summary {
@@ -335,12 +342,14 @@ body {
     gap: 3rem;
     margin-bottom: 1.5rem;
     flex-wrap: wrap;
+    align-items: flex-start;
 }
 
 .progress-item {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 0.5rem;
+    min-width: 120px;
 }
 
 .progress-label {
@@ -348,12 +357,14 @@ body {
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .progress-value {
     font-size: 2rem;
     font-weight: 800;
     color: var(--text-primary);
+    line-height: 1.2;
 }
 
 .progress-unit {
