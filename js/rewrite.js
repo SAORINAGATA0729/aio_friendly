@@ -1056,19 +1056,27 @@ ${article.keyword}について、重要なポイントをまとめました。
 
     async exportToWord(htmlContent, title, filename) {
         // docx.jsが利用可能かチェック
-        if (typeof docx === 'undefined') {
+        if (typeof docx === 'undefined' && typeof window.docx === 'undefined') {
+            console.error('docx.js not found. typeof docx:', typeof docx, 'typeof window.docx:', typeof window.docx);
+            alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。');
+            return;
+        }
+        
+        // docxをグローバル変数から取得
+        const docxLib = typeof docx !== 'undefined' ? docx : window.docx;
+        if (!docxLib) {
             alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。ページをリロードしてください。');
             return;
         }
 
         // HTMLをパースしてdocx形式に変換
-        const doc = new docx.Document({
+        const doc = new docxLib.Document({
             sections: [{
                 properties: {},
                 children: [
-                    new docx.Paragraph({
+                    new docxLib.Paragraph({
                         text: title,
-                        heading: docx.HeadingLevel.HEADING_1,
+                        heading: docxLib.HeadingLevel.HEADING_1,
                         spacing: { after: 400 }
                     }),
                     ...this.htmlToDocxElements(htmlContent)
@@ -1077,7 +1085,7 @@ ${article.keyword}について、重要なポイントをまとめました。
         });
 
         try {
-            const blob = await docx.Packer.toBlob(doc);
+            const blob = await docxLib.Packer.toBlob(doc);
             if (typeof saveAs !== 'undefined') {
                 saveAs(blob, `${filename}.docx`);
             } else {
@@ -1105,7 +1113,7 @@ ${article.keyword}について、重要なポイントをまとめました。
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.textContent.trim();
                 if (text) {
-                    return new docx.TextRun(text);
+                    return new docxLib.TextRun(text);
                 }
                 return null;
             }
@@ -1115,53 +1123,53 @@ ${article.keyword}について、重要なポイントをまとめました。
                 
                 switch (tagName) {
                     case 'h1':
-                        return new docx.Paragraph({
+                        return new docxLib.Paragraph({
                             text: node.textContent,
-                            heading: docx.HeadingLevel.HEADING_1,
+                            heading: docxLib.HeadingLevel.HEADING_1,
                             spacing: { after: 400 }
                         });
                     case 'h2':
-                        return new docx.Paragraph({
+                        return new docxLib.Paragraph({
                             text: node.textContent,
-                            heading: docx.HeadingLevel.HEADING_2,
+                            heading: docxLib.HeadingLevel.HEADING_2,
                             spacing: { after: 300 }
                         });
                     case 'h3':
-                        return new docx.Paragraph({
+                        return new docxLib.Paragraph({
                             text: node.textContent,
-                            heading: docx.HeadingLevel.HEADING_3,
+                            heading: docxLib.HeadingLevel.HEADING_3,
                             spacing: { after: 200 }
                         });
                     case 'p':
                         const runs = Array.from(node.childNodes)
                             .map(processNode)
                             .filter(n => n !== null);
-                        return new docx.Paragraph({
-                            children: runs.length > 0 ? runs : [new docx.TextRun('')],
+                        return new docxLib.Paragraph({
+                            children: runs.length > 0 ? runs : [new docxLib.TextRun('')],
                             spacing: { after: 200 }
                         });
                     case 'strong':
                     case 'b':
-                        return new docx.TextRun({
+                        return new docxLib.TextRun({
                             text: node.textContent,
                             bold: true
                         });
                     case 'em':
                     case 'i':
-                        return new docx.TextRun({
+                        return new docxLib.TextRun({
                             text: node.textContent,
                             italics: true
                         });
                     case 'ul':
                     case 'ol':
                         const listItems = Array.from(node.querySelectorAll('li'))
-                            .map(li => new docx.Paragraph({
+                            .map(li => new docxLib.Paragraph({
                                 text: li.textContent,
                                 bullet: { level: 0 }
                             }));
                         return listItems;
                     case 'li':
-                        return new docx.Paragraph({
+                        return new docxLib.Paragraph({
                             text: node.textContent,
                             bullet: { level: 0 }
                         });
@@ -1181,7 +1189,7 @@ ${article.keyword}について、重要なポイントをまとめました。
             .filter(n => n !== null)
             .flat();
 
-        return result.length > 0 ? result : [new docx.Paragraph({ text: '' })];
+        return result.length > 0 ? result : [new docxLib.Paragraph({ text: '' })];
     }
 
     exportToHTML(htmlContent, title, filename) {
