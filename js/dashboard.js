@@ -718,6 +718,9 @@ class Dashboard {
                         this.renderArticleList();
                     });
                 }
+            } else if (tabName === 'plan') {
+                // Planタブが選択されたらプラン一覧を表示
+                this.renderPlans();
             } else if (tabName === 'check') {
                 this.renderComparisonChart();
             } else if (tabName === 'action') {
@@ -972,14 +975,14 @@ class Dashboard {
             });
         });
 
-        // 仮説立案フォーム
-        const hypothesisForm = document.getElementById('hypothesisForm');
-        if (hypothesisForm) {
-            hypothesisForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.saveHypothesis();
-            });
-        }
+        // 仮説立案フォーム（削除）
+        // const hypothesisForm = document.getElementById('hypothesisForm');
+        // if (hypothesisForm) {
+        //     hypothesisForm.addEventListener('submit', (e) => {
+        //         e.preventDefault();
+        //         this.saveHypothesis();
+        //     });
+        // }
 
         // バックアップボタン
         const backupBtn = document.getElementById('backupBtn');
