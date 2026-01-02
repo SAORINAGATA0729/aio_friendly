@@ -20,17 +20,36 @@ class Dashboard {
 
     async loadData() {
         try {
+            console.log('データ読み込み開始...');
             this.progressData = await dataManager.loadProgress();
             this.baselineData = await dataManager.loadBaseline();
             
+            console.log('dataManager.loadProgress()結果:', this.progressData);
+            console.log('dataManager.loadBaseline()結果:', this.baselineData);
+            
             if (!this.progressData) {
                 try {
-                    console.warn('進捗データが見つかりません。初期データを使用します。');
-                    const response = await fetch('./data/progress.json');
-                    if (response.ok) {
-                        this.progressData = await response.json();
-                    } else {
-                        console.error('progress.jsonの読み込みに失敗しました');
+                    console.warn('進捗データが見つかりません。fetchで直接読み込みます...');
+                    // 複数のパスを試行
+                    const paths = ['./data/progress.json', '/data/progress.json', 'data/progress.json'];
+                    for (const path of paths) {
+                        try {
+                            console.log(`試行中: ${path}`);
+                            const response = await fetch(path);
+                            if (response.ok) {
+                                this.progressData = await response.json();
+                                console.log('progress.jsonの読み込み成功:', path);
+                                break;
+                            } else {
+                                console.warn(`${path} の読み込み失敗: ${response.status}`);
+                            }
+                        } catch (error) {
+                            console.warn(`${path} の読み込みエラー:`, error);
+                        }
+                    }
+                    
+                    if (!this.progressData) {
+                        console.error('progress.jsonの読み込みに完全に失敗しました');
                     }
                 } catch (error) {
                     console.error('progress.jsonの読み込みエラー:', error);
@@ -39,12 +58,26 @@ class Dashboard {
             
             if (!this.baselineData) {
                 try {
-                    console.warn('ベースラインデータが見つかりません。初期データを使用します。');
-                    const response = await fetch('./data/baseline.json');
-                    if (response.ok) {
-                        this.baselineData = await response.json();
-                    } else {
-                        console.error('baseline.jsonの読み込みに失敗しました');
+                    console.warn('ベースラインデータが見つかりません。fetchで直接読み込みます...');
+                    const paths = ['./data/baseline.json', '/data/baseline.json', 'data/baseline.json'];
+                    for (const path of paths) {
+                        try {
+                            console.log(`試行中: ${path}`);
+                            const response = await fetch(path);
+                            if (response.ok) {
+                                this.baselineData = await response.json();
+                                console.log('baseline.jsonの読み込み成功:', path);
+                                break;
+                            } else {
+                                console.warn(`${path} の読み込み失敗: ${response.status}`);
+                            }
+                        } catch (error) {
+                            console.warn(`${path} の読み込みエラー:`, error);
+                        }
+                    }
+                    
+                    if (!this.baselineData) {
+                        console.error('baseline.jsonの読み込みに完全に失敗しました');
                     }
                 } catch (error) {
                     console.error('baseline.jsonの読み込みエラー:', error);
@@ -129,13 +162,33 @@ class Dashboard {
     }
 
     renderArticleList(filter = 'all') {
+        console.log('renderArticleList called, filter:', filter);
+        console.log('progressData:', this.progressData);
+        
         if (!this.progressData || !this.progressData.articles) {
-            console.warn('進捗データが読み込まれていません');
+            console.warn('進捗データが読み込まれていません。データを再読み込みします...');
+            // データを再読み込み
+            this.loadData().then(() => {
+                if (this.progressData && this.progressData.articles) {
+                    this.renderArticleList(filter);
+                } else {
+                    console.error('データの読み込みに失敗しました');
+                    const articleList = document.getElementById('articleList');
+                    if (articleList) {
+                        articleList.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">データの読み込みに失敗しました。ページをリロードしてください。</div>';
+                    }
+                }
+            });
             return;
         }
 
         const articleList = document.getElementById('articleList');
-        if (!articleList) return;
+        if (!articleList) {
+            console.error('articleList要素が見つかりません');
+            return;
+        }
+        
+        console.log('記事数:', this.progressData.articles.length);
         
         // ヘッダーを追加（初回のみ）
         if (!document.querySelector('.article-list-header')) {
