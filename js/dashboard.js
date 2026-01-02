@@ -1310,12 +1310,9 @@ class Dashboard {
             await dataManager.saveProgress(this.progressData);
             console.log('ステータスを更新しました:', articleId, newStatus);
             
-            // 一覧を再描画
+            // 一覧を再描画（進捗状況も自動更新される）
             const currentFilter = document.querySelector('.pdca-tab.active')?.dataset.tab || 'all';
             this.renderArticleList(currentFilter);
-            
-            // 進捗を更新
-            this.updateProgress();
         } catch (error) {
             console.error('ステータスの更新に失敗しました:', error);
             alert('ステータスの更新に失敗しました: ' + error.message);
