@@ -1103,7 +1103,7 @@ ${article.keyword}について、重要なポイントをまとめました。
         }
     }
 
-    htmlToDocxElements(html) {
+    htmlToDocxElements(html, docxLib) {
         // 簡易的なHTML→docx要素変換
         const elements = [];
         const tempDiv = document.createElement('div');
