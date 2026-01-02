@@ -350,6 +350,8 @@ class RewriteSystem {
         const htmlContainer = document.getElementById('htmlEditorContainer');
         const htmlEditor = document.getElementById('htmlEditor');
 
+        console.log('[DEBUG] switchEditorMode: mode=', mode, 'skipContentSync=', skipContentSync);
+
         if (mode === 'visual') {
             // ビジュアルモードに切り替え
             visualTab?.classList.add('active');
@@ -360,17 +362,28 @@ class RewriteSystem {
             // コンテンツの同期をスキップしない場合のみ、HTMLエディタの内容をQuillに反映
             if (!skipContentSync && this.quill && htmlEditor && htmlEditor.value) {
                 const htmlContent = htmlEditor.value.trim();
+                console.log('[DEBUG] switchEditorMode: Syncing HTML to Quill, content length:', htmlContent.length);
                 if (htmlContent) {
                     // 既存のコンテンツをクリア
                     this.quill.setText('');
+                    console.log('[DEBUG] switchEditorMode: Quill cleared');
                     // Quillのエディタ要素を取得
                     const quillEditor = this.quill.root.querySelector('.ql-editor');
                     if (quillEditor) {
+                        // 既存のコンテンツをクリア
+                        quillEditor.innerHTML = '';
+                        console.log('[DEBUG] switchEditorMode: Quill editor innerHTML cleared');
+                        // 新しいコンテンツを設定
                         quillEditor.innerHTML = htmlContent;
+                        console.log('[DEBUG] switchEditorMode: Quill editor innerHTML set, length:', quillEditor.innerHTML.length);
+                        console.log('[DEBUG] switchEditorMode: Quill editor preview:', quillEditor.innerHTML.substring(0, 200));
                     } else {
                         this.quill.root.innerHTML = htmlContent;
+                        console.log('[DEBUG] switchEditorMode: Quill root innerHTML set');
                     }
                 }
+            } else {
+                console.log('[DEBUG] switchEditorMode: Skipping content sync');
             }
         } else {
             // HTMLモードに切り替え
