@@ -673,6 +673,59 @@ class RewriteSystem {
         return processedContent;
     }
 
+    /**
+     * HTML形式のコンテンツから重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
+     */
+    removeDuplicateH1AndEyeCatchFromHtml(htmlContent) {
+        if (!htmlContent) return htmlContent;
+        
+        // #region agent log
+        const initialH1Count = (htmlContent.match(/<h1[^>]*>/gi) || []).length;
+        const initialImgCount = (htmlContent.match(/<img[^>]*>/gi) || []).length;
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:668',message:'removeDuplicateH1AndEyeCatchFromHtml: Before processing',data:{htmlContentLength:htmlContent.length,initialH1Count:initialH1Count,initialImgCount:initialImgCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'Q'})}).catch(()=>{});
+        // #endregion
+        
+        // H1タグをすべて取得
+        const h1Matches = htmlContent.match(/<h1[^>]*>.*?<\/h1>/gi);
+        if (h1Matches && h1Matches.length > 1) {
+            // 最初のH1以外を削除
+            for (let i = 1; i < h1Matches.length; i++) {
+                htmlContent = htmlContent.replace(h1Matches[i], '');
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:678',message:'removeDuplicateH1AndEyeCatchFromHtml: Removed duplicate H1 tags',data:{removedH1Count:h1Matches.length-1},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'R'})}).catch(()=>{});
+            // #endregion
+        }
+        
+        // 画像タグをすべて取得（最初の1つだけを保持）
+        const imgMatches = htmlContent.match(/<img[^>]*>/gi);
+        if (imgMatches && imgMatches.length > 1) {
+            // 最初の画像の位置を特定
+            const firstImgIndex = htmlContent.indexOf(imgMatches[0]);
+            // 最初の画像の後の画像を削除（ただし、最初の画像から500文字以内の画像はアイキャッチとして扱う）
+            let removedCount = 0;
+            for (let i = 1; i < imgMatches.length; i++) {
+                const imgIndex = htmlContent.indexOf(imgMatches[i]);
+                // 最初の画像から500文字以内の画像は削除（重複アイキャッチとして）
+                if (imgIndex < firstImgIndex + 500) {
+                    htmlContent = htmlContent.replace(imgMatches[i], '');
+                    removedCount++;
+                }
+            }
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:692',message:'removeDuplicateH1AndEyeCatchFromHtml: Removed duplicate images',data:{removedImgCount:removedCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'S'})}).catch(()=>{});
+            // #endregion
+        }
+        
+        // #region agent log
+        const finalH1Count = (htmlContent.match(/<h1[^>]*>/gi) || []).length;
+        const finalImgCount = (htmlContent.match(/<img[^>]*>/gi) || []).length;
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:700',message:'removeDuplicateH1AndEyeCatchFromHtml: After processing',data:{htmlContentLength:htmlContent.length,finalH1Count:finalH1Count,finalImgCount:finalImgCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'T'})}).catch(()=>{});
+        // #endregion
+        
+        return htmlContent;
+    }
+
     createArticleTemplate(article) {
         return `# ${article.title}
 
