@@ -535,14 +535,17 @@ class RewriteSystem {
         content = this.removeDuplicateH1AndEyeCatch(content);
         
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:521',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:531',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
 
         // コンテンツをMarkdownからHTMLに変換
-        const htmlContent = this.markdownToHtml(content);
+        let htmlContent = this.markdownToHtml(content);
+        
+        // HTML変換後も重複するH1とアイキャッチ画像を削除（念のため）
+        htmlContent = this.removeDuplicateH1AndEyeCatchFromHtml(htmlContent);
         
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:525',message:'openRewriteModal: HTML content after markdownToHtml',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:540',message:'openRewriteModal: HTML content after markdownToHtml and cleanup',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
         
         // HTMLエディタにコンテンツを設定（先に設定）
