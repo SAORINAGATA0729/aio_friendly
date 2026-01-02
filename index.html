@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIO_PDCA爆速システム</title>
-    <link rel="stylesheet" href="/css/styles.css?v=1.0.1">
+    <link rel="stylesheet" href="/css/styles.css?v=1.0.4">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <!-- Quill.js for Rich Text Editor -->
@@ -532,16 +532,18 @@
     </div>
 
     <!-- スクリプト -->
-    <script src="/js/data-manager.js"></script>
-    <script src="/js/dashboard.js"></script>
-    <script src="/js/rewrite.js" onerror="window.rewriteJsLoadError = true; console.error('❌ rewrite.jsの読み込みに失敗しました');"></script>
-    <script src="/js/monitoring.js"></script>
-    <script src="/js/reporting.js"></script>
+    <script src="/js/data-manager.js?v=1.0.4"></script>
+    <script src="/js/dashboard.js?v=1.0.4"></script>
+    <script src="/js/rewrite.js?v=1.0.4" onerror="window.rewriteJsLoadError = true; console.error('❌ rewrite.jsの読み込みに失敗しました');"></script>
+    <script src="/js/monitoring.js?v=1.0.4"></script>
+    <script src="/js/reporting.js?v=1.0.4"></script>
     
     <!-- 初期化 -->
     <script>
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:525',message:'Script loading check - Before DOMContentLoaded',data:{Dashboard:typeof Dashboard,RewriteSystem:typeof RewriteSystem,MonitoringSystem:typeof MonitoringSystem,ReportingSystem:typeof ReportingSystem,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        const cssLink = document.querySelector('link[href*="styles.css"]');
+        const jsScripts = Array.from(document.querySelectorAll('script[src]')).map(s => s.src);
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:525',message:'Script loading check - Before DOMContentLoaded',data:{cssHref:cssLink?.href,jsScripts:jsScripts,Dashboard:typeof Dashboard,RewriteSystem:typeof RewriteSystem,MonitoringSystem:typeof MonitoringSystem,ReportingSystem:typeof ReportingSystem,rewriteJsLoadError:window.rewriteJsLoadError},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         
         // グローバル変数としてインスタンスを作成（windowオブジェクトに直接代入）

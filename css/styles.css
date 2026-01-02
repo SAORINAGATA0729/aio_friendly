@@ -1101,44 +1101,137 @@ body {
     background: #f8fafc;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    min-height: 60px;
 }
 
 /* 編集モード切り替えタブ */
 .editor-mode-tabs {
     display: flex;
-    gap: 0.5rem;
-    border-bottom: 2px solid transparent;
+    background: #e2e8f0;
+    padding: 4px;
+    border-radius: 0.6rem;
+    gap: 0;
 }
 
 .mode-tab {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: transparent;
+    padding: 0.4rem 1rem;
     border: none;
-    border-bottom: 2px solid transparent;
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.9rem;
-    transition: var(--transition);
+    border-radius: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
     font-family: 'Noto Sans JP', sans-serif;
 }
 
-.mode-tab:hover {
+.mode-tab.active {
+    background: white;
     color: var(--primary-color);
-    background: rgba(79, 70, 229, 0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.mode-tab.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-    font-weight: 600;
+.mode-tab:hover:not(.active) {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.5);
 }
 
 .mode-tab .material-icons-round {
     font-size: 18px;
+}
+
+/* ツールバーボタン */
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background: white;
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.toolbar-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: var(--text-primary);
+}
+
+/* 保存ボタン */
+.toolbar-btn[data-action="save"] {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+.toolbar-btn[data-action="save"]:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.3);
+}
+
+/* 検索バー */
+.search-bar {
+    display: none;
+    align-items: center;
+    background: white;
+    border: 1px solid var(--primary-color);
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.search-input {
+    border: none;
+    outline: none;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    width: 200px;
+    color: var(--text-primary);
+}
+
+.search-nav-btn, .search-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-nav-btn:hover, .search-close-btn:hover {
+    background: #f1f5f9;
+    color: var(--text-primary);
+}
+
+.search-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0.5rem;
+    min-width: 40px;
+    text-align: center;
 }
 
 /* エディタモードコンテナ */
@@ -1146,7 +1239,7 @@ body {
     display: none;
     flex: 1;
     overflow: hidden;
-    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
+    min-height: 0;
 }
 
 .editor-mode-container.active {
@@ -1158,7 +1251,6 @@ body {
 }
 
 /* HTMLエディタコンテナ */
-/* displayは.editor-mode-containerで制御されるため、ここでは指定しない */
 #htmlEditorContainer {
     flex-direction: column;
     flex: 1;
@@ -1170,7 +1262,7 @@ body {
 .html-editor {
     flex: 1;
     width: 100%;
-    min-height: 0; /* フレックスボックスの子要素の最小高さを0に */
+    min-height: 0;
     padding: 1.5rem;
     border: none;
     font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
@@ -1180,48 +1272,13 @@ body {
     background: #ffffff;
     color: #334155;
     overflow-y: auto;
-    box-sizing: border-box; /* paddingを含めた高さ計算 */
-    white-space: pre-wrap; /* 改行を保持 */
-    word-wrap: break-word; /* 長い単語を折り返し */
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .html-editor:focus {
     outline: none;
-}
-    display: flex;
-    gap: 1rem;
-}
-
-.toolbar-btn {
-    padding: 0.6rem 1.2rem;
-    background: white;
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 0.6rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: var(--transition);
-}
-
-.toolbar-btn:hover {
-    background: #f1f5f9;
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-
-.toolbar-btn[data-action="save"] {
-    background: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-    margin-left: auto;
-}
-
-.toolbar-btn[data-action="save"]:hover {
-    background: var(--primary-dark);
 }
 
 /* Quillエディタのスタイル */

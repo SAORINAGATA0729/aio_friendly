@@ -672,6 +672,10 @@ class RewriteSystem {
     }
 
     async openRewriteModal(article, fetchedContent = null) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:674',message:'openRewriteModal: Entry',data:{articleTitle:article.title,hasFetchedContent:!!fetchedContent},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
+        
         if (!this.progressData) {
             await this.loadProgressData();
         }
@@ -692,6 +696,13 @@ class RewriteSystem {
         
         // モーダルが開いたことを確認してから処理を続行
         await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // #region agent log
+        const checklistScore = document.getElementById('checklistScore');
+        const scoreRank = document.getElementById('scoreRank');
+        const scoreNumber = document.getElementById('scoreNumber');
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:692',message:'openRewriteModal: Modal opened, checking HTML structure',data:{checklistScoreExists:!!checklistScore,checklistScoreHTML:checklistScore?.innerHTML?.substring(0,500),scoreRankExists:!!scoreRank,scoreNumberExists:!!scoreNumber},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         
         // エクスポートボタンのイベントリスナーを設定（モーダルが開かれた後に設定）
         const exportBtn = document.getElementById('rewriteExportBtn');
@@ -813,8 +824,21 @@ class RewriteSystem {
             });
         }
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:827',message:'openRewriteModal: Before renderChecklist',data:{articleTitle:article.title,contentLength:content?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
+        
         this.renderChecklist(article, content);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:830',message:'openRewriteModal: After renderChecklist, before updateChecklist',data:{checklistItemsLength:this.checklistItems?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        
         this.updateChecklist(article, content);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:835',message:'openRewriteModal: After updateChecklist',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'J'})}).catch(()=>{});
+        // #endregion
         
         // エディタが正しく表示されているか確認
         const visualEditor = document.querySelector('.ql-editor');
@@ -1014,8 +1038,17 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     renderChecklist(article, content) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1027',message:'renderChecklist: Entry',data:{articleTitle:article.title,contentLength:content?.length,checklistItemsLength:this.checklistItems?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'})}).catch(()=>{});
+        // #endregion
+        
         const container = document.getElementById('checklistItems');
-        if (!container) return;
+        if (!container) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1032',message:'renderChecklist: checklistItems container NOT FOUND',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'K'})}).catch(()=>{});
+            // #endregion
+            return;
+        }
 
         container.innerHTML = '';
         
@@ -1069,6 +1102,10 @@ ${article.keyword}について、重要なポイントをまとめました。
             container.appendChild(div);
         });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1080',message:'renderChecklist: Calling updateScore',data:{checklistItemsCount:this.checklistItems.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
+        
         // スコアを更新
         this.updateScore();
     }
@@ -1083,6 +1120,10 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     updateScore() {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1085',message:'updateScore: Entry',data:{checklistItemsLength:this.checklistItems.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
         const totalItems = this.checklistItems.length;
         let checkedCount = 0;
         
@@ -1096,23 +1137,63 @@ ${article.keyword}について、重要なポイントをまとめました。
         const score = Math.round((checkedCount / totalItems) * 100);
         const rank = this.getRank(score);
         
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1097',message:'updateScore: Calculated score',data:{score:score,rank:rank,checkedCount:checkedCount,totalItems:totalItems},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        
         // スコア表示を更新
+        const checklistScore = document.getElementById('checklistScore');
+        if (!checklistScore) return;
+        
+        // HTML構造が正しくない場合（単純なテキストになっている場合）、正しい構造を再構築
         const scoreNumber = document.getElementById('scoreNumber');
         const scoreRank = document.getElementById('scoreRank');
         const checkedCountEl = document.getElementById('checkedCount');
         const totalCountEl = document.getElementById('totalCount');
         const scoreBarFill = document.getElementById('scoreBarFill');
         
-        if (scoreNumber) scoreNumber.textContent = score;
-        if (scoreRank) {
-            scoreRank.textContent = rank;
-            // 既存のクラスを維持しつつ、ランククラスを追加・更新
-            scoreRank.className = scoreRank.className.replace(/rank-[SABCD]/g, '').trim();
-            scoreRank.classList.add(`rank-${rank}`);
+        // HTML構造が正しくない場合、再構築
+        if (!scoreNumber || !scoreRank || !checkedCountEl || !totalCountEl || !scoreBarFill) {
+            checklistScore.innerHTML = `
+                <div class="score-status">
+                    <div class="score-main">
+                        <span class="score-label">現状</span>
+                        <span id="scoreNumber">0</span>
+                        <span class="score-unit">点</span>
+                        <span class="score-separator">/</span>
+                        <span class="score-total">100点</span>
+                    </div>
+                    <div class="score-rank-display">
+                        <span class="rank-label">RANK</span>
+                        <span id="scoreRank" class="rank-value">-</span>
+                    </div>
+                </div>
+                <div class="score-progress">
+                    <div class="score-bar">
+                        <div class="score-bar-fill" id="scoreBarFill" style="width: 0%"></div>
+                    </div>
+                    <div class="score-text">
+                        <span id="checkedCount">0</span> / <span id="totalCount">0</span> 項目
+                    </div>
+                </div>
+            `;
         }
-        if (checkedCountEl) checkedCountEl.textContent = checkedCount;
-        if (totalCountEl) totalCountEl.textContent = totalItems;
-        if (scoreBarFill) scoreBarFill.style.width = `${score}%`;
+        
+        // 要素を再取得
+        const scoreNumberEl = document.getElementById('scoreNumber');
+        const scoreRankEl = document.getElementById('scoreRank');
+        const checkedCountElNew = document.getElementById('checkedCount');
+        const totalCountElNew = document.getElementById('totalCount');
+        const scoreBarFillEl = document.getElementById('scoreBarFill');
+        
+        if (scoreNumberEl) scoreNumberEl.textContent = score;
+        if (scoreRankEl) {
+            scoreRankEl.textContent = rank;
+            scoreRankEl.className = `rank-value rank-${rank}`;
+        }
+        if (checkedCountElNew) checkedCountElNew.textContent = checkedCount;
+        if (totalCountElNew) totalCountElNew.textContent = totalItems;
+        if (scoreBarFillEl) scoreBarFillEl.style.width = `${score}%`;
     }
 
     getRank(score) {
@@ -1142,6 +1223,10 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     updateChecklist(article, content) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1183',message:'updateChecklist: Entry',data:{articleTitle:article.title,contentLength:content?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'})}).catch(()=>{});
+        // #endregion
+        
         // 手動チェックが設定されていない項目のみ自動チェックを更新
         // contentがHTML形式の場合は、Markdown形式に変換してからチェック
         let contentToCheck = content;
