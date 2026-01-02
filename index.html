@@ -531,31 +531,20 @@
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                console.log('[DEBUG] DOMContentLoaded: Starting initialization');
-                
                 // 各システムを初期化
                 window.dashboard = new Dashboard();
                 window.rewriteSystem = new RewriteSystem();
                 window.monitoringSystem = new MonitoringSystem();
                 window.reportingSystem = new ReportingSystem();
                 
-                console.log('[DEBUG] DOMContentLoaded: Systems created', {
-                    hasDashboard: !!window.dashboard,
-                    hasRewriteSystem: !!window.rewriteSystem,
-                    hasMonitoringSystem: !!window.monitoringSystem,
-                    hasReportingSystem: !!window.reportingSystem
-                });
-                
                 // 初期化を実行
                 await window.rewriteSystem.init();
                 await window.monitoringSystem.init();
                 await window.reportingSystem.init();
                 
-                console.log('[DEBUG] DOMContentLoaded: All systems initialized');
                 console.log('システムの初期化が完了しました');
             } catch (error) {
-                console.error('[ERROR] システムの初期化エラー:', error);
-                console.error('[ERROR] Stack:', error.stack);
+                console.error('システムの初期化エラー:', error);
             }
         });
     </script>
