@@ -633,7 +633,7 @@ class RewriteSystem {
         
         // エディタが正しく表示されているか確認
         const visualEditor = document.querySelector('.ql-editor');
-        const htmlEditor = document.getElementById('htmlEditor');
+        // htmlEditorは既に586行目で宣言済み
         
         if (!visualEditor && !htmlEditor) {
             console.warn('エディタ要素が見つかりません');
