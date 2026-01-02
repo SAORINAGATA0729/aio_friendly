@@ -2139,6 +2139,21 @@ class Dashboard {
             return;
         }
 
+        // プランが選択されている場合は、プランの記事一覧を表示しない（通常の記事一覧を非表示にする）
+        if (this.selectedPlanId) {
+            const articleListSection = document.querySelector('.article-list-section');
+            if (articleListSection) {
+                articleListSection.style.display = 'none';
+            }
+            return;
+        }
+
+        // 記事一覧セクションを表示
+        const articleListSection = document.querySelector('.article-list-section');
+        if (articleListSection) {
+            articleListSection.style.display = 'block';
+        }
+
         const articleList = document.getElementById('articleList');
         if (!articleList) {
             console.error('articleList要素が見つかりません！');
