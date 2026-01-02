@@ -233,15 +233,16 @@ body {
 /* ダッシュボードカード */
 .dashboard-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
     margin-bottom: 2.5rem;
 }
 
 /* ブランド認知度カードが確実に表示されるように */
-.dashboard-card:last-child {
+.dashboard-card {
     display: block !important;
     visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .dashboard-card {
