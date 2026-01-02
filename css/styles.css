@@ -529,9 +529,8 @@ body {
 
 .article-info {
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .article-title {

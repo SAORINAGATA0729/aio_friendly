@@ -40,7 +40,11 @@
         <main class="main-content">
             <!-- PDCAタブ -->
             <div class="pdca-tabs">
-                <button class="pdca-tab active" data-tab="plan">
+                <button class="pdca-tab active" data-tab="overview">
+                    <span class="material-icons-round">dashboard</span>
+                    Overview
+                </button>
+                <button class="pdca-tab" data-tab="plan">
                     <span class="material-icons-round">lightbulb</span>
                     Plan
                 </button>
@@ -58,9 +62,9 @@
                 </button>
             </div>
 
-            <!-- Planタブコンテンツ -->
-            <div id="planTab" class="tab-content active">
-                <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">仮説立案 & 現状把握</span></h2>
+            <!-- Overviewタブコンテンツ -->
+            <div id="overviewTab" class="tab-content active">
+                <h2>Overview <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">全体サマリー</span></h2>
                 
                 <!-- 現状把握カード -->
                 <div class="dashboard-cards">
@@ -112,9 +116,20 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 進捗状況 -->
-                <div class="progress-section">
+            <!-- Planタブコンテンツ -->
+            <div id="planTab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">仮説立案 & 現状把握</span></h2>
+                    <button id="createPlanBtn" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="material-icons-round">add</span>
+                        プランを作成する
+                    </button>
+                </div>
+                
+                <!-- 改修進捗状況（固定表示） -->
+                <div class="progress-section" style="position: sticky; top: 0; background: #f8fafc; z-index: 10; padding: 1rem 0; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem;">
                     <h3>改修進捗状況</h3>
                     <div class="progress-summary">
                         <div class="progress-item">
@@ -383,6 +398,245 @@
 
                     <div id="fetchStatus" style="margin-top: 15px; font-size: 0.9rem; min-height: 20px;"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- プラン作成/編集モーダル -->
+    <div id="planModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="planModalTitle">プランを作成</h2>
+                <button class="modal-close" id="closePlanModal">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="planForm">
+                    <!-- プラン名 -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">プラン名 *</label>
+                        <input type="text" id="planName" required 
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                            placeholder="例: Tier 1 記事改修プラン">
+                    </div>
+                    
+                    <!-- 目的 -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">目的 *</label>
+                        <textarea id="planObjective" required rows="3"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                            placeholder="このプランの目的を記入してください"></textarea>
+                    </div>
+                    
+                    <!-- 概要 -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">概要</label>
+                        <textarea id="planOverview" rows="4"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                            placeholder="プランの概要を記入してください"></textarea>
+                    </div>
+                    
+                    <!-- 次のステップ -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">次のステップ</label>
+                        <textarea id="planNextSteps" rows="3"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                            placeholder="次のステップを記入してください"></textarea>
+                    </div>
+                    
+                    <!-- 数値入力セクション -->
+                    <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">数値入力（Ahrefs等）</h3>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <!-- CSVインポートボタン -->
+                                <button type="button" id="importCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                    CSVからインポート
+                                </button>
+                                <!-- CSVエクスポートボタン（テンプレートダウンロード用） -->
+                                <button type="button" id="exportCsvTemplateBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">download</span>
+                                    テンプレート
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 非表示のファイル入力 -->
+                        <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">AIO引用数</label>
+                                <input type="number" id="planAioCitations" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="857">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="planAvgRanking" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="4.88">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">トラフィック（クリック数）</label>
+                                <input type="number" id="planTraffic" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="102000">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">ブランド認知度</label>
+                                <input type="number" id="planBrandClicks" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="22">
+                            </div>
+                        </div>
+                        
+                        <!-- API連携ボタン（将来実装用） -->
+                        <button type="button" id="connectAhrefsBtn" class="btn btn-secondary" 
+                            style="width: 100%; margin-top: 0.5rem; opacity: 0.6; cursor: not-allowed;"
+                            disabled title="Ahrefs API連携は今後実装予定">
+                            <span class="material-icons-round" style="margin-right: 4px;">link</span>
+                            Ahrefs API連携（今後実装予定）
+                        </button>
+                    </div>
+                    
+                    <!-- 記事URL一覧 -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">記事URL一覧</label>
+                        <div id="articleUrlsContainer" style="margin-bottom: 0.5rem;">
+                            <!-- URL入力欄が動的に追加される -->
+                        </div>
+                        <button type="button" id="addUrlBtn" class="btn btn-secondary" style="width: 100%;">
+                            <span class="material-icons-round" style="margin-right: 4px;">add</span>
+                            URLを追加
+                        </button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" id="cancelPlanBtn" class="btn btn-secondary">キャンセル</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ベースライン編集モーダル -->
+    <div id="baselineModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>ベースライン設定（2025年12月実績）</h2>
+                <button class="modal-close" id="closeBaselineModal">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="baselineForm">
+                    <!-- 数値入力 -->
+                    <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <h3 style="margin: 0 0 1rem; font-size: 1.1rem; color: var(--text-primary);">全体数値</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">AIO引用数</label>
+                                <input type="number" id="baselineAioCitations" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="857">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="baselineAvgRanking" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="4.88">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">トラフィック（クリック数）</label>
+                                <input type="number" id="baselineTraffic" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="102000">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">ブランド認知度</label>
+                                <input type="number" id="baselineBrandClicks" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                                    placeholder="22">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tier 1記事詳細データ入力 -->
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0 0 1rem; font-size: 1.1rem; color: var(--text-primary);">Tier 1記事詳細データ</h3>
+                        <div id="tier1ArticlesInputContainer" style="overflow-x: auto;">
+                            <!-- テーブルが動的に生成される -->
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('baselineModal').classList.remove('active')">キャンセル</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- エビデンス追加モーダル -->
+    <div id="evidenceModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>月次データを追加</h2>
+                <button class="modal-close" onclick="document.getElementById('evidenceModal').classList.remove('active')">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="evidenceForm">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">対象月</label>
+                        <input type="month" id="evidenceMonth" required
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <h3 style="margin: 0 0 1rem; font-size: 1.1rem; color: var(--text-primary);">実績数値</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">AIO引用数</label>
+                                <input type="number" id="evidenceAioCitations" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="evidenceAvgRanking" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">トラフィック</label>
+                                <input type="number" id="evidenceTraffic" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500;">ブランド認知度</label>
+                                <input type="number" id="evidenceBrandClicks" 
+                                    style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">備考</label>
+                        <textarea id="evidenceNotes" rows="3"
+                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
+                            placeholder="特記事項があれば記入してください"></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('evidenceModal').classList.remove('active')">キャンセル</button>
+                        <button type="button" class="btn btn-primary" onclick="dashboardSystem.saveEvidenceRecord()">保存</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

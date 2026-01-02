@@ -5,9 +5,11 @@
 
 class Dashboard {
     constructor() {
-        this.currentTab = 'plan';
+        this.currentTab = 'overview'; // 初期タブをOverviewに変更
         this.progressData = null;
         this.baselineData = null;
+        this.evidenceRecords = []; // エビデンス記録の配列
+        this.plans = []; // プラン一覧
         this.initialized = false;
         // init()は外部から明示的に呼び出す
     }
@@ -20,9 +22,20 @@ class Dashboard {
         
         this.initialized = true;
         await this.loadData();
+        await this.loadEvidenceRecords();
+        await this.loadPlans();
+        
         this.setupTabs();
-        this.updateDashboard();
         this.setupEventListeners();
+        this.setupBaselineManagement();
+        this.setupEvidenceManagement();
+        this.setupPlanManagement();
+        
+        this.updateDashboard();
+        this.renderBaseline();
+        this.renderEvidenceTable();
+        this.renderEvidenceChart();
+        this.renderPlans();
         
         // rewriteSystemの初期化を待つ（記事クリック時に必要）
         // rewriteSystemはindex.htmlで先に初期化されるので、ここでは確認のみ
@@ -58,7 +71,28 @@ class Dashboard {
         try {
             console.log('データ読み込み開始...');
             this.progressData = await dataManager.loadProgress();
-            this.baselineData = await dataManager.loadBaseline();
+            
+            // ベースライン読み込み（デフォルト値付き）
+            try {
+                this.baselineData = await dataManager.loadBaseline();
+            } catch (e) {
+                console.warn('ベースライン読み込み失敗、デフォルト値を使用します', e);
+            }
+
+            if (!this.baselineData) {
+                // デフォルト値を設定
+                this.baselineData = {
+                    period: '2025年12月',
+                    recordedDate: new Date().toISOString().split('T')[0],
+                    metrics: {
+                        aioCitations: 857,
+                        avgRanking: 4.88,
+                        traffic: 102000,
+                        brandClicks: 22
+                    },
+                    tier1Articles: [] // Tier 1記事の詳細データ
+                };
+            }
             
             console.log('dataManager.loadProgress()結果:', this.progressData);
             console.log('dataManager.loadBaseline()結果:', this.baselineData);
@@ -138,6 +172,39 @@ class Dashboard {
         }
     }
 
+    async loadEvidenceRecords() {
+        try {
+            const stored = localStorage.getItem('aio_pdca_evidence_records');
+            if (stored) {
+                this.evidenceRecords = JSON.parse(stored);
+            } else {
+                // 初期データとしてベースラインを追加
+                if (this.baselineData) {
+                    this.evidenceRecords = [{
+                        ...this.baselineData,
+                        id: 'baseline-2025-12'
+                    }];
+                }
+            }
+        } catch (error) {
+            console.error('エビデンス記録読み込みエラー:', error);
+            this.evidenceRecords = [];
+        }
+    }
+
+    async loadPlans() {
+        try {
+            if (this.progressData && this.progressData.plans) {
+                this.plans = this.progressData.plans;
+            } else {
+                this.plans = [];
+            }
+        } catch (error) {
+            console.error('プラン読み込みエラー:', error);
+            this.plans = [];
+        }
+    }
+
     setupTabs() {
         const tabs = document.querySelectorAll('.pdca-tab');
         tabs.forEach(tab => {
@@ -146,6 +213,111 @@ class Dashboard {
                 this.switchTab(tabName);
             });
         });
+    }
+
+    setupBaselineManagement() {
+        const editBaselineBtn = document.getElementById('editBaselineBtn');
+        const baselineModal = document.getElementById('baselineModal');
+        const closeBaselineModal = document.getElementById('closeBaselineModal');
+        const baselineForm = document.getElementById('baselineForm');
+        
+        if (editBaselineBtn && baselineModal) {
+            editBaselineBtn.addEventListener('click', () => {
+                this.openBaselineModal();
+            });
+        }
+        
+        if (closeBaselineModal && baselineModal) {
+            closeBaselineModal.addEventListener('click', () => {
+                baselineModal.classList.remove('active');
+            });
+        }
+        
+        if (baselineForm) {
+            baselineForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.saveBaseline();
+            });
+        }
+    }
+
+    setupEvidenceManagement() {
+        const addEvidenceBtn = document.getElementById('addEvidenceBtn');
+        const evidenceModal = document.getElementById('evidenceModal');
+        const exportEvidenceCsvBtn = document.getElementById('exportEvidenceCsvBtn');
+        
+        if (addEvidenceBtn && evidenceModal) {
+            addEvidenceBtn.addEventListener('click', () => {
+                this.openEvidenceModal();
+            });
+        }
+        
+        if (exportEvidenceCsvBtn) {
+            exportEvidenceCsvBtn.addEventListener('click', () => {
+                this.exportEvidenceCsv();
+            });
+        }
+    }
+
+    setupPlanManagement() {
+        const createPlanBtn = document.getElementById('createPlanBtn');
+        const planModal = document.getElementById('planModal');
+        const closePlanModal = document.getElementById('closePlanModal');
+        const planForm = document.getElementById('planForm');
+        const addUrlBtn = document.getElementById('addUrlBtn');
+        const cancelPlanBtn = document.getElementById('cancelPlanBtn');
+        const importCsvBtn = document.getElementById('importCsvBtn');
+        const exportCsvTemplateBtn = document.getElementById('exportCsvTemplateBtn');
+        const csvFileInput = document.getElementById('csvFileInput');
+
+        if (createPlanBtn) {
+            createPlanBtn.addEventListener('click', () => {
+                this.openPlanModal();
+            });
+        }
+
+        if (closePlanModal && planModal) {
+            closePlanModal.addEventListener('click', () => {
+                planModal.classList.remove('active');
+            });
+        }
+        
+        if (cancelPlanBtn && planModal) {
+            cancelPlanBtn.addEventListener('click', () => {
+                planModal.classList.remove('active');
+            });
+        }
+
+        if (addUrlBtn) {
+            addUrlBtn.addEventListener('click', () => {
+                this.addUrlInput();
+            });
+        }
+
+        if (planForm) {
+            planForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.savePlan();
+            });
+        }
+        
+        if (importCsvBtn && csvFileInput) {
+            importCsvBtn.addEventListener('click', () => {
+                csvFileInput.click();
+            });
+            
+            csvFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importCsvFile(e.target.files[0]);
+                }
+            });
+        }
+        
+        if (exportCsvTemplateBtn) {
+            exportCsvTemplateBtn.addEventListener('click', () => {
+                this.exportCsvTemplate();
+            });
+        }
     }
 
     getStatusClass(status) {
@@ -263,20 +435,24 @@ class Dashboard {
         if (!this.baselineData) return;
 
         // AIO引用数
-        const aioCount = this.baselineData.aioCitations?.googleAIOverview?.count || 0;
-        document.getElementById('aioCitationCount').textContent = aioCount.toLocaleString();
+        const aioCount = this.baselineData.metrics?.aioCitations || 0;
+        const aioEl = document.getElementById('aioCitationCount');
+        if (aioEl) aioEl.textContent = aioCount.toLocaleString();
         
         // 検索順位
-        const avgPosition = this.baselineData.searchRanking?.tier1Pages?.averagePosition || 0;
-        document.getElementById('searchRankingAvg').textContent = avgPosition.toFixed(2);
+        const avgPosition = this.baselineData.metrics?.avgRanking || 0;
+        const rankEl = document.getElementById('searchRankingAvg');
+        if (rankEl) rankEl.textContent = avgPosition.toFixed(2);
         
         // トラフィック
-        const trafficClicks = this.baselineData.traffic?.totalClicks || 0;
-        document.getElementById('trafficClicks').textContent = trafficClicks.toLocaleString();
+        const trafficClicks = this.baselineData.metrics?.traffic || 0;
+        const trafficEl = document.getElementById('trafficClicks');
+        if (trafficEl) trafficEl.textContent = trafficClicks.toLocaleString();
         
         // ブランド認知度
-        const brandClicks = this.baselineData.brandRecognition?.totalClicks || 0;
-        document.getElementById('brandClicks').textContent = brandClicks.toLocaleString();
+        const brandClicks = this.baselineData.metrics?.brandClicks || 0;
+        const brandEl = document.getElementById('brandClicks');
+        if (brandEl) brandEl.textContent = brandClicks.toLocaleString();
 
         // 進捗状況
         this.updateProgress();
@@ -376,34 +552,11 @@ class Dashboard {
 
         item.innerHTML = `
             <div class="article-info">
-                <div style="flex: 1;">
-                    <div class="article-title">${article.title}</div>
-                    <div class="article-meta">
-                        <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
-                        ${article.keyword}
-                    </div>
+                <div class="article-title">${article.title}</div>
+                <div class="article-meta">
+                    <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
+                    ${article.keyword}
                 </div>
-                <!-- プレビューボタンを追加 -->
-                <button class="article-preview-btn" data-article-id="${article.id}" 
-                    style="
-                        padding: 0.4rem 0.8rem;
-                        border-radius: 0.4rem;
-                        border: 1px solid var(--border-color);
-                        background: white;
-                        color: var(--text-primary);
-                        font-size: 0.85rem;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        gap: 0.3rem;
-                        transition: var(--transition);
-                    "
-                    title="保存済み内容をプレビュー"
-                    onmouseover="this.style.background='#f1f5f9'"
-                    onmouseout="this.style.background='white'">
-                    <span class="material-icons-round" style="font-size: 16px;">preview</span>
-                    プレビュー
-                </button>
             </div>
             <div style="display: flex; justify-content: center;">
                 <select class="article-status-select ${statusClass}" data-article-id="${article.id}" style="
@@ -458,26 +611,10 @@ class Dashboard {
             </div>
         `;
 
-        // プレビューボタンのイベントリスナー
-        const previewBtn = item.querySelector('.article-preview-btn');
-        if (previewBtn) {
-            previewBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await this.showArticlePreview(article);
-            });
-        }
-
         // 記事情報部分のみクリック可能にする
         const articleInfo = item.querySelector('.article-info');
         if (articleInfo) {
-            // プレビューボタン以外のクリックのみ処理
             articleInfo.addEventListener('click', async (e) => {
-                // プレビューボタンがクリックされた場合は無視
-                if (e.target.closest('.article-preview-btn')) {
-                    return;
-                }
-                
                 e.preventDefault();
                 e.stopPropagation();
                 

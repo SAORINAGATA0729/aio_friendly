@@ -202,6 +202,37 @@ class DataManager {
     }
 
     /**
+     * ベースラインデータを保存する
+     */
+    async saveBaseline(data) {
+        try {
+            const jsonString = JSON.stringify(data, null, 2);
+            const storageKey = this.storageKeys.baseline;
+            
+            // ローカルストレージに保存
+            localStorage.setItem(storageKey, jsonString);
+            
+            // File System Access APIを試行
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const fileHandle = await this.getFileHandleForSave(this.baselineFile);
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(jsonString);
+                    await writable.close();
+                    return true;
+                } catch (fsError) {
+                    console.warn('[WARN] saveBaseline: File System Access API failed:', fsError);
+                }
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('ベースライン保存エラー:', error);
+            return false;
+        }
+    }
+
+    /**
      * 進捗データを保存する
      */
     async saveProgress(data) {
