@@ -362,28 +362,30 @@ class RewriteSystem {
             // コンテンツの同期をスキップしない場合のみ、HTMLエディタの内容をQuillに反映
             if (!skipContentSync && this.quill && htmlEditor && htmlEditor.value) {
                 const htmlContent = htmlEditor.value.trim();
-                console.log('[DEBUG] switchEditorMode: Syncing HTML to Quill, content length:', htmlContent.length);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:363',message:'switchEditorMode: Syncing HTML to Quill',data:{skipContentSync:skipContentSync,mode:mode,htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,300),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+                // #endregion
                 if (htmlContent) {
                     // 既存のコンテンツをクリア
                     this.quill.setText('');
-                    console.log('[DEBUG] switchEditorMode: Quill cleared');
                     // Quillのエディタ要素を取得
                     const quillEditor = this.quill.root.querySelector('.ql-editor');
                     if (quillEditor) {
                         // 既存のコンテンツをクリア
                         quillEditor.innerHTML = '';
-                        console.log('[DEBUG] switchEditorMode: Quill editor innerHTML cleared');
                         // 新しいコンテンツを設定
                         quillEditor.innerHTML = htmlContent;
-                        console.log('[DEBUG] switchEditorMode: Quill editor innerHTML set, length:', quillEditor.innerHTML.length);
-                        console.log('[DEBUG] switchEditorMode: Quill editor preview:', quillEditor.innerHTML.substring(0, 200));
+                        // #region agent log
+                        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:377',message:'switchEditorMode: After setting Quill content',data:{quillEditorInnerHTML:quillEditor.innerHTML.substring(0,500),h1Count:(quillEditor.innerHTML.match(/<h1[^>]*>/gi)||[]).length,imgCount:(quillEditor.innerHTML.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
+                        // #endregion
                     } else {
                         this.quill.root.innerHTML = htmlContent;
-                        console.log('[DEBUG] switchEditorMode: Quill root innerHTML set');
                     }
                 }
             } else {
-                console.log('[DEBUG] switchEditorMode: Skipping content sync');
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:386',message:'switchEditorMode: Skipping content sync',data:{skipContentSync:skipContentSync,hasQuill:!!this.quill,hasHtmlEditor:!!htmlEditor,htmlEditorValue:htmlEditor?.value?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'I'})}).catch(()=>{});
+                // #endregion
             }
         } else {
             // HTMLモードに切り替え
