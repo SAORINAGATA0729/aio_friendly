@@ -485,18 +485,28 @@ class RewriteSystem {
         const exportModal = document.getElementById('exportModal');
         const closeExportModal = document.getElementById('closeExportModal');
         
+        console.log('[DEBUG] openRewriteModal: Export elements', {
+            exportBtn: !!exportBtn,
+            exportModal: !!exportModal,
+            closeExportModal: !!closeExportModal
+        });
         
         if (exportBtn && exportModal) {
             // 既存のイベントリスナーを削除（重複を防ぐ）
             const newExportBtn = exportBtn.cloneNode(true);
             exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
             
-            
+            console.log('[DEBUG] openRewriteModal: Adding click listener to exportBtn');
             newExportBtn.addEventListener('click', (e) => {
+                console.log('[DEBUG] Export button clicked in openRewriteModal');
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[DEBUG] Opening export modal');
                 exportModal.classList.add('active');
+                console.log('[DEBUG] Export modal active class added:', exportModal.classList.contains('active'));
             });
+        } else {
+            console.error('[ERROR] Export button or modal not found in openRewriteModal');
         }
         
         if (closeExportModal && exportModal) {
