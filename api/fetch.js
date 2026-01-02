@@ -29,20 +29,48 @@ module.exports = async function handler(req, res) {
         }
 
         // URLを取得
-        const targetUrl = decodeURIComponent(url);
+        let targetUrl;
+        try {
+            targetUrl = decodeURIComponent(url);
+        } catch (decodeError) {
+            console.error('URL decode error:', decodeError);
+            targetUrl = url; // デコードに失敗した場合は元のURLを使用
+        }
 
-        // HTMLを取得
-        const response = await fetch(targetUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+        console.log(`[DEBUG] Fetching URL: ${targetUrl}`);
+
+        let htmlContent;
+        let response;
+
+        // fetchが利用可能か確認（Node.js 18以降では利用可能）
+        if (typeof fetch === 'undefined') {
+            // Node.js 18未満の場合はnode-fetchを使用
+            try {
+                const nodeFetch = require('node-fetch');
+                response = await nodeFetch(targetUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+                    }
+                });
+            } catch (requireError) {
+                console.error('[ERROR] node-fetch require error:', requireError);
+                throw new Error('node-fetch is not available. Please install it or use Node.js 18+');
             }
-        });
+        } else {
+            // HTMLを取得
+            response = await fetch(targetUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+                }
+            });
+        }
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const htmlContent = await response.text();
+        htmlContent = await response.text();
+        console.log(`[DEBUG] HTML content length: ${htmlContent.length}`);
 
         // HTML内のH1タグを確認（デバッグ用）
         const h1Matches = htmlContent.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi);
@@ -86,10 +114,13 @@ module.exports = async function handler(req, res) {
         });
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[ERROR] Handler error:', error);
+        console.error('[ERROR] Error message:', error.message);
+        console.error('[ERROR] Stack:', error.stack);
         res.status(500).json({
             success: false,
-            error: error.message || 'Failed to fetch content'
+            error: error.message || 'Failed to fetch content',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 }
@@ -235,4 +266,3 @@ function htmlToMarkdown(html) {
     
     return content.trim();
 }
-
