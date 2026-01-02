@@ -1116,23 +1116,36 @@ ${article.keyword}について、重要なポイントをまとめました。
         
         console.log('[DEBUG] exportToWord: Document found:', typeof Document);
 
+        // docx.jsのクラスを取得
+        const Paragraph = docxLib.Paragraph || docxLib.default?.Paragraph;
+        const HeadingLevel = docxLib.HeadingLevel || docxLib.default?.HeadingLevel;
+        const Packer = docxLib.Packer || docxLib.default?.Packer;
+        const TextRun = docxLib.TextRun || docxLib.default?.TextRun;
+        
+        if (!Paragraph || !HeadingLevel || !Packer || !TextRun) {
+            console.error('[ERROR] exportToWord: Required classes not found');
+            console.error('[ERROR] exportToWord: Paragraph:', !!Paragraph, 'HeadingLevel:', !!HeadingLevel, 'Packer:', !!Packer, 'TextRun:', !!TextRun);
+            alert('Word形式のエクスポートに失敗しました。docx.jsライブラリが正しく読み込まれていません。\n\nHTML形式またはPDF形式でのエクスポートをお試しください。');
+            return;
+        }
+        
         // HTMLをパースしてdocx形式に変換
-        const doc = new docxLib.Document({
+        const doc = new Document({
             sections: [{
                 properties: {},
                 children: [
-                    new docxLib.Paragraph({
+                    new Paragraph({
                         text: title,
-                        heading: docxLib.HeadingLevel.HEADING_1,
+                        heading: HeadingLevel.HEADING_1,
                         spacing: { after: 400 }
                     }),
-                    ...this.htmlToDocxElements(htmlContent, docxLib)
+                    ...this.htmlToDocxElements(htmlContent, { Paragraph, HeadingLevel, TextRun })
                 ]
             }]
         });
 
         try {
-            const blob = await docxLib.Packer.toBlob(doc);
+            const blob = await Packer.toBlob(doc);
             if (typeof saveAs !== 'undefined') {
                 saveAs(blob, `${filename}.docx`);
             } else {
