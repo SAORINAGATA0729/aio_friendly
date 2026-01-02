@@ -1105,8 +1105,14 @@ ${article.keyword}について、重要なポイントをまとめました。
             }
         }
         
-        // Documentクラスが利用可能か確認
+        // docx.jsのクラスを取得
         const Document = docxLib.Document || docxLib.default?.Document;
+        const Paragraph = docxLib.Paragraph || docxLib.default?.Paragraph;
+        const HeadingLevel = docxLib.HeadingLevel || docxLib.default?.HeadingLevel;
+        const Packer = docxLib.Packer || docxLib.default?.Packer;
+        const TextRun = docxLib.TextRun || docxLib.default?.TextRun;
+        
+        // Documentクラスが利用可能か確認
         if (!Document) {
             console.error('[ERROR] exportToWord: Document not found. docxLib:', docxLib);
             console.error('[ERROR] exportToWord: Available keys:', Object.keys(docxLib));
@@ -1115,12 +1121,6 @@ ${article.keyword}について、重要なポイントをまとめました。
         }
         
         console.log('[DEBUG] exportToWord: Document found:', typeof Document);
-
-        // docx.jsのクラスを取得
-        const Paragraph = docxLib.Paragraph || docxLib.default?.Paragraph;
-        const HeadingLevel = docxLib.HeadingLevel || docxLib.default?.HeadingLevel;
-        const Packer = docxLib.Packer || docxLib.default?.Packer;
-        const TextRun = docxLib.TextRun || docxLib.default?.TextRun;
         
         if (!Paragraph || !HeadingLevel || !Packer || !TextRun) {
             console.error('[ERROR] exportToWord: Required classes not found');
