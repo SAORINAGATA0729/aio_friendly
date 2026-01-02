@@ -1079,7 +1079,7 @@ ${article.keyword}について、重要なポイントをまとめました。
                         heading: docxLib.HeadingLevel.HEADING_1,
                         spacing: { after: 400 }
                     }),
-                    ...this.htmlToDocxElements(htmlContent)
+                    ...this.htmlToDocxElements(htmlContent, docxLib)
                 ]
             }]
         });
