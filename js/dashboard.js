@@ -823,6 +823,9 @@ class Dashboard {
         
         // イベントリスナーを設定
         this.setupArticleMetricsListeners();
+        
+        // 数値を反映
+        this.updateMetricsFromArticleTable();
     }
     
     setupArticleMetricsListeners() {
