@@ -527,6 +527,9 @@ class RewriteSystem {
             }
         }
 
+        // 重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
+        content = this.removeDuplicateH1AndEyeCatch(content);
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:521',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
@@ -588,6 +591,57 @@ class RewriteSystem {
     getSlugFromUrl(url) {
         const match = url.match(/\/columns\/([^\/]+)/);
         return match ? match[1] : 'article';
+    }
+
+    /**
+     * 重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
+     */
+    removeDuplicateH1AndEyeCatch(content) {
+        if (!content) return content;
+        
+        const lines = content.split('\n');
+        let h1Found = false;
+        let eyeCatchFound = false;
+        const result = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+            
+            // H1のチェック（Markdown形式: # タイトル）
+            if (trimmedLine.match(/^#\s+/)) {
+                if (!h1Found) {
+                    // 最初のH1は保持
+                    result.push(line);
+                    h1Found = true;
+                } else {
+                    // 2つ目以降のH1はH2に変換
+                    const h2Line = line.replace(/^#\s+/, '## ');
+                    result.push(h2Line);
+                }
+            }
+            // アイキャッチ画像のチェック（Markdown形式: ![alt](url)）
+            else if (trimmedLine.match(/^!\[.*?\]\(.*?\)/)) {
+                if (!eyeCatchFound && h1Found) {
+                    // H1の直後の最初の画像をアイキャッチとして保持
+                    result.push(line);
+                    eyeCatchFound = true;
+                } else if (!eyeCatchFound && i < 10) {
+                    // 最初の10行以内の画像もアイキャッチとして扱う
+                    result.push(line);
+                    eyeCatchFound = true;
+                } else {
+                    // 2つ目以降の画像は保持（本文中の画像として）
+                    result.push(line);
+                }
+            }
+            else {
+                // その他の行はそのまま保持
+                result.push(line);
+            }
+        }
+        
+        return result.join('\n');
     }
 
     createArticleTemplate(article) {
