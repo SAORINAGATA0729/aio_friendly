@@ -345,16 +345,16 @@ class Dashboard {
     renderComparisonChart() {
         // Chart.jsを使用した比較グラフの実装
         // monitoring.jsで実装
-        if (typeof monitoringSystem !== 'undefined') {
-            monitoringSystem.renderComparisonChart();
+        if (typeof window.monitoringSystem !== 'undefined' && window.monitoringSystem) {
+            window.monitoringSystem.renderComparisonChart();
         }
     }
 
     renderResults() {
         // 効果測定結果の表示
         // reporting.jsで実装
-        if (typeof reportingSystem !== 'undefined') {
-            reportingSystem.renderResults();
+        if (typeof window.reportingSystem !== 'undefined' && window.reportingSystem) {
+            window.reportingSystem.renderResults();
         }
     }
 }
