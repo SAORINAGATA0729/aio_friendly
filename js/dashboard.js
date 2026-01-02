@@ -117,7 +117,7 @@ class Dashboard {
     }
 
     switchTab(tabName) {
-        console.log('switchTab called with:', tabName);
+        console.log('=== switchTab called ===', tabName);
         // タブの切り替え
         document.querySelectorAll('.pdca-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -128,6 +128,7 @@ class Dashboard {
             console.log('タブをアクティブにしました:', tabName);
         } else {
             console.error('タブが見つかりません:', tabName);
+            return;
         }
 
         // コンテンツの切り替え
@@ -140,24 +141,36 @@ class Dashboard {
             console.log('コンテンツをアクティブにしました:', `${tabName}Tab`);
         } else {
             console.error('コンテンツが見つかりません:', `${tabName}Tab`);
+            return;
         }
 
         this.currentTab = tabName;
 
         // タブごとの初期化（少し遅延させてDOMの更新を確実にする）
         setTimeout(() => {
-            console.log('タブ初期化開始, tabName:', tabName, 'progressData:', this.progressData);
+            console.log('=== タブ初期化開始 ===');
+            console.log('tabName:', tabName);
+            console.log('progressData:', this.progressData);
+            console.log('articles:', this.progressData?.articles);
+            
             if (tabName === 'do') {
                 console.log('Doタブが選択されました。記事一覧を表示します...');
-                console.log('progressData:', this.progressData);
-                console.log('articles:', this.progressData?.articles);
-                this.renderArticleList();
+                if (this.progressData && this.progressData.articles) {
+                    console.log('データが読み込まれています。記事一覧を表示します');
+                    this.renderArticleList();
+                } else {
+                    console.warn('データがまだ読み込まれていません。データを読み込みます...');
+                    this.loadData().then(() => {
+                        console.log('データ読み込み完了。記事一覧を表示します');
+                        this.renderArticleList();
+                    });
+                }
             } else if (tabName === 'check') {
                 this.renderComparisonChart();
             } else if (tabName === 'action') {
                 this.renderResults();
             }
-        }, 100);
+        }, 200);
     }
 
     updateDashboard() {
