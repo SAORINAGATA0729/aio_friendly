@@ -320,6 +320,301 @@ class Dashboard {
         }
     }
 
+    // --- プラン管理機能の実装メソッド ---
+
+    openPlanModal(planId = null) {
+        const modal = document.getElementById('planModal');
+        const title = document.getElementById('planModalTitle');
+        const form = document.getElementById('planForm');
+        
+        if (!modal || !form) {
+            console.error('プランモーダルまたはフォームが見つかりません');
+            return;
+        }
+        
+        form.reset();
+        const urlContainer = document.getElementById('articleUrlsContainer');
+        if (urlContainer) {
+            urlContainer.innerHTML = '';
+        }
+        
+        if (planId) {
+            if (title) title.textContent = 'プランを編集';
+            const plan = this.plans.find(p => p.id === planId);
+            if (plan) {
+                this.fillPlanForm(plan);
+                form.dataset.planId = planId;
+            }
+        } else {
+            if (title) title.textContent = '新規プラン作成';
+            delete form.dataset.planId;
+            // URL入力欄を1つ追加
+            this.addUrlInput();
+        }
+        
+        modal.classList.add('active');
+    }
+
+    addUrlInput(url = '') {
+        const container = document.getElementById('articleUrlsContainer');
+        if (!container) return;
+        
+        const div = document.createElement('div');
+        div.className = 'url-input-group';
+        div.style.display = 'flex';
+        div.style.gap = '0.5rem';
+        div.style.marginBottom = '0.5rem';
+        
+        div.innerHTML = `
+            <input type="url" class="article-url-input" value="${url}" required
+                style="flex: 1; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
+                placeholder="https://example.com/article">
+            <button type="button" class="remove-url-btn" style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0.5rem;">
+                <span class="material-icons-round">delete</span>
+            </button>
+        `;
+        
+        div.querySelector('.remove-url-btn').addEventListener('click', () => {
+            container.removeChild(div);
+        });
+        
+        container.appendChild(div);
+    }
+
+    fillPlanForm(plan) {
+        document.getElementById('planName').value = plan.name || '';
+        document.getElementById('planObjective').value = plan.objective || '';
+        document.getElementById('planOverview').value = plan.overview || '';
+        document.getElementById('planNextSteps').value = plan.nextSteps || '';
+        document.getElementById('planAioCitations').value = plan.metrics?.aioCitations || '';
+        document.getElementById('planAvgRanking').value = plan.metrics?.avgRanking || '';
+        document.getElementById('planTraffic').value = plan.metrics?.traffic || '';
+        document.getElementById('planBrandClicks').value = plan.metrics?.brandClicks || '';
+        
+        const urlContainer = document.getElementById('articleUrlsContainer');
+        if (urlContainer) {
+            urlContainer.innerHTML = '';
+            if (plan.articleUrls && plan.articleUrls.length > 0) {
+                plan.articleUrls.forEach(url => this.addUrlInput(url));
+            } else {
+                this.addUrlInput();
+            }
+        }
+    }
+
+    async savePlan() {
+        const form = document.getElementById('planForm');
+        if (!form) return;
+        
+        const planId = form.dataset.planId;
+        
+        const planData = {
+            id: planId || `plan-${Date.now()}`,
+            name: document.getElementById('planName').value,
+            objective: document.getElementById('planObjective').value,
+            overview: document.getElementById('planOverview').value,
+            nextSteps: document.getElementById('planNextSteps').value,
+            metrics: {
+                aioCitations: parseInt(document.getElementById('planAioCitations').value) || 0,
+                avgRanking: parseFloat(document.getElementById('planAvgRanking').value) || 0,
+                traffic: parseInt(document.getElementById('planTraffic').value) || 0,
+                brandClicks: parseInt(document.getElementById('planBrandClicks').value) || 0
+            },
+            articleUrls: Array.from(document.querySelectorAll('.article-url-input'))
+                .map(input => input.value)
+                .filter(url => url.trim() !== ''),
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (!planId) {
+            planData.createdAt = new Date().toISOString();
+            this.plans.push(planData);
+        } else {
+            const index = this.plans.findIndex(p => p.id === planId);
+            if (index !== -1) {
+                this.plans[index] = { ...this.plans[index], ...planData };
+            }
+        }
+        
+        await this.savePlans();
+        
+        const modal = document.getElementById('planModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        this.renderPlans();
+    }
+
+    async savePlans() {
+        if (!this.progressData) {
+            this.progressData = { articles: [], plans: [] };
+        }
+        this.progressData.plans = this.plans;
+        await dataManager.saveProgress(this.progressData);
+    }
+
+    renderPlans() {
+        const container = document.getElementById('plansList');
+        if (!container) return;
+        
+        if (this.plans.length === 0) {
+            container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">プランがまだありません。「プランを作成する」ボタンから作成してください。</p>';
+            return;
+        }
+        
+        container.innerHTML = this.plans.map(plan => `
+            <div class="plan-card" style="background: white; border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm);">
+                <div class="plan-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div>
+                        <h4 style="margin: 0; font-size: 1.25rem; color: var(--text-primary); font-weight: 700;">${plan.name}</h4>
+                        <div style="font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem;">更新日: ${new Date(plan.updatedAt).toLocaleDateString()}</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="edit-plan-btn" data-id="${plan.id}" style="padding: 0.4rem; color: #3b82f6; background: #eff6ff; border: none; border-radius: 0.4rem; cursor: pointer;">
+                            <span class="material-icons-round" style="font-size: 18px;">edit</span>
+                        </button>
+                        <button class="delete-plan-btn" data-id="${plan.id}" style="padding: 0.4rem; color: #ef4444; background: #fef2f2; border: none; border-radius: 0.4rem; cursor: pointer;">
+                            <span class="material-icons-round" style="font-size: 18px;">delete</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="plan-card-body">
+                    <div style="margin-bottom: 1rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: #374151; margin-bottom: 0.25rem;">目的</strong>
+                        <p style="margin: 0; font-size: 0.95rem; color: #4b5563; white-space: pre-wrap;">${plan.objective}</p>
+                    </div>
+                    
+                    ${plan.overview ? `
+                    <div style="margin-bottom: 1rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: #374151; margin-bottom: 0.25rem;">概要</strong>
+                        <p style="margin: 0; font-size: 0.95rem; color: #4b5563; white-space: pre-wrap;">${plan.overview}</p>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: #6b7280;">AIO引用数</div>
+                            <div style="font-weight: 700; color: #2563eb;">${(plan.metrics?.aioCitations || 0).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: #6b7280;">平均順位</div>
+                            <div style="font-weight: 700; color: #059669;">${(plan.metrics?.avgRanking || 0).toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: #6b7280;">トラフィック</div>
+                            <div style="font-weight: 700; color: #d97706;">${(plan.metrics?.traffic || 0).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    ${plan.articleUrls && plan.articleUrls.length > 0 ? `
+                    <div style="margin-top: 1rem;">
+                        <strong style="display: block; font-size: 0.85rem; color: #374151; margin-bottom: 0.25rem;">対象記事 (${plan.articleUrls.length})</strong>
+                        <div style="max-height: 100px; overflow-y: auto; font-size: 0.85rem; color: #6b7280; background: #fff; border: 1px solid #e5e7eb; border-radius: 0.4rem; padding: 0.5rem;">
+                            ${plan.articleUrls.map(url => `<div style="margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${url}</div>`).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // イベントリスナー
+        container.querySelectorAll('.edit-plan-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.openPlanModal(btn.dataset.id));
+        });
+        
+        container.querySelectorAll('.delete-plan-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm('本当にこのプランを削除しますか？')) {
+                    await this.deletePlan(btn.dataset.id);
+                }
+            });
+        });
+    }
+
+    async deletePlan(planId) {
+        this.plans = this.plans.filter(p => p.id !== planId);
+        await this.savePlans();
+        this.renderPlans();
+    }
+    
+    importCsvFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const csvText = e.target.result;
+            const data = this.parseCsv(csvText);
+            if (data) {
+                this.fillMetricsFromCsv(data);
+                alert('CSVからデータをインポートしました');
+            } else {
+                alert('CSVデータの形式が正しくありません');
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    parseCsv(csvText) {
+        // 簡易的なCSVパーサー
+        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
+        if (lines.length < 2) return null;
+        
+        // ヘッダー行を解析
+        const headers = lines[0].split(',').map(h => h.trim());
+        const values = lines[1].split(',').map(v => v.trim());
+        
+        const data = {};
+        
+        // ヘッダーのマッピング
+        const headerMap = {
+            'AIO引用数': 'aioCitations',
+            '引用数': 'aioCitations',
+            '検索順位': 'avgRanking',
+            '平均順位': 'avgRanking',
+            'トラフィック': 'traffic',
+            'クリック数': 'traffic',
+            'ブランド認知度': 'brandClicks',
+            '指名検索': 'brandClicks'
+        };
+        
+        headers.forEach((header, i) => {
+            // "を削除
+            const cleanHeader = header.replace(/^"|"$/g, '');
+            const key = Object.keys(headerMap).find(k => cleanHeader.includes(k));
+            if (key && values[i]) {
+                const cleanValue = values[i].replace(/^"|"$/g, '');
+                data[headerMap[key]] = parseFloat(cleanValue) || 0;
+            }
+        });
+        
+        return data;
+    }
+    
+    fillMetricsFromCsv(data) {
+        if (data.aioCitations) document.getElementById('planAioCitations').value = data.aioCitations;
+        if (data.avgRanking) document.getElementById('planAvgRanking').value = data.avgRanking;
+        if (data.traffic) document.getElementById('planTraffic').value = data.traffic;
+        if (data.brandClicks) document.getElementById('planBrandClicks').value = data.brandClicks;
+    }
+    
+    exportCsvTemplate() {
+        const headers = ['AIO引用数', '検索順位', 'トラフィック', 'ブランド認知度'];
+        const example = ['857', '4.88', '102000', '22'];
+        
+        const csvContent = [
+            headers.join(','),
+            example.join(',')
+        ].join('\n');
+        
+        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `metric_template.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
     getStatusClass(status) {
         return status === '完了' ? 'completed' : 
                status === '進行中' ? 'inProgress' : 'notStarted';
