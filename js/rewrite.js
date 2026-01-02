@@ -299,17 +299,27 @@ class RewriteSystem {
         const exportModal = document.getElementById('exportModal');
         const closeExportModal = document.getElementById('closeExportModal');
         
+        console.log('[DEBUG] setupEditor: Export elements', {
+            exportBtn: !!exportBtn,
+            exportModal: !!exportModal,
+            closeExportModal: !!closeExportModal
+        });
         
         if (exportBtn) {
             exportBtn.addEventListener('click', (e) => {
+                console.log('[DEBUG] Export button clicked in setupEditor');
                 e.preventDefault();
                 e.stopPropagation();
                 if (exportModal) {
+                    console.log('[DEBUG] Opening export modal');
                     exportModal.classList.add('active');
+                    console.log('[DEBUG] Export modal active class added:', exportModal.classList.contains('active'));
                 } else {
+                    console.error('[ERROR] Export modal not found');
                 }
             });
         } else {
+            console.error('[ERROR] Export button not found in setupEditor');
         }
 
         if (closeExportModal) {
