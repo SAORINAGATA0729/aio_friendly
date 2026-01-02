@@ -426,5 +426,38 @@
     <script src="js/rewrite.js"></script>
     <script src="js/monitoring.js"></script>
     <script src="js/reporting.js"></script>
+    
+    <!-- 初期化 -->
+    <script>
+        // グローバル変数としてインスタンスを作成
+        let dataManager;
+        let dashboard;
+        let rewriteSystem;
+        let monitoringSystem;
+        let reportingSystem;
+
+        // DOMContentLoaded後に初期化
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // DataManagerを先に初期化
+                dataManager = new DataManager();
+                
+                // 各システムを初期化
+                dashboard = new Dashboard();
+                rewriteSystem = new RewriteSystem();
+                monitoringSystem = new MonitoringSystem();
+                reportingSystem = new ReportingSystem();
+                
+                // 初期化を実行
+                await rewriteSystem.init();
+                await monitoringSystem.init();
+                await reportingSystem.init();
+                
+                console.log('システムの初期化が完了しました');
+            } catch (error) {
+                console.error('システムの初期化エラー:', error);
+            }
+        });
+    </script>
 </body>
 </html>
