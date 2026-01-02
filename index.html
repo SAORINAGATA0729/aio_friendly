@@ -429,25 +429,25 @@
     
     <!-- 初期化 -->
     <script>
-        // グローバル変数としてインスタンスを作成
-        let dashboard;
-        let rewriteSystem;
-        let monitoringSystem;
-        let reportingSystem;
+        // グローバル変数としてインスタンスを作成（windowオブジェクトに直接代入）
+        window.dashboard = null;
+        window.rewriteSystem = null;
+        window.monitoringSystem = null;
+        window.reportingSystem = null;
 
         // DOMContentLoaded後に初期化
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // 各システムを初期化
-                dashboard = new Dashboard();
-                rewriteSystem = new RewriteSystem();
-                monitoringSystem = new MonitoringSystem();
-                reportingSystem = new ReportingSystem();
+                window.dashboard = new Dashboard();
+                window.rewriteSystem = new RewriteSystem();
+                window.monitoringSystem = new MonitoringSystem();
+                window.reportingSystem = new ReportingSystem();
                 
                 // 初期化を実行
-                await rewriteSystem.init();
-                await monitoringSystem.init();
-                await reportingSystem.init();
+                await window.rewriteSystem.init();
+                await window.monitoringSystem.init();
+                await window.reportingSystem.init();
                 
                 console.log('システムの初期化が完了しました');
             } catch (error) {
