@@ -1077,31 +1077,44 @@ ${article.keyword}について、重要なポイントをまとめました。
         // docx.jsを動的インポートで読み込む（ES6モジュール形式）
         let docxLib;
         try {
-            // 動的インポートを使用してdocx.jsを読み込む
+            // jsdelivrのESM形式を使用
             const docxModule = await import('https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm');
+            // docx.jsは名前付きエクスポートを使用
             docxLib = docxModule;
-            console.log('[DEBUG] exportToWord: docx.js loaded via dynamic import');
+            console.log('[DEBUG] exportToWord: docx.js loaded via jsdelivr ESM');
+            console.log('[DEBUG] exportToWord: docxModule keys:', Object.keys(docxModule));
         } catch (importError) {
-            console.error('[ERROR] exportToWord: Failed to load docx.js:', importError);
-            // フォールバック: unpkgを試す
+            console.error('[ERROR] exportToWord: jsdelivr import failed:', importError);
+            // フォールバック: skypackを試す
             try {
-                const docxModule2 = await import('https://unpkg.com/docx@8.5.0/build/index.js');
-                docxLib = docxModule2;
-                console.log('[DEBUG] exportToWord: docx.js loaded via unpkg');
+                const docxModule2 = await import('https://cdn.skypack.dev/docx@8.5.0');
+                docxLib = docxModule2.default || docxModule2;
+                console.log('[DEBUG] exportToWord: docx.js loaded via skypack');
             } catch (importError2) {
-                console.error('[ERROR] exportToWord: All import methods failed:', importError2);
-                alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。\n\n現在、docx.jsの読み込みに失敗しています。\n\n別の方法として、HTML形式またはPDF形式でのエクスポートをお試しください。\n\nHTML形式でエクスポートしたファイルは、Microsoft Wordで開いて保存することでWord形式に変換できます。');
-                return;
+                console.error('[ERROR] exportToWord: skypack import failed:', importError2);
+                // 最後のフォールバック: esm.shを試す
+                try {
+                    const docxModule3 = await import('https://esm.sh/docx@8.5.0');
+                    docxLib = docxModule3.default || docxModule3;
+                    console.log('[DEBUG] exportToWord: docx.js loaded via esm.sh');
+                } catch (importError3) {
+                    console.error('[ERROR] exportToWord: All import methods failed:', importError3);
+                    alert('Word形式のエクスポートにはdocx.jsライブラリが必要です。\n\n現在、docx.jsの読み込みに失敗しています。\n\n別の方法として、HTML形式またはPDF形式でのエクスポートをお試しください。\n\nHTML形式でエクスポートしたファイルは、Microsoft Wordで開いて保存することでWord形式に変換できます。');
+                    return;
+                }
             }
         }
         
-        if (!docxLib || !docxLib.Document) {
-            console.error('[ERROR] exportToWord: docx.Document not found');
+        // Documentクラスが利用可能か確認
+        const Document = docxLib.Document || docxLib.default?.Document;
+        if (!Document) {
+            console.error('[ERROR] exportToWord: Document not found. docxLib:', docxLib);
+            console.error('[ERROR] exportToWord: Available keys:', Object.keys(docxLib));
             alert('Word形式のエクスポートに失敗しました。docx.jsライブラリが正しく読み込まれていません。\n\nHTML形式またはPDF形式でのエクスポートをお試しください。');
             return;
         }
         
-        console.log('[DEBUG] exportToWord: docxLib ready, has Document:', typeof docxLib.Document);
+        console.log('[DEBUG] exportToWord: Document found:', typeof Document);
 
         // HTMLをパースしてdocx形式に変換
         const doc = new docxLib.Document({
@@ -1139,6 +1152,7 @@ ${article.keyword}について、重要なポイントをまとめました。
 
     htmlToDocxElements(html, docxLib) {
         // 簡易的なHTML→docx要素変換
+        const { Paragraph, HeadingLevel, TextRun } = docxLib;
         const elements = [];
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
@@ -1147,7 +1161,7 @@ ${article.keyword}について、重要なポイントをまとめました。
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.textContent.trim();
                 if (text) {
-                    return new docxLib.TextRun(text);
+                    return new TextRun(text);
                 }
                 return null;
             }
@@ -1157,53 +1171,53 @@ ${article.keyword}について、重要なポイントをまとめました。
                 
                 switch (tagName) {
                     case 'h1':
-                        return new docxLib.Paragraph({
+                        return new Paragraph({
                             text: node.textContent,
-                            heading: docxLib.HeadingLevel.HEADING_1,
+                            heading: HeadingLevel.HEADING_1,
                             spacing: { after: 400 }
                         });
                     case 'h2':
-                        return new docxLib.Paragraph({
+                        return new Paragraph({
                             text: node.textContent,
-                            heading: docxLib.HeadingLevel.HEADING_2,
+                            heading: HeadingLevel.HEADING_2,
                             spacing: { after: 300 }
                         });
                     case 'h3':
-                        return new docxLib.Paragraph({
+                        return new Paragraph({
                             text: node.textContent,
-                            heading: docxLib.HeadingLevel.HEADING_3,
+                            heading: HeadingLevel.HEADING_3,
                             spacing: { after: 200 }
                         });
                     case 'p':
                         const runs = Array.from(node.childNodes)
                             .map(processNode)
                             .filter(n => n !== null);
-                        return new docxLib.Paragraph({
-                            children: runs.length > 0 ? runs : [new docxLib.TextRun('')],
+                        return new Paragraph({
+                            children: runs.length > 0 ? runs : [new TextRun('')],
                             spacing: { after: 200 }
                         });
                     case 'strong':
                     case 'b':
-                        return new docxLib.TextRun({
+                        return new TextRun({
                             text: node.textContent,
                             bold: true
                         });
                     case 'em':
                     case 'i':
-                        return new docxLib.TextRun({
+                        return new TextRun({
                             text: node.textContent,
                             italics: true
                         });
                     case 'ul':
                     case 'ol':
                         const listItems = Array.from(node.querySelectorAll('li'))
-                            .map(li => new docxLib.Paragraph({
+                            .map(li => new Paragraph({
                                 text: li.textContent,
                                 bullet: { level: 0 }
                             }));
                         return listItems;
                     case 'li':
-                        return new docxLib.Paragraph({
+                        return new Paragraph({
                             text: node.textContent,
                             bullet: { level: 0 }
                         });
@@ -1223,7 +1237,7 @@ ${article.keyword}について、重要なポイントをまとめました。
             .filter(n => n !== null)
             .flat();
 
-        return result.length > 0 ? result : [new docxLib.Paragraph({ text: '' })];
+        return result.length > 0 ? result : [new Paragraph({ text: '' })];
     }
 
     exportToHTML(htmlContent, title, filename) {
