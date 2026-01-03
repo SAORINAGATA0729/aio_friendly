@@ -624,6 +624,12 @@ class RewriteSystem {
         // HTMLエディタの変更を監視
         if (htmlEditor) {
             htmlEditor.addEventListener('input', () => {
+                // HTMLエディタの内容が変更されたときにチェックリストを更新
+                if (this.currentArticle) {
+                    const htmlContent = htmlEditor.value;
+                    const markdownContent = this.htmlToMarkdown(htmlContent);
+                    this.updateChecklist(this.currentArticle, markdownContent);
+                }
                 if (this.currentArticle) {
                     const htmlContent = htmlEditor.value;
                     const markdownContent = this.htmlToMarkdown(htmlContent);
@@ -2760,15 +2766,26 @@ ${article.keyword}について、重要なポイントをまとめました。
             this.manualChecks = {};
         }
         
+        // contentがHTML形式の場合は、Markdown形式に変換してからチェック
+        let contentToCheck = content;
+        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(contentToCheck);
+        if (isHtml) {
+            contentToCheck = this.htmlToMarkdown(contentToCheck);
+        }
+        
         this.checklistItems.forEach(item => {
             const div = document.createElement('div');
             div.className = 'checklist-item';
             div.dataset.itemId = item.id;
             
-            // 自動チェック結果
-            const autoChecked = item.check(content);
+            // 自動チェック結果（デフォルトで適用）
+            const autoChecked = item.check(contentToCheck);
+            // 手動チェックが設定されていない場合は自動チェック結果をデフォルトで適用
+            if (this.manualChecks[item.id] === undefined) {
+                this.manualChecks[item.id] = autoChecked;
+            }
             // 手動チェック状態（優先）または自動チェック結果
-            const isChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
+            const isChecked = this.manualChecks[item.id];
             
             div.innerHTML = `
                 <div class="checklist-checkbox">
@@ -3061,44 +3078,42 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     updateChecklist(article, content) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1183',message:'updateChecklist: Entry',data:{articleTitle:article.title,contentLength:content?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'})}).catch(()=>{});
-        // #endregion
-        
-        // 手動チェックが設定されていない項目のみ自動チェックを更新
         // contentがHTML形式の場合は、Markdown形式に変換してからチェック
-        let contentToCheck = content;
+        let contentToCheck = content || this.getCurrentContent();
         
         // HTML形式かどうかを判定（<h1>タグや<img>タグが含まれている場合）
-        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(content);
+        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(contentToCheck);
         if (isHtml) {
             // HTML形式の場合はMarkdownに変換
-            contentToCheck = this.htmlToMarkdown(content);
+            contentToCheck = this.htmlToMarkdown(contentToCheck);
+        }
+        
+        // manualChecksが初期化されていない場合は初期化
+        if (!this.manualChecks) {
+            this.manualChecks = {};
         }
         
         this.checklistItems.forEach(item => {
             const div = document.querySelector(`[data-item-id="${item.id}"]`);
             if (!div) return;
             
-            // 手動チェックが設定されている場合はスキップ
-            if (this.manualChecks && this.manualChecks[item.id] !== undefined) {
-                return;
-            }
+            // 自動チェック結果を取得
+            const autoChecked = item.check(contentToCheck);
             
-            const checked = item.check(contentToCheck);
-            this.updateChecklistItem(div, item.id, checked);
+            // 手動チェックが設定されている場合は手動チェックを優先
+            // 手動チェックが設定されていない場合は自動チェック結果をデフォルトで適用
+            if (this.manualChecks[item.id] === undefined) {
+                // 手動チェックが設定されていない場合、自動チェック結果をデフォルトで適用
+                this.manualChecks[item.id] = autoChecked;
+            }
+            // 手動チェックが設定されている場合は、そのまま使用（ユーザーが変更した状態を保持）
+            
+            const isChecked = this.manualChecks[item.id];
+            this.updateChecklistItem(div, item.id, isChecked);
         });
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1275',message:'updateChecklist: Before calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
         
         // スコアを更新
         this.updateScore();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1280',message:'updateChecklist: After calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
     }
 
     /**
