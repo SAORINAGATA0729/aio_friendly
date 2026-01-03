@@ -1044,8 +1044,12 @@ class RewriteSystem {
         content = this.removeDuplicateH1AndEyeCatch(content);
         
         // 編集履歴の開始（元のコンテンツを保存）
-        if (editHistoryManager) {
-            editHistoryManager.startEdit(article.id, content);
+        const historyManager = window.editHistoryManager || editHistoryManager;
+        if (historyManager) {
+            console.log('編集履歴を開始します:', article.id, content.substring(0, 100) + '...');
+            historyManager.startEdit(article.id, content);
+        } else {
+            console.warn('editHistoryManagerが見つかりません');
         }
         
         // 提案履歴を表示
@@ -1883,24 +1887,42 @@ ${article.keyword}について、重要なポイントをまとめました。
             }
             
             // 編集履歴を記録（ログインしている場合）
-            if (authManager && authManager.isAuthenticated() && editHistoryManager) {
-                const user = authManager.getCurrentUser();
+            const historyManager = window.editHistoryManager || editHistoryManager;
+            const authMgr = window.authManager || authManager;
+            
+            if (authMgr && authMgr.isAuthenticated() && historyManager) {
+                const user = authMgr.getCurrentUser();
                 try {
-                    const suggestionId = await editHistoryManager.saveSuggestion(
+                    console.log('編集履歴を保存します...', {
+                        articleId: this.currentArticle.id,
+                        contentLength: content.length,
+                        userId: user.uid,
+                        userName: user.displayName || user.email
+                    });
+                    
+                    const suggestionId = await historyManager.saveSuggestion(
                         this.currentArticle.id,
                         content,
                         user.uid,
                         user.displayName || user.email,
                         user.email
                     );
+                    
                     if (suggestionId) {
-                        console.log('編集履歴を記録しました');
+                        console.log('✅ 編集履歴を記録しました:', suggestionId);
                     } else {
-                        console.log('変更がないため編集履歴は記録されませんでした');
+                        console.log('ℹ️ 変更がないため編集履歴は記録されませんでした');
                     }
                 } catch (historyError) {
-                    console.error('編集履歴の記録エラー:', historyError);
+                    console.error('❌ 編集履歴の記録エラー:', historyError);
+                    console.error('エラー詳細:', historyError.stack);
                     // エラーがあっても保存は続行
+                }
+            } else {
+                if (!authMgr || !authMgr.isAuthenticated()) {
+                    console.log('ℹ️ ログインしていないため編集履歴は記録されません');
+                } else if (!historyManager) {
+                    console.warn('⚠️ editHistoryManagerが見つかりません');
                 }
             }
             

@@ -94,10 +94,30 @@ class EditHistoryManager {
      * 変更を記録（提案として保存）
      */
     async saveSuggestion(articleId, newContent, userId, userName, userEmail) {
-        const diff = await this.calculateDiff(this.currentEdit.originalContent, newContent);
+        // currentEditが存在しない場合は、元のコンテンツを取得してから開始
+        if (!this.currentEdit || !this.currentEdit.originalContent) {
+            console.warn('currentEditが存在しません。元のコンテンツを取得します...');
+            // 保存済みのコンテンツを取得（フォールバック）
+            try {
+                const savedContent = localStorage.getItem(`article_${articleId}_content`);
+                if (savedContent) {
+                    this.startEdit(articleId, savedContent);
+                } else {
+                    console.error('元のコンテンツが見つかりません。編集履歴を記録できません。');
+                    return null;
+                }
+            } catch (e) {
+                console.error('元のコンテンツの取得に失敗:', e);
+                return null;
+            }
+        }
+        
+        const originalContent = this.currentEdit.originalContent;
+        const diff = await this.calculateDiff(originalContent, newContent);
         
         // 変更がない場合はnullを返す
-        if (diff.diffs.length <= 1 && diff.diffs[0][0] === 0) {
+        if (diff.diffs.length <= 1 && diff.diffs[0] && diff.diffs[0][0] === 0) {
+            console.log('変更がないため編集履歴は記録されませんでした');
             return null;
         }
 
@@ -107,7 +127,7 @@ class EditHistoryManager {
             userName: userName,
             userEmail: userEmail,
             userAvatar: authManager?.currentUser?.photoURL || null,
-            originalContent: this.currentEdit.originalContent,
+            originalContent: originalContent,
             newContent: newContent,
             diff: diff,
             status: 'pending',
@@ -267,4 +287,6 @@ class EditHistoryManager {
 let editHistoryManager;
 document.addEventListener('DOMContentLoaded', () => {
     editHistoryManager = new EditHistoryManager();
+    // グローバルに公開（他のスクリプトからアクセス可能にする）
+    window.editHistoryManager = editHistoryManager;
 });
