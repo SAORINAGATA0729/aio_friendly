@@ -1177,6 +1177,55 @@ tr:last-child td {
     padding: 0 2px;
 }
 
+/* 提案マーカーのスタイル */
+.suggestion-marker {
+    background-color: #fef3c7;
+    border-bottom: 2px solid #f59e0b;
+    padding: 0 2px;
+    position: relative;
+    display: inline;
+}
+
+.suggestion-marker .suggestion-icon {
+    font-size: 14px !important;
+    vertical-align: middle;
+    margin-left: 4px;
+    color: #f59e0b !important;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.suggestion-marker:hover {
+    background-color: #fde68a;
+}
+
+/* 提案ツールチップ */
+.suggestion-tooltip {
+    position: fixed;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    min-width: 200px;
+    cursor: pointer;
+}
+
+.suggestion-tooltip .tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #f59e0b;
+}
+
+.suggestion-tooltip .tooltip-content {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
 
 /* フィルタボタン（ステータス切り替え） */
 .filter-buttons {

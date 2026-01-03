@@ -425,6 +425,43 @@ class RewriteSystem {
             
             Quill.register(CustomImage, true);
             
+            // 提案マーカーのカスタムBlotを作成
+            const Inline = Quill.import('blots/inline');
+            
+            class SuggestionMarker extends Inline {
+                static create(value) {
+                    const node = super.create();
+                    node.setAttribute('class', 'suggestion-marker');
+                    node.setAttribute('data-suggestion-id', value?.suggestionId || '');
+                    node.setAttribute('data-user-id', value?.userId || '');
+                    node.setAttribute('data-user-name', value?.userName || '');
+                    node.setAttribute('title', `提案: ${value?.userName || '不明'}`);
+                    
+                    // アイコンを追加
+                    const icon = document.createElement('span');
+                    icon.className = 'material-icons-round suggestion-icon';
+                    icon.textContent = 'rate_review';
+                    icon.style.cssText = 'font-size: 14px; vertical-align: middle; margin-left: 4px; color: #f59e0b; cursor: pointer;';
+                    
+                    node.appendChild(icon);
+                    return node;
+                }
+                
+                static formats(node) {
+                    return {
+                        suggestionId: node.getAttribute('data-suggestion-id'),
+                        userId: node.getAttribute('data-user-id'),
+                        userName: node.getAttribute('data-user-name')
+                    };
+                }
+            }
+            
+            SuggestionMarker.blotName = 'suggestion';
+            SuggestionMarker.tagName = 'span';
+            SuggestionMarker.className = 'suggestion-marker';
+            
+            Quill.register(SuggestionMarker, true);
+            
             this.quill = new Quill('#quillEditor', {
                 theme: 'snow',
                 modules: {
@@ -446,7 +483,7 @@ class RewriteSystem {
                     }
                 },
                 placeholder: '記事を編集してください...',
-                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block']
+                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block', 'suggestion']
             });
             
             // 画像をクリックしたときにALTタグを編集できるように
@@ -454,7 +491,20 @@ class RewriteSystem {
                 if (e.target.tagName === 'IMG') {
                     this.editImageAlt(e.target);
                 }
+                
+                // 提案アイコンをクリックしたとき
+                if (e.target.classList.contains('suggestion-icon') || e.target.closest('.suggestion-marker')) {
+                    const marker = e.target.closest('.suggestion-marker') || e.target.parentElement;
+                    if (marker) {
+                        const suggestionId = marker.getAttribute('data-suggestion-id');
+                        const userName = marker.getAttribute('data-user-name');
+                        this.showSuggestionTooltip(marker, suggestionId, userName);
+                    }
+                }
             });
+            
+            // 提案モード時の変更を追跡
+            this.setupSuggestionTracking();
         }
 
         // 編集モード切り替えタブ
@@ -675,6 +725,9 @@ class RewriteSystem {
             suggestionEditTab?.classList.remove('active');
             normalEditTab?.classList.remove('suggestion-mode');
             suggestionEditTab?.classList.remove('suggestion-mode');
+            
+            // 提案マーカーを削除
+            this.removeSuggestionMarkers();
         } else if (mode === 'suggestion') {
             suggestionEditTab?.classList.add('active');
             normalEditTab?.classList.remove('active');
@@ -687,7 +740,145 @@ class RewriteSystem {
                 window.editHistoryManager.startEdit(this.currentArticle.id, markdownContent);
                 console.log('提案モード: 編集履歴を開始しました');
             }
+            
+            // 既存の提案をマーカーで表示
+            this.markExistingSuggestions();
         }
+    }
+    
+    /**
+     * 提案モード時の変更追跡を設定
+     */
+    setupSuggestionTracking() {
+        if (!this.quill) return;
+        
+        let lastContent = '';
+        let isTracking = false;
+        
+        // テキスト変更を監視
+        this.quill.on('text-change', () => {
+            if (this.currentEditMode !== 'suggestion' || isTracking) return;
+            
+            isTracking = true;
+            setTimeout(() => {
+                const currentContent = this.quill.root.innerHTML;
+                
+                // 選択範囲がある場合、変更箇所にマーカーを追加
+                const selection = this.quill.getSelection();
+                if (selection && selection.length > 0) {
+                    const range = { index: selection.index, length: selection.length };
+                    this.addSuggestionMarker(range);
+                }
+                
+                lastContent = currentContent;
+                isTracking = false;
+            }, 500); // 500ms後に実行（連続入力の最後を検出）
+        });
+    }
+    
+    /**
+     * 選択範囲に提案マーカーを追加
+     */
+    addSuggestionMarker(range) {
+        if (!this.quill || this.currentEditMode !== 'suggestion') return;
+        
+        const authMgr = window.authManager || authManager;
+        if (!authMgr || !authMgr.isAuthenticated()) return;
+        
+        const user = authMgr.getCurrentUser();
+        if (!user) return;
+        
+        try {
+            // 選択範囲に提案マーカーを適用
+            this.quill.formatText(range.index, range.length, 'suggestion', {
+                suggestionId: `temp_${Date.now()}`,
+                userId: user.uid,
+                userName: user.displayName || user.email
+            });
+        } catch (e) {
+            console.error('提案マーカーの追加エラー:', e);
+        }
+    }
+    
+    /**
+     * 既存の提案をマーカーで表示
+     */
+    async markExistingSuggestions() {
+        if (!this.currentArticle || !window.editHistoryManager) return;
+        
+        try {
+            const suggestions = await window.editHistoryManager.getSuggestions(this.currentArticle.id);
+            const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
+            
+            // 各提案の変更箇所をマーカーで表示
+            // これは簡易実装で、実際の変更箇所の特定は複雑なので、
+            // 保存時にマーカーを追加する方式に変更する方が良いかもしれません
+        } catch (e) {
+            console.error('既存提案のマーカー表示エラー:', e);
+        }
+    }
+    
+    /**
+     * 提案マーカーを削除
+     */
+    removeSuggestionMarkers() {
+        if (!this.quill) return;
+        
+        const markers = this.quill.root.querySelectorAll('.suggestion-marker');
+        markers.forEach(marker => {
+            const range = this.quill.getBounds(marker);
+            if (range) {
+                this.quill.formatText(range.index, range.length, 'suggestion', false);
+            }
+        });
+    }
+    
+    /**
+     * 提案ツールチップを表示
+     */
+    showSuggestionTooltip(marker, suggestionId, userName) {
+        // 既存のツールチップを削除
+        const existingTooltip = document.querySelector('.suggestion-tooltip');
+        if (existingTooltip) {
+            existingTooltip.remove();
+        }
+        
+        const tooltip = document.createElement('div');
+        tooltip.className = 'suggestion-tooltip';
+        tooltip.innerHTML = `
+            <div class="tooltip-header">
+                <span class="material-icons-round" style="font-size: 16px; color: #f59e0b;">rate_review</span>
+                <strong>提案</strong>
+            </div>
+            <div class="tooltip-content">
+                <div>編集者: ${userName || '不明'}</div>
+                <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
+                    クリックして詳細を表示
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(tooltip);
+        
+        // マーカーの位置にツールチップを配置
+        const rect = marker.getBoundingClientRect();
+        tooltip.style.left = `${rect.left}px`;
+        tooltip.style.top = `${rect.bottom + 5}px`;
+        
+        // 3秒後に自動で削除
+        setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.remove();
+            }
+        }, 3000);
+        
+        // クリックで詳細を表示
+        tooltip.addEventListener('click', () => {
+            if (suggestionId && window.suggestionUIManager) {
+                window.suggestionUIManager.showDiff(suggestionId);
+            }
+            tooltip.remove();
+        });
     }
 
     handleImageUpload() {
