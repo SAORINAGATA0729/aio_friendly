@@ -378,6 +378,12 @@ select:focus {
     margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    gap: 1rem; /* gapを追加してitemと合わせる */
+}
+
+/* プラン選択時の7列レイアウト */
+.article-list-header.plan-mode {
+    grid-template-columns: 3fr 1fr 0.8fr 0.8fr 0.7fr 0.7fr 0.7fr;
 }
 
 .article-item {
@@ -391,6 +397,11 @@ select:focus {
     cursor: pointer;
     transition: var(--transition);
     gap: 1rem;
+}
+
+/* プラン選択時の7列レイアウト */
+.article-item.plan-mode {
+    grid-template-columns: 3fr 1fr 0.8fr 0.8fr 0.7fr 0.7fr 0.7fr;
 }
 
 .article-item:hover {
