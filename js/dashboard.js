@@ -32,6 +32,7 @@ class Dashboard {
         this.setupEvidenceManagement();
         this.setupPlanManagement();
         this.setupPlanSelection();
+        this.setupCheckTab();
         
         this.updateDashboard();
         this.renderBaseline();
@@ -511,6 +512,7 @@ class Dashboard {
         }
         this.renderPlans();
         this.updatePlanSelectOptions();
+        this.updateCheckPlanSelect();
     }
 
     async savePlans() {
@@ -610,6 +612,7 @@ class Dashboard {
         await this.savePlans();
         this.renderPlans();
         this.updatePlanSelectOptions();
+        this.updateCheckPlanSelect();
         
         // 現在選択されているプランが削除された場合、選択をリセット
         const planSelect = document.getElementById('selectedPlanId');
@@ -643,6 +646,7 @@ class Dashboard {
             
             // プラン一覧をドロップダウンに追加
             this.updatePlanSelectOptions();
+            this.updateCheckPlanSelect();
             
             // #region agent log
             fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:675',message:'before addEventListener',data:{freshPlanSelectExists:!!freshPlanSelect,optionsCount:freshPlanSelect?.options?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
@@ -2820,6 +2824,470 @@ class Dashboard {
         }
         
         return formatted;
+    }
+
+    setupCheckTab() {
+        const checkPlanSelect = document.getElementById('checkPlanSelect');
+        const publishDate = document.getElementById('publishDate');
+        const measurement2weeks = document.getElementById('measurement2weeks');
+        const measurement3weeks = document.getElementById('measurement3weeks');
+        const import2weeksCsvBtn = document.getElementById('import2weeksCsvBtn');
+        const import3weeksCsvBtn = document.getElementById('import3weeksCsvBtn');
+        const csv2weeksFileInput = document.getElementById('csv2weeksFileInput');
+        const csv3weeksFileInput = document.getElementById('csv3weeksFileInput');
+        const saveCheckDataBtn = document.getElementById('saveCheckDataBtn');
+        const checkMetricsSection = document.getElementById('checkMetricsSection');
+        const checkResultsSection = document.getElementById('checkResultsSection');
+
+        // プラン選択ドロップダウンを更新
+        this.updateCheckPlanSelect();
+
+        // プラン選択時の処理
+        if (checkPlanSelect) {
+            checkPlanSelect.addEventListener('change', (e) => {
+                const planId = e.target.value;
+                if (planId) {
+                    this.loadPlanForCheck(planId);
+                } else {
+                    checkMetricsSection.style.display = 'none';
+                    checkResultsSection.style.display = 'none';
+                }
+            });
+        }
+
+        // 公開完了日の変更時に2週間後、3週間後の計測日を自動計算
+        if (publishDate) {
+            publishDate.addEventListener('change', (e) => {
+                const publishDateValue = new Date(e.target.value);
+                if (!isNaN(publishDateValue.getTime())) {
+                    // 2週間後（14日後）
+                    const date2weeks = new Date(publishDateValue);
+                    date2weeks.setDate(date2weeks.getDate() + 14);
+                    measurement2weeks.value = this.formatDateTimeLocal(date2weeks);
+
+                    // 3週間後（21日後）
+                    const date3weeks = new Date(publishDateValue);
+                    date3weeks.setDate(date3weeks.getDate() + 21);
+                    measurement3weeks.value = this.formatDateTimeLocal(date3weeks);
+                }
+            });
+        }
+
+        // 2週間後CSVインポート
+        if (import2weeksCsvBtn && csv2weeksFileInput) {
+            import2weeksCsvBtn.addEventListener('click', () => {
+                csv2weeksFileInput.click();
+            });
+            
+            csv2weeksFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importCheckCsvFile(e.target.files[0], '2weeks');
+                }
+            });
+        }
+
+        // 3週間後CSVインポート
+        if (import3weeksCsvBtn && csv3weeksFileInput) {
+            import3weeksCsvBtn.addEventListener('click', () => {
+                csv3weeksFileInput.click();
+            });
+            
+            csv3weeksFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importCheckCsvFile(e.target.files[0], '3weeks');
+                }
+            });
+        }
+
+        // データ保存
+        if (saveCheckDataBtn) {
+            saveCheckDataBtn.addEventListener('click', () => {
+                this.saveCheckData();
+            });
+        }
+
+        // レポート生成
+        const generateCheckReportHtmlBtn = document.getElementById('generateCheckReportHtmlBtn');
+        const generateCheckReportPdfBtn = document.getElementById('generateCheckReportPdfBtn');
+        
+        if (generateCheckReportHtmlBtn) {
+            generateCheckReportHtmlBtn.addEventListener('click', () => {
+                this.generateCheckReportHtml();
+            });
+        }
+        
+        if (generateCheckReportPdfBtn) {
+            generateCheckReportPdfBtn.addEventListener('click', () => {
+                this.generateCheckReportPdf();
+            });
+        }
+    }
+
+    updateCheckPlanSelect() {
+        const checkPlanSelect = document.getElementById('checkPlanSelect');
+        if (!checkPlanSelect) return;
+
+        checkPlanSelect.innerHTML = '<option value="">プランを選択してください</option>';
+        
+        this.plans.forEach(plan => {
+            const option = document.createElement('option');
+            option.value = plan.id;
+            option.textContent = plan.name;
+            checkPlanSelect.appendChild(option);
+        });
+    }
+
+    async loadPlanForCheck(planId) {
+        const plan = this.plans.find(p => p.id === planId);
+        if (!plan) return;
+
+        const checkMetricsSection = document.getElementById('checkMetricsSection');
+        checkMetricsSection.style.display = 'block';
+
+        // 現状数値をプランから引き継ぎ
+        document.getElementById('currentAioCitations').value = plan.metrics?.aioCitations ?? '';
+        document.getElementById('currentAvgRanking').value = plan.metrics?.avgRanking ?? '';
+        document.getElementById('currentTraffic').value = plan.metrics?.traffic ?? '';
+        document.getElementById('currentBrandClicks').value = plan.metrics?.brandClicks ?? '';
+
+        // 保存済みのCheckデータを読み込む
+        await this.loadCheckData(planId);
+    }
+
+    async loadCheckData(planId) {
+        const checkData = localStorage.getItem(`checkData_${planId}`);
+        if (checkData) {
+            try {
+                const data = JSON.parse(checkData);
+                
+                // 計測日を復元
+                if (data.publishDate) {
+                    document.getElementById('publishDate').value = data.publishDate;
+                    // 計測日の自動計算をトリガー
+                    const event = new Event('change');
+                    document.getElementById('publishDate').dispatchEvent(event);
+                }
+                
+                // 2週間後の数値を復元
+                if (data.metrics2weeks) {
+                    document.getElementById('metrics2weeksAioCitations').value = data.metrics2weeks.aioCitations ?? '';
+                    document.getElementById('metrics2weeksAvgRanking').value = data.metrics2weeks.avgRanking ?? '';
+                    document.getElementById('metrics2weeksTraffic').value = data.metrics2weeks.traffic ?? '';
+                    document.getElementById('metrics2weeksBrandClicks').value = data.metrics2weeks.brandClicks ?? '';
+                }
+                
+                // 3週間後の数値を復元
+                if (data.metrics3weeks) {
+                    document.getElementById('metrics3weeksAioCitations').value = data.metrics3weeks.aioCitations ?? '';
+                    document.getElementById('metrics3weeksAvgRanking').value = data.metrics3weeks.avgRanking ?? '';
+                    document.getElementById('metrics3weeksTraffic').value = data.metrics3weeks.traffic ?? '';
+                    document.getElementById('metrics3weeksBrandClicks').value = data.metrics3weeks.brandClicks ?? '';
+                }
+
+                // 結果を表示
+                this.renderCheckResults(planId);
+            } catch (error) {
+                console.error('Checkデータの読み込みエラー:', error);
+            }
+        }
+    }
+
+    importCheckCsvFile(file, period) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const csvText = e.target.result;
+            const data = this.parseCsv(csvText);
+            if (data) {
+                this.fillCheckMetricsFromCsv(data, period);
+                alert(`${period === '2weeks' ? '2週間後' : '3週間後'}のCSVからデータをインポートしました`);
+            } else {
+                alert('CSVデータの形式が正しくありません');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    fillCheckMetricsFromCsv(data, period) {
+        const prefix = period === '2weeks' ? 'metrics2weeks' : 'metrics3weeks';
+        
+        if (data.aioCitations) document.getElementById(`${prefix}AioCitations`).value = data.aioCitations;
+        if (data.avgRanking) document.getElementById(`${prefix}AvgRanking`).value = data.avgRanking;
+        if (data.traffic) document.getElementById(`${prefix}Traffic`).value = data.traffic;
+        if (data.brandClicks) document.getElementById(`${prefix}BrandClicks`).value = data.brandClicks;
+    }
+
+    saveCheckData() {
+        const checkPlanSelect = document.getElementById('checkPlanSelect');
+        const planId = checkPlanSelect.value;
+        if (!planId) {
+            alert('プランを選択してください');
+            return;
+        }
+
+        const checkData = {
+            planId: planId,
+            publishDate: document.getElementById('publishDate').value,
+            measurement2weeks: document.getElementById('measurement2weeks').value,
+            measurement3weeks: document.getElementById('measurement3weeks').value,
+            metrics2weeks: {
+                aioCitations: parseFloat(document.getElementById('metrics2weeksAioCitations').value) || 0,
+                avgRanking: parseFloat(document.getElementById('metrics2weeksAvgRanking').value) || 0,
+                traffic: parseFloat(document.getElementById('metrics2weeksTraffic').value) || 0,
+                brandClicks: parseFloat(document.getElementById('metrics2weeksBrandClicks').value) || 0
+            },
+            metrics3weeks: {
+                aioCitations: parseFloat(document.getElementById('metrics3weeksAioCitations').value) || 0,
+                avgRanking: parseFloat(document.getElementById('metrics3weeksAvgRanking').value) || 0,
+                traffic: parseFloat(document.getElementById('metrics3weeksTraffic').value) || 0,
+                brandClicks: parseFloat(document.getElementById('metrics3weeksBrandClicks').value) || 0
+            }
+        };
+
+        localStorage.setItem(`checkData_${planId}`, JSON.stringify(checkData));
+        alert('データを保存しました');
+        
+        // 結果を表示
+        this.renderCheckResults(planId);
+    }
+
+    renderCheckResults(planId) {
+        const plan = this.plans.find(p => p.id === planId);
+        if (!plan) return;
+
+        const checkResultsSection = document.getElementById('checkResultsSection');
+        checkResultsSection.style.display = 'block';
+
+        const checkData = localStorage.getItem(`checkData_${planId}`);
+        if (!checkData) return;
+
+        const data = JSON.parse(checkData);
+        
+        // 現状数値
+        const current = {
+            aioCitations: parseFloat(plan.metrics?.aioCitations) || 0,
+            avgRanking: parseFloat(plan.metrics?.avgRanking) || 0,
+            traffic: parseFloat(plan.metrics?.traffic) || 0,
+            brandClicks: parseFloat(plan.metrics?.brandClicks) || 0
+        };
+
+        // 2週間後数値
+        const metrics2weeks = data.metrics2weeks || {};
+        
+        // 3週間後数値
+        const metrics3weeks = data.metrics3weeks || {};
+
+        // 比較表を生成
+        this.renderMetricsComparisonTable(current, metrics2weeks, metrics3weeks);
+        
+        // グラフを生成
+        this.renderCheckChart(current, metrics2weeks, metrics3weeks);
+    }
+
+    renderMetricsComparisonTable(current, metrics2weeks, metrics3weeks) {
+        const tbody = document.getElementById('metricsComparisonBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        const metrics = [
+            { key: 'aioCitations', label: 'AIO引用数', unit: '' },
+            { key: 'avgRanking', label: '検索順位（平均）', unit: '' },
+            { key: 'traffic', label: 'トラフィック（クリック数）', unit: '' },
+            { key: 'brandClicks', label: 'ブランド認知度', unit: '' }
+        ];
+
+        metrics.forEach(metric => {
+            const currentValue = current[metric.key] || 0;
+            const value2weeks = metrics2weeks[metric.key] || 0;
+            const value3weeks = metrics3weeks[metric.key] || 0;
+            
+            // 変化率を計算（3週間後）
+            const changeRate = currentValue !== 0 
+                ? ((value3weeks - currentValue) / currentValue * 100).toFixed(1)
+                : '0.0';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="padding: 1rem; font-weight: 500;">${metric.label}</td>
+                <td style="padding: 1rem; text-align: right;">${currentValue.toLocaleString()}</td>
+                <td style="padding: 1rem; text-align: right;">${value2weeks.toLocaleString()}</td>
+                <td style="padding: 1rem; text-align: right;">${value3weeks.toLocaleString()}</td>
+                <td style="padding: 1rem; text-align: right; color: ${parseFloat(changeRate) >= 0 ? '#10b981' : '#ef4444'};">
+                    ${changeRate}%
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    renderCheckChart(current, metrics2weeks, metrics3weeks) {
+        const canvas = document.getElementById('checkComparisonChart');
+        if (!canvas) return;
+
+        // Chart.jsが読み込まれているか確認
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.jsが読み込まれていません');
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        // 既存のチャートを破棄
+        if (this.checkChart) {
+            this.checkChart.destroy();
+        }
+
+        const metrics = [
+            { key: 'aioCitations', label: 'AIO引用数' },
+            { key: 'avgRanking', label: '検索順位（平均）' },
+            { key: 'traffic', label: 'トラフィック（クリック数）' },
+            { key: 'brandClicks', label: 'ブランド認知度' }
+        ];
+
+        this.checkChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['現状', '2週間後', '3週間後'],
+                datasets: metrics.map((metric, index) => ({
+                    label: metric.label,
+                    data: [
+                        current[metric.key] || 0,
+                        metrics2weeks[metric.key] || 0,
+                        metrics3weeks[metric.key] || 0
+                    ],
+                    borderColor: `hsl(${index * 90}, 70%, 50%)`,
+                    backgroundColor: `hsla(${index * 90}, 70%, 50%, 0.1)`,
+                    tension: 0.4
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    formatDateTimeLocal(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    generateCheckReportHtml() {
+        const checkPlanSelect = document.getElementById('checkPlanSelect');
+        const planId = checkPlanSelect.value;
+        if (!planId) {
+            alert('プランを選択してください');
+            return;
+        }
+
+        const plan = this.plans.find(p => p.id === planId);
+        const checkData = localStorage.getItem(`checkData_${planId}`);
+        if (!checkData) {
+            alert('データが保存されていません');
+            return;
+        }
+
+        const data = JSON.parse(checkData);
+        const current = {
+            aioCitations: parseFloat(plan.metrics?.aioCitations) || 0,
+            avgRanking: parseFloat(plan.metrics?.avgRanking) || 0,
+            traffic: parseFloat(plan.metrics?.traffic) || 0,
+            brandClicks: parseFloat(plan.metrics?.brandClicks) || 0
+        };
+
+        const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkレポート - ${plan.name}</title>
+    <style>
+        body { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; padding: 2rem; }
+        h1 { color: #1f2937; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; }
+        th { background: #f9fafb; font-weight: 600; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>Checkレポート: ${plan.name}</h1>
+    <h2>計測日</h2>
+    <p>公開完了日: ${data.publishDate || '未設定'}</p>
+    <p>2週間後計測日: ${data.measurement2weeks || '未設定'}</p>
+    <p>3週間後計測日: ${data.measurement3weeks || '未設定'}</p>
+    
+    <h2>数値比較表</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>指標</th>
+                <th>現状</th>
+                <th>2週間後</th>
+                <th>3週間後</th>
+                <th>変化率（3週間後）</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${this.generateCheckReportTableRows(current, data.metrics2weeks || {}, data.metrics3weeks || {})}
+        </tbody>
+    </table>
+</body>
+</html>
+        `;
+
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `check_report_${plan.name}_${new Date().toISOString().split('T')[0]}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    generateCheckReportTableRows(current, metrics2weeks, metrics3weeks) {
+        const metrics = [
+            { key: 'aioCitations', label: 'AIO引用数' },
+            { key: 'avgRanking', label: '検索順位（平均）' },
+            { key: 'traffic', label: 'トラフィック（クリック数）' },
+            { key: 'brandClicks', label: 'ブランド認知度' }
+        ];
+
+        return metrics.map(metric => {
+            const currentValue = current[metric.key] || 0;
+            const value2weeks = metrics2weeks[metric.key] || 0;
+            const value3weeks = metrics3weeks[metric.key] || 0;
+            const changeRate = currentValue !== 0 
+                ? ((value3weeks - currentValue) / currentValue * 100).toFixed(1)
+                : '0.0';
+            const changeClass = parseFloat(changeRate) >= 0 ? 'positive' : 'negative';
+            
+            return `
+                <tr>
+                    <td>${metric.label}</td>
+                    <td>${currentValue.toLocaleString()}</td>
+                    <td>${value2weeks.toLocaleString()}</td>
+                    <td>${value3weeks.toLocaleString()}</td>
+                    <td class="${changeClass}">${changeRate}%</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    generateCheckReportPdf() {
+        alert('PDF生成機能は今後実装予定です');
+        // TODO: jsPDFやhtml2pdfなどのライブラリを使用してPDF生成
     }
 }
 

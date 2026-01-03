@@ -121,7 +121,7 @@
             <!-- Planタブコンテンツ -->
             <div id="planTab" class="tab-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">プラン管理</span></h2>
+                    <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">プランニングシートを作る</span></h2>
                     <button id="createPlanBtn" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
                         <span class="material-icons-round">add</span>
                         プランを作成する
@@ -196,91 +196,174 @@
             <div id="checkTab" class="tab-content">
                 <h2>Check <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">検証 & モニタリング</span></h2>
                 
-                <!-- モニタリングデータ入力 -->
-                <div class="monitoring-section">
-                    <h3>モニタリングデータ入力</h3>
-                    <form id="monitoringForm">
+                <!-- プラン選択 -->
+                <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">プランニングシートを選択</label>
+                    <select id="checkPlanSelect" style="width: 100%; max-width: 500px; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.9rem; background: white;">
+                        <option value="">プランを選択してください</option>
+                    </select>
+                </div>
+
+                <!-- 計測日設定 -->
+                <div class="monitoring-section" style="margin-bottom: 2rem;">
+                    <h3>計測日設定</h3>
+                    <form id="checkDateForm">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="monitoringMonth">対象月</label>
-                                <input type="month" id="monitoringMonth" class="form-input" required>
+                                <label for="publishDate">公開完了日 *</label>
+                                <input type="datetime-local" id="publishDate" class="form-input" required>
                             </div>
-                        </div>
-
-                        <div class="monitoring-category">
-                            <h4><span class="material-icons-round">search</span> AIO引用数（Ahrefs）</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Google AI Overview</label>
-                                    <input type="number" class="form-input" data-metric="aio_google" placeholder="件数">
-                                </div>
-                                <div class="form-group">
-                                    <label>ChatGPT</label>
-                                    <input type="number" class="form-input" data-metric="aio_chatgpt" placeholder="件数">
-                                </div>
-                                <div class="form-group">
-                                    <label>Perplexity</label>
-                                    <input type="number" class="form-input" data-metric="aio_perplexity" placeholder="件数">
-                                </div>
+                            <div class="form-group">
+                                <label for="measurement2weeks">2週間後計測日</label>
+                                <input type="datetime-local" id="measurement2weeks" class="form-input" readonly style="background: #f3f4f6;">
                             </div>
-                        </div>
-
-                        <div class="monitoring-category">
-                            <h4><span class="material-icons-round">trending_up</span> 検索順位（Tier 1の20ページ）</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>合計クリック数</label>
-                                    <input type="number" class="form-input" data-metric="ranking_clicks" placeholder="クリック数">
-                                </div>
-                                <div class="form-group">
-                                    <label>平均掲載順位</label>
-                                    <input type="number" step="0.01" class="form-input" data-metric="ranking_position" placeholder="順位">
-                                </div>
+                            <div class="form-group">
+                                <label for="measurement3weeks">3週間後計測日</label>
+                                <input type="datetime-local" id="measurement3weeks" class="form-input" readonly style="background: #f3f4f6;">
                             </div>
-                        </div>
-
-                        <div class="monitoring-category">
-                            <h4><span class="material-icons-round">bar_chart</span> トラフィック分析（全体）</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>総クリック数</label>
-                                    <input type="number" class="form-input" data-metric="traffic_clicks" placeholder="クリック数">
-                                </div>
-                                <div class="form-group">
-                                    <label>平均CTR</label>
-                                    <input type="number" step="0.01" class="form-input" data-metric="traffic_ctr" placeholder="%">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="monitoring-category">
-                            <h4><span class="material-icons-round">visibility</span> ブランド認知度（指名検索）</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>合計クリック数</label>
-                                    <input type="number" class="form-input" data-metric="brand_clicks" placeholder="クリック数">
-                                </div>
-                                <div class="form-group">
-                                    <label>平均順位</label>
-                                    <input type="number" step="0.01" class="form-input" data-metric="brand_position" placeholder="順位">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="text-align: right;">
-                            <button type="submit" class="btn btn-primary">
-                                <span class="material-icons-round">save</span>
-                                データを保存
-                            </button>
                         </div>
                     </form>
                 </div>
 
-                <!-- 前後比較グラフ -->
-                <div class="comparison-section">
-                    <h3>前後比較グラフ</h3>
-                    <div class="chart-container">
-                        <canvas id="comparisonChart"></canvas>
+                <!-- 数値入力セクション -->
+                <div class="monitoring-section" id="checkMetricsSection" style="display: none;">
+                    <h3>数値入力</h3>
+                    
+                    <!-- 現状数値（プランから引き継ぎ） -->
+                    <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f0f9ff; border-radius: 0.5rem; border: 1px solid #bfdbfe;">
+                        <h4 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">現状数値（プランニングシートから引き継ぎ）</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">AIO引用数</label>
+                                <input type="number" id="currentAioCitations" class="form-input" readonly style="background: #f3f4f6;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="currentAvgRanking" class="form-input" readonly style="background: #f3f4f6;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">トラフィック（クリック数）</label>
+                                <input type="number" id="currentTraffic" class="form-input" readonly style="background: #f3f4f6;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">ブランド認知度</label>
+                                <input type="number" id="currentBrandClicks" class="form-input" readonly style="background: #f3f4f6;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2週間後数値 -->
+                    <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">2週間後計測数値</h4>
+                            <button type="button" id="import2weeksCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                CSVからインポート
+                            </button>
+                        </div>
+                        <input type="file" id="csv2weeksFileInput" accept=".csv" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">AIO引用数</label>
+                                <input type="number" id="metrics2weeksAioCitations" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="metrics2weeksAvgRanking" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">トラフィック（クリック数）</label>
+                                <input type="number" id="metrics2weeksTraffic" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">ブランド認知度</label>
+                                <input type="number" id="metrics2weeksBrandClicks" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3週間後数値 -->
+                    <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">3週間後計測数値</h4>
+                            <button type="button" id="import3weeksCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                CSVからインポート
+                            </button>
+                        </div>
+                        <input type="file" id="csv3weeksFileInput" accept=".csv" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">AIO引用数</label>
+                                <input type="number" id="metrics3weeksAioCitations" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">検索順位（平均）</label>
+                                <input type="number" step="0.01" id="metrics3weeksAvgRanking" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">トラフィック（クリック数）</label>
+                                <input type="number" id="metrics3weeksTraffic" class="form-input">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">ブランド認知度</label>
+                                <input type="number" id="metrics3weeksBrandClicks" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: right; margin-bottom: 2rem;">
+                        <button type="button" id="saveCheckDataBtn" class="btn btn-primary">
+                            <span class="material-icons-round">save</span>
+                            データを保存
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 結果表示セクション -->
+                <div id="checkResultsSection" style="display: none;">
+                    <!-- 数値比較表 -->
+                    <div class="comparison-section" style="margin-bottom: 2rem;">
+                        <h3>数値比較表</h3>
+                        <div style="overflow-x: auto;">
+                            <table id="metricsComparisonTable" style="width: 100%; border-collapse: collapse; background: white; border-radius: 0.5rem; overflow: hidden;">
+                                <thead>
+                                    <tr style="background: #f9fafb; border-bottom: 2px solid var(--border-color);">
+                                        <th style="padding: 1rem; text-align: left; font-weight: 600;">指標</th>
+                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">現状</th>
+                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">2週間後</th>
+                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">3週間後</th>
+                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">変化率（3週間後）</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metricsComparisonBody">
+                                    <!-- 動的に生成される -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- グラフ表示 -->
+                    <div class="comparison-section" style="margin-bottom: 2rem;">
+                        <h3>数値変化グラフ</h3>
+                        <div class="chart-container">
+                            <canvas id="checkComparisonChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- レポート生成 -->
+                    <div class="report-section">
+                        <h3>レポート生成</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="generateCheckReportHtmlBtn" class="btn btn-primary">
+                                <span class="material-icons-round">description</span>
+                                HTMLレポートをダウンロード
+                            </button>
+                            <button id="generateCheckReportPdfBtn" class="btn btn-secondary" style="color: var(--text-primary);">
+                                <span class="material-icons-round">picture_as_pdf</span>
+                                PDFレポートをダウンロード
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -423,10 +506,14 @@
                             placeholder="プランの概要を記入してください"></textarea>
                     </div>
                     
-                    <!-- 数値入力セクション -->
+                    <!-- 現状数値の把握セクション -->
                     <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">数値入力（Ahrefs等）</h3>
+                        <h3 style="margin: 0 0 1.5rem 0; font-size: 1.2rem; color: var(--text-primary); font-weight: 600;">現状数値の把握</h3>
+                        
+                        <!-- AIOとかの数値 -->
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">AIOとかの数値</h4>
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                 <!-- CSVインポートボタン -->
                                 <button type="button" id="importCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
@@ -473,13 +560,13 @@
                                     style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color); border-radius: 0.4rem;"
                                     placeholder="22">
                             </div>
+                            </div>
                         </div>
                         
-                        
                         <!-- 記事ごとの数値入力テーブル -->
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                        <div style="padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary);">記事ごとの数値入力</h4>
+                                <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">記事ごとの数値入力</h4>
                                 <div style="display: flex; gap: 0.5rem;">
                                     <!-- CSVインポートボタン -->
                                     <button type="button" id="importArticleMetricsCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
