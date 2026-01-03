@@ -3603,8 +3603,9 @@ class Dashboard {
     }
 
     generateArticlePerformance(plan, data) {
-        const container = document.getElementById('articlePerformanceTable');
-        if (!container) return;
+        try {
+            const container = document.getElementById('articlePerformanceTable');
+            if (!container) return;
 
         // データ統合 (URLまたは名前でマッチング)
         const articlesMap = {};
@@ -3699,14 +3700,17 @@ class Dashboard {
             if (ctr3 > baseCtr) score++; else if (ctr3 < baseCtr) score--;
 
             let evalSymbol = '△';
+            let evalText = '維持';
             let badgeStyle = 'background: #f3f4f6; color: #4b5563;';
             
             if (score > 0) {
                 evalSymbol = '◯';
+                evalText = '改善';
                 badgeStyle = 'background: #fee2e2; color: #dc2626;';
                 improvedCount++;
             } else if (score < 0) {
                 evalSymbol = '✕';
+                evalText = '悪化';
                 badgeStyle = 'background: #dbeafe; color: #2563eb;';
                 worsenedCount++;
             } else {
@@ -3739,22 +3743,22 @@ class Dashboard {
                     <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
                     <td style="padding: 0.75rem; text-align: center;">
                         <div style="font-weight: bold; font-size: 1.1rem; ${getColor(pos3, basePos, true)}">${pos3}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBeforePos(posBefore)} <span style="color:#d1d5db">|</span> 2w: ${pos2}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">前: ${formatBeforePos(posBefore)} <span style="color:#d1d5db">|</span> 2週: ${pos2}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
                         <div style="font-weight: bold; font-size: 1.1rem; ${getColor(clk3, baseClk)}">${this.formatNumber(clk3)}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBefore(clkBefore)} <span style="color:#d1d5db">|</span> 2w: ${this.formatNumber(clk2)}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">前: ${formatBefore(clkBefore)} <span style="color:#d1d5db">|</span> 2週: ${this.formatNumber(clk2)}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
                         <div style="font-weight: bold; font-size: 1.1rem; ${getColor(imp3, before.impressions ? impBefore : imp2)}">${this.formatNumber(imp3)}</div>
-                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBefore(impBefore)} <span style="color:#d1d5db">|</span> 2w: ${this.formatNumber(imp2)}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">前: ${formatBefore(impBefore)} <span style="color:#d1d5db">|</span> 2週: ${this.formatNumber(imp2)}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
                         <div style="font-weight: bold; font-size: 1.1rem; ${getColor(ctr3, baseCtr)}">${ctr3}%</div>
-                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBeforeCtr(ctrBefore, before.ctr)} <span style="color:#d1d5db">|</span> 2w: ${ctr2}%</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">前: ${formatBeforeCtr(ctrBefore, before.ctr)} <span style="color:#d1d5db">|</span> 2週: ${ctr2}%</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; ${badgeStyle}">${evalSymbol}</span>
+                        <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; ${badgeStyle}">${evalSymbol} ${evalText}</span>
                     </td>
                 </tr>
             `;
@@ -3804,7 +3808,7 @@ class Dashboard {
                         ${renderDiff(stats.before.clicks, stats.w3.clicks)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${this.formatNumber(stats.before.clicks)}
+                        実施前: ${this.formatNumber(stats.before.clicks)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3814,7 +3818,7 @@ class Dashboard {
                         ${renderDiff(stats.before.imp, stats.w3.imp)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${this.formatNumber(stats.before.imp)}
+                        実施前: ${this.formatNumber(stats.before.imp)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3824,7 +3828,7 @@ class Dashboard {
                         ${renderDiff(stats.before.ctr, stats.w3.ctr, '%')}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${stats.before.ctr}%
+                        実施前: ${stats.before.ctr}%
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3834,7 +3838,7 @@ class Dashboard {
                         ${renderPosDiff(stats.before.pos, stats.w3.pos)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${stats.before.pos}位
+                        実施前: ${stats.before.pos}位
                     </div>
                 </div>
             </div>
@@ -3889,6 +3893,13 @@ class Dashboard {
         `;
 
         container.innerHTML = summaryHtml + summaryCardsHtml + tableHtml;
+        } catch (e) {
+            console.error('記事パフォーマンス表示エラー:', e);
+            const container = document.getElementById('articlePerformanceTable');
+            if (container) {
+                container.innerHTML = `<p style="color:red; padding:1rem;">記事パフォーマンスの表示中にエラーが発生しました。<br>${e.message}</p>`;
+            }
+        }
     }
 
     exportReportPdf() {
