@@ -1428,6 +1428,12 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     updateScore() {
+        // checklistScore要素が存在しない場合は何もしない
+        const checklistScore = document.getElementById('checklistScore');
+        if (!checklistScore) {
+            return;
+        }
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1085',message:'updateScore: Entry',data:{checklistItemsLength:this.checklistItems.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
@@ -1448,15 +1454,6 @@ ${article.keyword}について、重要なポイントをまとめました。
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1097',message:'updateScore: Calculated score',data:{score:score,rank:rank,checkedCount:checkedCount,totalItems:totalItems},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
-        
-        // スコア表示を更新
-        const checklistScore = document.getElementById('checklistScore');
-        if (!checklistScore) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1164',message:'updateScore: checklistScore element NOT FOUND',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            return;
-        }
         
         // #region agent log
         const initialHTML = checklistScore.innerHTML;
