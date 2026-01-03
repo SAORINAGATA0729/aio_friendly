@@ -764,13 +764,63 @@ tr:last-child td {
 }
 
 /* 改善項目 & チェックリスト */
+.improvement-section {
+    margin-bottom: 1.5rem;
+}
+
 .improvement-title {
     font-size: 0.85rem;
     font-weight: 700;
     color: var(--text-light);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* アコーディオンヘッダー */
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.accordion-header:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.accordion-header.active {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.accordion-icon {
+    transition: transform 0.3s ease;
+    font-size: 20px;
+    color: var(--text-light);
+}
+
+.accordion-header.active .accordion-icon {
+    transform: rotate(180deg);
+}
+
+/* アコーディオンコンテンツ */
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    margin-top: 0;
+}
+
+.accordion-content.active {
+    max-height: 2000px;
+    opacity: 1;
+    margin-top: 1rem;
 }
 
 .checklist-items {

@@ -1165,6 +1165,28 @@ class RewriteSystem {
         } else {
             console.log('[DEBUG] エディタモーダルが正常に開きました');
         }
+        
+        // アコーディオンのイベントリスナーを設定
+        const improvementAccordionHeader = document.getElementById('improvementAccordionHeader');
+        const checklistItems = document.getElementById('checklistItems');
+        
+        if (improvementAccordionHeader && checklistItems) {
+            // デフォルトで開いた状態にする
+            improvementAccordionHeader.classList.add('active');
+            checklistItems.classList.add('active');
+            
+            // クリックで開閉
+            improvementAccordionHeader.addEventListener('click', () => {
+                const isActive = improvementAccordionHeader.classList.contains('active');
+                if (isActive) {
+                    improvementAccordionHeader.classList.remove('active');
+                    checklistItems.classList.remove('active');
+                } else {
+                    improvementAccordionHeader.classList.add('active');
+                    checklistItems.classList.add('active');
+                }
+            });
+        }
     }
 
     getSlugFromUrl(url) {
