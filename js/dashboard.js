@@ -3740,35 +3740,25 @@ class Dashboard {
             return;
         }
 
-        const element = document.getElementById('reportTab');
-        const exportHtmlBtn = document.getElementById('exportReportHtmlBtn');
-        const exportPdfBtn = document.getElementById('exportReportPdfBtn');
-        const planSelect = document.querySelector('.form-group');
-
-        // 一時的に不要な要素を隠す
-        if (exportHtmlBtn) exportHtmlBtn.style.display = 'none';
-        if (exportPdfBtn) exportPdfBtn.style.display = 'none';
-        if (planSelect) planSelect.style.display = 'none';
+        const element = document.getElementById('reportContent');
+        const exportActions = document.getElementById('reportExportActions');
+        
+        if (exportActions) exportActions.style.display = 'none';
 
         const opt = {
             margin: 10,
             filename: 'aio_report.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
+            html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
         html2pdf().set(opt).from(element).save().then(() => {
-            // 元に戻す
-            if (exportHtmlBtn) exportHtmlBtn.style.display = 'inline-block';
-            if (exportPdfBtn) exportPdfBtn.style.display = 'inline-block';
-            if (planSelect) planSelect.style.display = 'block';
+            if (exportActions) exportActions.style.display = 'flex';
         }).catch(err => {
             console.error('PDF出力エラー:', err);
             alert('PDFの出力に失敗しました。');
-            if (exportHtmlBtn) exportHtmlBtn.style.display = 'inline-block';
-            if (exportPdfBtn) exportPdfBtn.style.display = 'inline-block';
-            if (planSelect) planSelect.style.display = 'block';
+            if (exportActions) exportActions.style.display = 'flex';
         });
     }
 
@@ -3779,10 +3769,32 @@ class Dashboard {
             return;
         }
         
-        // 現在のHTMLを取得（グラフはcanvasなのでimgタグに変換する必要があるが、簡易版としてテキスト/表のみ）
-        // 完全な再現は難しいので、最低限のスタイルを含めたHTMLを作成
+        // クローンを作成して操作
+        const clone = reportContent.cloneNode(true);
         
-        const contentHtml = reportContent.innerHTML;
+        // エクスポートボタンを削除
+        const exportActions = clone.querySelector('#reportExportActions');
+        if (exportActions) exportActions.remove();
+        
+        // Canvasを画像に変換
+        const canvases = reportContent.querySelectorAll('canvas'); // オリジナルから取得
+        const cloneCanvases = clone.querySelectorAll('canvas'); // クローン側
+        
+        canvases.forEach((canvas, index) => {
+            if (cloneCanvases[index]) {
+                const img = document.createElement('img');
+                try {
+                    img.src = canvas.toDataURL('image/png');
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
+                    cloneCanvases[index].parentNode.replaceChild(img, cloneCanvases[index]);
+                } catch (e) {
+                    console.error('Canvas conversion failed:', e);
+                }
+            }
+        });
+        
+        const contentHtml = clone.innerHTML;
         const style = `
             <style>
                 body { font-family: "Helvetica Neue", Arial, sans-serif; padding: 2rem; color: #333; }
@@ -3790,8 +3802,8 @@ class Dashboard {
                 table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
                 th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
                 th { background-color: #f9fafb; font-weight: 600; }
-                .chart-container { display: none; } /* グラフはHTMLエクスポートでは非表示（画像化困難なため） */
-                .btn { display: none; } /* ボタンは隠す */
+                .chart-container { width: 45%; display: inline-block; margin-bottom: 20px; }
+                .btn { display: none; }
             </style>
         `;
         
@@ -3806,7 +3818,6 @@ class Dashboard {
             <body>
                 <h1>AIO改善レポート</h1>
                 ${contentHtml}
-                <p style="margin-top: 2rem; font-size: 0.8rem; color: #666;">※グラフはPDF版でのみ表示されます。</p>
             </body>
             </html>
         `;
