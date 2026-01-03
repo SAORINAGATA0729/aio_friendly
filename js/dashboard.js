@@ -952,7 +952,6 @@ class Dashboard {
         header.className = 'article-list-header plan-mode';
         header.innerHTML = `
             <div>記事情報</div>
-            <div style="text-align: center;">ステータス</div>
             <div style="text-align: center;">クリック数</div>
             <div style="text-align: center;">表示回数</div>
             <div style="text-align: center;">CTR (%)</div>
@@ -2338,29 +2337,45 @@ class Dashboard {
         item.className = 'article-item plan-mode';
         item.dataset.articleId = article.id;
 
-        const statusClass = article.status === '完了' ? 'completed' : 
-                           article.status === '進行中' ? 'inProgress' : 'notStarted';
-
         const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
         const scoreLevel = score.level.toLowerCase();
         
         // H1タイトルを優先的に使用、なければ既存のタイトルを使用
         const displayTitle = h1Title || article.h1Title || article.title || '';
+        
+        // URLからスラッグを取得（happy-receiveなど）
+        const getSlugFromUrl = (url) => {
+            if (!url) return '';
+            try {
+                const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+                const pathParts = urlObj.pathname.split('/').filter(p => p);
+                return pathParts[pathParts.length - 1] || '';
+            } catch {
+                return '';
+            }
+        };
+        const articleSlug = getSlugFromUrl(article.url);
 
         item.innerHTML = `
-            <div class="article-info">
-                <div class="article-title">${displayTitle}</div>
-                <div class="article-meta">
-                    <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
-                    ${article.keyword || ''}
+            <div class="article-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <input type="text" class="article-title-input" data-article-id="${article.id}" 
+                        value="${displayTitle}" 
+                        placeholder="記事タイトル"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.9rem; font-weight: 600;">
+                    <input type="text" class="article-keyword-input" data-article-id="${article.id}" 
+                        value="${article.keyword || ''}" 
+                        placeholder="キーワード"
+                        style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem;">
+                    <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #6b7280;">
+                        <span class="material-icons-round" style="font-size: 14px;">link</span>
+                        <a href="${article.url || '#'}" target="_blank" rel="noopener noreferrer" 
+                            style="color: #3b82f6; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${article.url || ''}
+                        </a>
+                    </div>
+                    ${articleSlug ? `<div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${articleSlug}</div>` : ''}
                 </div>
-            </div>
-            <div style="display: flex; justify-content: center;">
-                <select class="article-status-select ${statusClass}" data-article-id="${article.id}">
-                    <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
-                    <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
-                    <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
-                </select>
             </div>
             <div style="display: flex; justify-content: center; align-items: center;">
                 <span style="
@@ -2435,20 +2450,69 @@ class Dashboard {
                         text-align: center;
                         min-width: 70px;
                     ">
-                    ${article.aioRank || score.level || 'C'}
+                    ${(() => {
+                        // AIOランクの決定ロジック:
+                        // 1. 記事オブジェクトにaioRankプロパティがあればそれを使用
+                        // 2. なければ、scores.after.level（リライト後のスコア）を使用
+                        // 3. それもなければ、scores.before.level（リライト前のスコア）を使用
+                        // 4. すべてなければデフォルトで'C'を使用
+                        return article.aioRank || score.level || 'C';
+                    })()}
                 </span>
             </div>
         `;
 
-        // 記事情報部分のみクリック可能にする
+        // タイトルとキーワードの編集イベントリスナー
+        const titleInput = item.querySelector('.article-title-input');
+        const keywordInput = item.querySelector('.article-keyword-input');
+        
+        if (titleInput) {
+            titleInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            titleInput.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newTitle = e.target.value;
+                // 記事データを更新
+                if (this.currentPlanArticles) {
+                    const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                    if (articleToUpdate) {
+                        articleToUpdate.title = newTitle;
+                        articleToUpdate.h1Title = newTitle;
+                    }
+                }
+                // データを保存
+                await this.saveProgressData();
+            });
+        }
+        
+        if (keywordInput) {
+            keywordInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            keywordInput.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newKeyword = e.target.value;
+                // 記事データを更新
+                if (this.currentPlanArticles) {
+                    const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                    if (articleToUpdate) {
+                        articleToUpdate.keyword = newKeyword;
+                    }
+                }
+                // データを保存
+                await this.saveProgressData();
+            });
+        }
+        
+        // 記事を開くボタン（記事情報部分のダブルクリックで開く）
         const articleInfo = item.querySelector('.article-info');
         if (articleInfo) {
-            articleInfo.addEventListener('click', async (e) => {
+            articleInfo.addEventListener('dblclick', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                console.log('記事がクリックされました:', article.title);
-                console.log('rewriteSystem:', typeof rewriteSystem);
+                console.log('記事がダブルクリックされました:', article.title);
                 
                 // rewriteSystemが初期化されるまで最大3秒待つ
                 let retryCount = 0;
@@ -2481,29 +2545,6 @@ class Dashboard {
                 };
                 
                 await waitForRewriteSystem();
-            });
-        }
-
-        // ステータス変更のイベントリスナー
-        const statusSelect = item.querySelector('.article-status-select');
-        if (statusSelect) {
-            // クリックイベントを停止（親要素のクリックイベントを防ぐ）
-            statusSelect.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-            
-            // 変更イベントを設定
-            statusSelect.addEventListener('change', async (e) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:2431',message:'plan article status select change event',data:{articleId:article.id,newStatus:e.target.value,oldStatus:article.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                
-                e.stopPropagation();
-                const newStatus = e.target.value;
-                // ステータス変更時にクラスを更新して色を反映
-                const newStatusClass = newStatus === '完了' ? 'completed' : newStatus === '進行中' ? 'inProgress' : 'notStarted';
-                statusSelect.className = `article-status-select ${newStatusClass}`;
-                await this.updateArticleStatus(article.id, newStatus);
             });
         }
 
