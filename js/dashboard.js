@@ -3415,6 +3415,11 @@ class Dashboard {
         this.generateArticlePerformance(plan, data);
     }
 
+    formatNumber(num) {
+        if (num === null || num === undefined || num === '') return '-';
+        return Number(num).toLocaleString();
+    }
+
     async generateExecutiveSummary(plan, data) {
         const container = document.getElementById('executiveSummaryContent');
         if (!container) return;
@@ -3431,6 +3436,20 @@ class Dashboard {
             const isImproved = improvement > 0;
             const sign = improvement > 0 ? '+' : '';
 
+            // ネクストアクションのロジック
+            let nextAction = '';
+            if (isImproved) {
+                nextAction = `
+                    <p style="margin-top: 0.5rem;"><strong>🚀 ネクストアクション:</strong><br>
+                    成功パターンを他の記事にも横展開しましょう。特に「AIO引用されたキーワード」の周辺クエリを狙った新規記事作成や、構成要素（リスト、表、簡潔な回答）の他記事への適用を推奨します。</p>
+                `;
+            } else {
+                nextAction = `
+                    <p style="margin-top: 0.5rem;"><strong>🔧 ネクストアクション:</strong><br>
+                    検索意図とコンテンツの乖離を再調査する必要があります。上位表示されている競合記事（特にAIOに引用されている記事）の構成を再分析し、不足している情報や構造化データの追加を検討してください。</p>
+                `;
+            }
+
             summaryHtml += `
                 <div style="margin-top: 1rem;">
                     <h4 style="font-weight: bold; margin-bottom: 0.5rem;">📊 パフォーマンス概要</h4>
@@ -3441,6 +3460,7 @@ class Dashboard {
                         ${isImproved 
                             ? '施策の効果が表れています。特にAIO引用数の増加は、コンテンツの信頼性が向上したことを示唆しています。今後はこの傾向を維持しつつ、トラフィックの質の向上に注力することをお勧めします。' 
                             : '現時点では大きな改善が見られません。コンテンツの意図が検索クエリと完全に合致していない可能性があります。競合記事との差分分析を再度行い、リライト方針を見直すことを検討してください。'}
+                        ${nextAction}
                     </div>
                 </div>
             `;
@@ -3588,9 +3608,6 @@ class Dashboard {
         // データ統合 (URLまたは名前でマッチング)
         const articlesMap = {};
         
-        // Before (Planから) - 今回は簡易的にURLのみの場合が多いが、metricsがあれば使う
-        // ※記事ごとのBefore数値は現状保存されていないケースが多いので、その場合は空
-        
         // 2週間後
         (data?.articleMetrics2weeks || []).forEach(a => {
             const key = a.url || a.name;
@@ -3612,7 +3629,91 @@ class Dashboard {
             return;
         }
 
-        let html = `
+        // 総評用のカウント
+        let improvedCount = 0;
+        let worsenedCount = 0;
+        let unchangedCount = 0;
+
+        let rowsHtml = '';
+        
+        articles.forEach(a => {
+            const w2 = a.w2 || {};
+            const w3 = a.w3 || {};
+            
+            // 数値取得
+            const clk2 = parseInt(w2.clicks) || 0;
+            const clk3 = parseInt(w3.clicks) || 0;
+            const imp2 = parseInt(w2.impressions) || 0;
+            const imp3 = parseInt(w3.impressions) || 0;
+            const pos2 = parseFloat(w2.position) || 0;
+            const pos3 = parseFloat(w3.position) || 0;
+            const ctr2 = parseFloat(w2.ctr) || 0;
+            const ctr3 = parseFloat(w3.ctr) || 0;
+
+            // 評価ロジック
+            // クリック数増加 OR 順位改善（数値減少） OR CTR増加 を「良」とする
+            let score = 0;
+            
+            if (clk3 > clk2) score++;
+            else if (clk3 < clk2) score--;
+            
+            if (pos3 < pos2 && pos3 > 0) score++; // 順位は低い方が良い
+            else if (pos3 > pos2) score--;
+            
+            if (ctr3 > ctr2) score++;
+            else if (ctr3 < ctr2) score--;
+
+            let evalSymbol = '△';
+            let evalClass = 'text-gray-500';
+            
+            if (score > 0) {
+                evalSymbol = '◯';
+                evalClass = 'text-red-600'; // 良い
+                improvedCount++;
+            } else if (score < 0) {
+                evalSymbol = '✕';
+                evalClass = 'text-blue-600'; // 悪い
+                worsenedCount++;
+            } else {
+                unchangedCount++;
+            }
+
+            // 色付けロジック (上がったら赤、下がったら青)
+            const getColor = (v2, v3) => {
+                if (v3 > v2) return 'color: #dc2626; font-weight: bold;'; // 上昇(赤)
+                if (v3 < v2) return 'color: #2563eb; font-weight: bold;'; // 下降(青)
+                return '';
+            };
+
+            // 順位は下がった(数値減少)方が良いが、リクエスト通り「数値の増減」で色分けする
+            // 数値が上がった(10->20) => 赤、数値が下がった(20->10) => 青
+            
+            rowsHtml += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
+                    <td style="padding: 0.75rem; text-align: center;">${pos2} → <span style="${getColor(pos2, pos3)}">${pos3}</span></td>
+                    <td style="padding: 0.75rem; text-align: center;">${this.formatNumber(clk2)} → <span style="${getColor(clk2, clk3)}">${this.formatNumber(clk3)}</span></td>
+                    <td style="padding: 0.75rem; text-align: center;">${this.formatNumber(imp2)} → <span style="${getColor(imp2, imp3)}">${this.formatNumber(imp3)}</span> (Imp)</td>
+                    <td style="padding: 0.75rem; text-align: center;">${ctr2}% → <span style="${getColor(ctr2, ctr3)}">${ctr3}%</span></td>
+                    <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem;" class="${evalClass}">${evalSymbol}</td>
+                </tr>
+            `;
+        });
+
+        // 総評エリア
+        const total = articles.length;
+        const summaryHtml = `
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <h4 style="font-weight: bold; margin-bottom: 0.5rem; color: #1e40af;">📊 記事パフォーマンス総評</h4>
+                <p>分析対象 <strong>${total}</strong> 記事中、<strong>${improvedCount}</strong> 記事で改善が見られました（評価: ◯）。</p>
+                <p style="font-size: 0.9rem; color: #4b5563; margin-top: 0.5rem;">
+                    ※評価基準: クリック数、CTRの向上、および検索順位の改善を総合的に判定しています。<br>
+                    改善が見られない記事（✕）については、キーワードの見直しやリライトの再実施を検討してください。
+                </p>
+            </div>
+        `;
+
+        let tableHtml = `
             <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
                 <thead>
                     <tr style="background: #f3f4f6;">
@@ -3621,44 +3722,16 @@ class Dashboard {
                         <th style="padding: 0.75rem; text-align: center;">クリック (2w → 3w)</th>
                         <th style="padding: 0.75rem; text-align: center;">AIO (2w → 3w)</th>
                         <th style="padding: 0.75rem; text-align: center;">CTR (2w → 3w)</th>
+                        <th style="padding: 0.75rem; text-align: center;">評価</th>
                     </tr>
                 </thead>
                 <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
         `;
 
-        articles.forEach(a => {
-            const w2 = a.w2 || {};
-            const w3 = a.w3 || {};
-            
-            // 順位
-            const pos2 = w2.position || '-';
-            const pos3 = w3.position || '-';
-            // クリック
-            const clk2 = w2.clicks || '-';
-            const clk3 = w3.clicks || '-';
-            // AIO (記事ごとのAIOカウントがあれば) - 現状のカラムにはない？
-            // カラム: name, clicks, impressions, ctr, position. AIOはない。
-            // なのでクリックや順位を表示。
-            // インプレッション
-            const imp2 = w2.impressions || '-';
-            const imp3 = w3.impressions || '-';
-            // CTR
-            const ctr2 = w2.ctr ? w2.ctr + '%' : '-';
-            const ctr3 = w3.ctr ? w3.ctr + '%' : '-';
-
-            html += `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
-                    <td style="padding: 0.75rem; text-align: center;">${pos2} → <strong>${pos3}</strong></td>
-                    <td style="padding: 0.75rem; text-align: center;">${clk2} → <strong>${clk3}</strong></td>
-                    <td style="padding: 0.75rem; text-align: center;">${imp2} → <strong>${imp3}</strong> (Imp)</td>
-                    <td style="padding: 0.75rem; text-align: center;">${ctr2} → <strong>${ctr3}</strong></td>
-                </tr>
-            `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        container.innerHTML = summaryHtml + tableHtml;
     }
 
     exportReportPdf() {
