@@ -673,12 +673,19 @@ class RewriteSystem {
         const orDiv = buttonContainer?.querySelector('.or-divider');
         if (orDiv) orDiv.style.display = 'none';
         
+        // 既存の保存済みボタンを削除（存在する場合）
+        const existingLoadSavedBtn = document.getElementById('loadSavedBtn');
+        if (existingLoadSavedBtn) existingLoadSavedBtn.remove();
+        
         if (hasSavedContent) {
             // 保存済みがある場合：選択肢を表示
+            let currentAutoFetchBtn = autoFetchBtn;
             if (autoFetchBtn) {
                 // イベントリスナーを再設定（ボタンの内容も更新）
+                // setupAutoFetchButtonはボタンを置き換えるため、新しい参照を取得
                 const newBtn = this.setupAutoFetchButton(autoFetchBtn);
                 if (newBtn) {
+                    currentAutoFetchBtn = newBtn; // 置き換え後のボタン参照を保存
                     newBtn.innerHTML = `
                         <span class="material-icons-round">auto_fix_high</span>
                         記事内容を自動取得して編集（一からやり直す）
@@ -686,8 +693,8 @@ class RewriteSystem {
                 }
             }
             
-            // 保存済みを引き継ぐボタンを追加（既存のボタンの前に挿入）
-            if (buttonContainer && !document.getElementById('loadSavedBtn')) {
+            // 保存済みを引き継ぐボタンを追加（置き換え後のボタンの前に挿入）
+            if (buttonContainer && currentAutoFetchBtn && !document.getElementById('loadSavedBtn')) {
                 const loadSavedBtn = document.createElement('button');
                 loadSavedBtn.id = 'loadSavedBtn';
                 loadSavedBtn.className = 'btn btn-primary';
@@ -696,7 +703,14 @@ class RewriteSystem {
                     <span class="material-icons-round">history</span>
                     保存済み内容を引き継いで編集
                 `;
-                buttonContainer.insertBefore(loadSavedBtn, autoFetchBtn);
+                
+                // insertBeforeを使用する前に、currentAutoFetchBtnがbuttonContainerの子要素であることを確認
+                if (currentAutoFetchBtn.parentNode === buttonContainer) {
+                    buttonContainer.insertBefore(loadSavedBtn, currentAutoFetchBtn);
+                } else {
+                    // 親要素が異なる場合は、先頭に追加
+                    buttonContainer.insertBefore(loadSavedBtn, buttonContainer.firstChild);
+                }
                 
                 loadSavedBtn.addEventListener('click', async () => {
                     await this.loadSavedAndOpenEditor();
@@ -714,10 +728,6 @@ class RewriteSystem {
                     `;
                 }
             }
-            
-            // 保存済みボタンを削除
-            const loadSavedBtn = document.getElementById('loadSavedBtn');
-            if (loadSavedBtn) loadSavedBtn.remove();
         }
     }
     
@@ -745,23 +755,86 @@ class RewriteSystem {
             
             statusDiv.innerHTML = '<span style="color: var(--primary-color);"><span class="material-icons-round" style="font-size:14px; vertical-align:middle; animation: spin 1s linear infinite;">sync</span> 記事を取得中...</span>';
             
+            console.log('[DEBUG] 記事取得開始:', url);
+            
+            // ローカル環境かVercel環境かを自動検出（スコープ外で定義）
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
             try {
-                // ローカル環境かVercel環境かを自動検出
-                const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 const apiUrl = isLocal 
                     ? `http://localhost:8000/api/fetch?url=${encodeURIComponent(url)}`
                     : `/api/fetch?url=${encodeURIComponent(url)}`;
                 
                 console.log(`[DEBUG] Fetching from: ${apiUrl}`);
-                const response = await fetch(apiUrl);
+                console.log(`[DEBUG] isLocal: ${isLocal}, hostname: ${window.location.hostname}`);
+                
+                // タイムアウト設定（30秒）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    console.error('[DEBUG] タイムアウト発生（30秒経過）');
+                    controller.abort();
+                }, 30000);
+                
+                let response;
+                try {
+                    console.log('[DEBUG] fetch開始...');
+                    response = await fetch(apiUrl, {
+                        signal: controller.signal
+                    });
+                    console.log('[DEBUG] fetch完了, status:', response.status, response.statusText);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    console.error('[DEBUG] fetchエラー:', fetchError);
+                    console.error('[DEBUG] fetchエラー詳細:', {
+                        name: fetchError.name,
+                        message: fetchError.message,
+                        stack: fetchError.stack
+                    });
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('リクエストがタイムアウトしました（30秒）。サーバーが応答していない可能性があります。');
+                    }
+                    // ネットワークエラーの詳細を取得
+                    if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
+                        throw new Error('サーバーに接続できません。ローカルサーバーが起動しているか確認してください。\n\n起動方法:\npython3 server.py');
+                    }
+                    throw fetchError;
+                }
+                clearTimeout(timeoutId);
+                
+                console.log('[DEBUG] レスポンスステータス確認:', response.ok);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTPエラー: ${response.status}`);
+                    console.error('[DEBUG] レスポンスエラー:', response.status, response.statusText);
+                    // エラーレスポンスのJSONを取得
+                    let errorMessage = `HTTPエラー: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        console.error('[DEBUG] エラーデータ:', errorData);
+                        if (errorData.error) {
+                            errorMessage = `${errorMessage} - ${errorData.error}`;
+                        }
+                    } catch (e) {
+                        console.error('[DEBUG] JSONパースエラー:', e);
+                        // JSONパースに失敗した場合はテキストを取得
+                        try {
+                            const errorText = await response.text();
+                            console.error('[DEBUG] エラーテキスト:', errorText.substring(0, 500));
+                            if (errorText) {
+                                errorMessage = `${errorMessage} - ${errorText.substring(0, 200)}`;
+                            }
+                        } catch (e2) {
+                            console.error('[DEBUG] テキスト取得エラー:', e2);
+                        }
+                    }
+                    throw new Error(errorMessage);
                 }
                 
+                console.log('[DEBUG] JSONパース開始...');
                 const data = await response.json();
+                console.log('[DEBUG] JSONパース完了, success:', data.success, 'content length:', data.content?.length);
 
                 if (data.success && data.content) {
+                    console.log('[DEBUG] コンテンツ取得成功、エディタを開きます');
                     statusDiv.innerHTML = '<span style="color: var(--success-color);">✓ 取得成功！エディタを開きます...</span>';
                     
                     // URLモーダルを閉じる
@@ -779,11 +852,31 @@ class RewriteSystem {
                         alert('エディタを開く際にエラーが発生しました。ページをリロードして再試行してください。');
                     }
                 } else {
+                    console.error('[DEBUG] データが不正:', data);
                     throw new Error(data.error || 'コンテンツを取得できませんでした');
                 }
             } catch (error) {
+                console.error('[DEBUG] ===== エラー発生 =====');
                 console.error('Fetch error:', error);
-                statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${error.message}<br><br><button id="retryFetchBtn" style="margin-top: 10px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">再試行</button><br><br>手動でコピーする場合は「次へ進む」ボタンをクリックしてください。</span>`;
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    url: url,
+                    isLocal: isLocal
+                });
+                
+                // より詳細なエラーメッセージを表示
+                let errorMsg = error.message;
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+                    errorMsg = 'サーバーに接続できません。ローカルサーバーが起動しているか確認してください。\n\n起動方法:\npython3 server.py\nまたは\n./start_local.sh';
+                } else if (error.message.includes('500')) {
+                    errorMsg = `サーバーエラー: ${error.message}\n\nサーバーのログを確認してください。`;
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    errorMsg = 'ネットワークエラーが発生しました。サーバーが起動しているか確認してください。';
+                }
+                
+                statusDiv.innerHTML = `<span style="color: var(--danger-color);">⚠ エラー: ${errorMsg}<br><br><button id="retryFetchBtn" style="margin-top: 10px; padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">再試行</button><br><br>手動でコピーする場合は「次へ進む」ボタンをクリックしてください。</span>`;
                 
                 // 再試行ボタンのイベントリスナーを追加
                 const retryBtn = document.getElementById('retryFetchBtn');

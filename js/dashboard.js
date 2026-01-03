@@ -937,7 +937,22 @@ class Dashboard {
             <div style="text-align: center;">順位</div>
             <div style="text-align: center;">AIOランク</div>
         `;
-        articleList.parentNode.insertBefore(header, articleList);
+        
+        // insertBeforeを使用する前に、articleListが親ノードの子要素であることを確認
+        if (articleList && articleList.parentNode && articleList.parentNode.contains(articleList)) {
+            articleList.parentNode.insertBefore(header, articleList);
+        } else {
+            // 親要素が存在しない、またはarticleListが親要素の子要素でない場合は、articleListの前に追加
+            if (articleList && articleList.parentNode) {
+                articleList.parentNode.insertBefore(header, articleList);
+            } else {
+                // フォールバック: articleListの親要素を取得して追加
+                const articleListSection = document.querySelector('.article-list-section');
+                if (articleListSection) {
+                    articleListSection.insertBefore(header, articleListSection.firstChild);
+                }
+            }
+        }
         
         articleList.innerHTML = '';
         
@@ -2188,7 +2203,22 @@ class Dashboard {
             <div style="text-align: center;">AIO引用数</div>
             <div style="text-align: center;">スコア</div>
         `;
-        articleList.parentNode.insertBefore(header, articleList);
+        
+        // insertBeforeを使用する前に、articleListが親ノードの子要素であることを確認
+        if (articleList && articleList.parentNode && articleList.parentNode.contains(articleList)) {
+            articleList.parentNode.insertBefore(header, articleList);
+        } else {
+            // 親要素が存在しない、またはarticleListが親要素の子要素でない場合は、articleListの前に追加
+            if (articleList && articleList.parentNode) {
+                articleList.parentNode.insertBefore(header, articleList);
+            } else {
+                // フォールバック: articleListの親要素を取得して追加
+                const articleListSection = document.querySelector('.article-list-section');
+                if (articleListSection) {
+                    articleListSection.insertBefore(header, articleListSection.firstChild);
+                }
+            }
+        }
         
         articleList.innerHTML = '';
 
