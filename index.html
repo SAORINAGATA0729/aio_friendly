@@ -885,9 +885,10 @@
 
     <!-- 提案モード用フロートボタン（下部固定） -->
     <div id="suggestionFloatButtons" class="suggestion-float-buttons" style="display: none;">
-        <!-- 変更履歴エリア -->
+        <!-- 変更履歴エリア（アコーディオン） -->
         <div id="suggestionCommentHistory" class="suggestion-comment-history">
-            <div class="comment-history-header">
+            <div class="comment-history-header" onclick="window.rewriteSystem.toggleChangeHistory()">
+                <span class="material-icons-round comment-history-expand-icon" style="font-size: 18px; transition: transform 0.2s;">expand_more</span>
                 <span class="material-icons-round">history</span>
                 <span>変更履歴</span>
             </div>

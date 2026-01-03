@@ -859,12 +859,20 @@ class RewriteSystem {
     setupSuggestionTracking() {
         if (!this.quill) return;
         
-        let lastContent = '';
+        let lastText = '';
+        let lastSelection = null;
         let isProcessing = false;
         let debounceTimer = null;
         
+        // 選択範囲の変更を監視
+        this.quill.on('selection-change', (range, oldRange, source) => {
+            if (range) {
+                lastSelection = { index: range.index, length: range.length };
+            }
+        });
+        
         // テキスト変更を監視
-        this.quill.on('text-change', async () => {
+        this.quill.on('text-change', async (delta, oldDelta, source) => {
             if (this.currentEditMode !== 'suggestion' || isProcessing) return;
             
             // デバウンス処理（500ms後に実行）
@@ -873,15 +881,65 @@ class RewriteSystem {
                 isProcessing = true;
                 
                 try {
+                    const currentText = this.quill.getText();
                     const currentHtml = this.quill.root.innerHTML;
                     const currentMarkdown = this.htmlToMarkdown(currentHtml);
+                    
+                    // 加筆されたテキストを検出して自動的にマーカー化
+                    if (lastText && currentText.length > lastText.length && delta && delta.ops) {
+                        // テキストが追加された場合、Delta操作から追加位置を特定
+                        let insertIndex = 0;
+                        let insertText = '';
+                        
+                        for (const op of delta.ops) {
+                            if (op.insert && typeof op.insert === 'string' && op.insert.trim().length > 0) {
+                                // テキストが追加された場合
+                                insertText = op.insert;
+                                // 既にマーカーが適用されていないかチェック
+                                const format = this.quill.getFormat(insertIndex, insertText.length);
+                                if (!format || (!format.addition && !format.deletion && !format.comment)) {
+                                    // 追加されたテキストに自動的に追加マーカーを適用
+                                    setTimeout(() => {
+                                        try {
+                                            const commentId = `auto_add_${Date.now()}_${insertIndex}`;
+                                            this.quill.formatText(insertIndex, insertText.length, 'addition', {
+                                                commentId: commentId
+                                            });
+                                            
+                                            // 変更履歴に追加
+                                            const changeData = {
+                                                id: commentId,
+                                                type: 'addition',
+                                                comment: '自動検出: 加筆',
+                                                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                                                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                                                timestamp: new Date().toISOString(),
+                                                selection: { index: insertIndex, length: insertText.length },
+                                                selectedText: insertText.substring(0, 50),
+                                                replies: []
+                                            };
+                                            this.suggestionChanges.push(changeData);
+                                            this.updateCommentHistory();
+                                        } catch (e) {
+                                            console.error('自動マーカー追加エラー:', e);
+                                        }
+                                    }, 100);
+                                }
+                                insertIndex += insertText.length;
+                            } else if (op.retain && typeof op.retain === 'number') {
+                                insertIndex += op.retain;
+                            } else if (op.delete && typeof op.delete === 'number') {
+                                // 削除の場合はインデックスを変更しない（既に削除されているため）
+                            }
+                        }
+                    }
                     
                     if (this.suggestionBaseContent && currentMarkdown !== this.suggestionBaseContent) {
                         // 変更を検出してマーカーを追加
                         await this.markChanges(this.suggestionBaseContent, currentMarkdown);
                     }
                     
-                    lastContent = currentMarkdown;
+                    lastText = currentText;
                 } catch (e) {
                     console.error('変更追跡エラー:', e);
                 } finally {
@@ -889,6 +947,11 @@ class RewriteSystem {
                 }
             }, 500);
         });
+        
+        // 初期テキストを保存
+        setTimeout(() => {
+            lastText = this.quill.getText();
+        }, 500);
     }
     
     /**
@@ -1621,51 +1684,44 @@ class RewriteSystem {
             
             return `
                 <div class="comment-history-item ${statusClass}" data-comment-id="${comment.id}">
-                    <div class="comment-history-item-header" onclick="window.rewriteSystem.toggleCommentHistoryItem('${comment.id}')">
-                        <span class="material-icons-round comment-history-expand-icon" style="font-size: 18px; transition: transform 0.2s;">expand_more</span>
-                        <div style="flex: 1; display: flex; align-items: center; gap: 0.5rem;">
-                            ${comment.userAvatar ? 
-                                `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
-                                `<span class="material-icons-round" style="font-size: 18px;">account_circle</span>`
-                            }
-                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
-                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                    <span style="font-weight: 600; font-size: 0.85rem;">${comment.userName || '不明'}</span>
-                                    ${comment.type === 'deletion' ? '<span style="color: #dc2626; font-size: 0.75rem;">🗑️ 削除</span>' : ''}
-                                    ${comment.type === 'addition' ? '<span style="color: #2563eb; font-size: 0.75rem;">➕ 追加</span>' : ''}
-                                    ${comment.type === 'comment' ? '<span style="color: #0ea5e9; font-size: 0.75rem;">💬 コメント</span>' : ''}
-                                </div>
-                                <span style="font-size: 0.7rem; color: #6b7280;">${dateStr}</span>
+                    <div class="comment-history-user">
+                        ${comment.userAvatar ? 
+                            `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
+                            `<span class="material-icons-round">account_circle</span>`
+                        }
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <span class="comment-user-name">${comment.userName || '不明'}</span>
+                                ${comment.type === 'deletion' ? '<span style="color: #dc2626; font-size: 0.75rem;">🗑️ 削除</span>' : ''}
+                                ${comment.type === 'addition' ? '<span style="color: #2563eb; font-size: 0.75rem;">➕ 追加</span>' : ''}
+                                ${comment.type === 'comment' ? '<span style="color: #0ea5e9; font-size: 0.75rem;">💬 コメント</span>' : ''}
+                                ${statusText ? `<span class="comment-history-status ${statusClass}">${statusText}</span>` : ''}
                             </div>
-                            ${statusText ? `<span class="comment-history-status ${statusClass}">${statusText}</span>` : ''}
+                            <span class="comment-date">${dateStr}</span>
                         </div>
                     </div>
-                    <div class="comment-history-item-content">
-                        <div class="comment-history-item-body">
-                            <div class="comment-history-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">
-                                ${comment.comment && comment.comment !== '削除提案' && comment.comment !== '追加提案' ? this.escapeHtml(comment.comment) : ''}
-                            </div>
-                            ${comment.selectedText ? `<div class="comment-selected-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 50))}${comment.selectedText.length > 50 ? '...' : ''}"</div>` : ''}
-                            
-                            <div class="comment-reply-list">
-                                ${repliesHtml}
-                                <div class="reply-input-container">
-                                    <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
-                                    <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
-                                </div>
-                            </div>
-                            
-                            <div class="comment-history-item-actions">
-                                <button class="approve-btn" onclick="event.stopPropagation(); window.rewriteSystem.approveChange('${comment.id}')" ${approvalStatus === 'approved' ? 'disabled' : ''}>
-                                    <span class="material-icons-round" style="font-size: 16px;">check</span>
-                                    承認
-                                </button>
-                                <button class="reject-btn" onclick="event.stopPropagation(); window.rewriteSystem.rejectChange('${comment.id}')" ${approvalStatus === 'rejected' ? 'disabled' : ''}>
-                                    <span class="material-icons-round" style="font-size: 16px;">close</span>
-                                    非承認
-                                </button>
-                            </div>
+                    <div class="comment-history-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">
+                        ${comment.comment && comment.comment !== '削除提案' && comment.comment !== '追加提案' ? this.escapeHtml(comment.comment) : ''}
+                    </div>
+                    ${comment.selectedText ? `<div class="comment-selected-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 50))}${comment.selectedText.length > 50 ? '...' : ''}"</div>` : ''}
+                    
+                    <div class="comment-reply-list">
+                        ${repliesHtml}
+                        <div class="reply-input-container">
+                            <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
+                            <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
                         </div>
+                    </div>
+                    
+                    <div class="comment-history-item-actions">
+                        <button class="approve-btn" onclick="event.stopPropagation(); window.rewriteSystem.approveChange('${comment.id}')" ${approvalStatus === 'approved' ? 'disabled' : ''}>
+                            <span class="material-icons-round" style="font-size: 16px;">check</span>
+                            承認
+                        </button>
+                        <button class="reject-btn" onclick="event.stopPropagation(); window.rewriteSystem.rejectChange('${comment.id}')" ${approvalStatus === 'rejected' ? 'disabled' : ''}>
+                            <span class="material-icons-round" style="font-size: 16px;">close</span>
+                            非承認
+                        </button>
                     </div>
                 </div>
             `;
@@ -1687,12 +1743,12 @@ class RewriteSystem {
     }
 
     /**
-     * 変更履歴アイテムの展開/折りたたみ
+     * 変更履歴エリアの展開/折りたたみ
      */
-    toggleCommentHistoryItem(commentId) {
-        const item = document.querySelector(`[data-comment-id="${commentId}"]`);
-        if (item) {
-            item.classList.toggle('expanded');
+    toggleChangeHistory() {
+        const historyArea = document.getElementById('suggestionCommentHistory');
+        if (historyArea) {
+            historyArea.classList.toggle('collapsed');
         }
     }
 

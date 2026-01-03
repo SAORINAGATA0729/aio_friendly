@@ -1577,11 +1577,20 @@ tr:last-child td {
     background: white;
     border-radius: var(--radius-lg);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    max-height: 300px;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     min-width: 280px;
+    overflow: hidden;
+}
+
+.suggestion-comment-history.collapsed .comment-history-list {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.suggestion-comment-history.collapsed .comment-history-expand-icon {
+    transform: rotate(-90deg);
 }
 
 .comment-history-header {
@@ -1595,9 +1604,13 @@ tr:last-child td {
     color: var(--text-primary);
     background: #f9fafb;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.comment-history-header:hover {
+    background: #f3f4f6;
 }
 
 .comment-history-list {
@@ -1605,6 +1618,10 @@ tr:last-child td {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
 }
 
 .comment-history-empty {
@@ -1615,46 +1632,11 @@ tr:last-child td {
 }
 
 .comment-history-item {
-    padding: 0;
+    padding: 0.75rem;
     background: #f9fafb;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
-    overflow: hidden;
-}
-
-.comment-history-item.expanded .comment-history-item-content {
-    max-height: 1000px;
-    opacity: 1;
-}
-
-.comment-history-item.expanded .comment-history-expand-icon {
-    transform: rotate(180deg);
-}
-
-.comment-history-item-header {
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
-}
-
-.comment-history-item-header:hover {
-    background: #f3f4f6;
-}
-
-.comment-history-item-content {
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-}
-
-.comment-history-item-body {
-    padding: 0 1rem 1rem 1rem;
 }
 
 .comment-history-status {
