@@ -469,15 +469,14 @@ class RewriteSystem {
                 static create(value) {
                     const node = super.create();
                     node.setAttribute('class', 'suggestion-deletion');
-                    node.setAttribute('data-comment-id', value?.commentId || `del_${Date.now()}`);
+                    const commentId = value?.commentId || (typeof value === 'string' ? value : `del_${Date.now()}`);
+                    node.setAttribute('data-comment-id', commentId);
                     node.setAttribute('data-change-type', 'deletion');
                     return node;
                 }
                 
                 static formats(node) {
-                    return {
-                        commentId: node.getAttribute('data-comment-id') || ''
-                    };
+                    return node.getAttribute('data-comment-id') || true;
                 }
             }
             
@@ -490,15 +489,14 @@ class RewriteSystem {
                 static create(value) {
                     const node = super.create();
                     node.setAttribute('class', 'suggestion-addition');
-                    node.setAttribute('data-comment-id', value?.commentId || `add_${Date.now()}`);
+                    const commentId = value?.commentId || (typeof value === 'string' ? value : `add_${Date.now()}`);
+                    node.setAttribute('data-comment-id', commentId);
                     node.setAttribute('data-change-type', 'addition');
                     return node;
                 }
                 
                 static formats(node) {
-                    return {
-                        commentId: node.getAttribute('data-comment-id') || ''
-                    };
+                    return node.getAttribute('data-comment-id') || true;
                 }
             }
             
@@ -563,6 +561,12 @@ class RewriteSystem {
             
             // 提案モード時の変更を追跡
             this.setupSuggestionTracking();
+            
+            // 提案モード用のツールバーボタンのイベントリスナー
+            this.setupSuggestionToolbarButtons();
+            
+            // キーボードショートカット
+            this.setupSuggestionKeyboardShortcuts();
         }
 
         // 編集モード切り替えタブ
@@ -788,10 +792,22 @@ class RewriteSystem {
             this.removeSuggestionMarkers();
             this.suggestionBaseContent = null;
             this.suggestionChanges = [];
+            
+            // 提案モード用のツールバーボタンを非表示
+            const suggestionButtons = document.getElementById('suggestionToolbarButtons');
+            if (suggestionButtons) {
+                suggestionButtons.style.display = 'none';
+            }
         } else if (mode === 'suggestion') {
             suggestionEditTab?.classList.add('active');
             normalEditTab?.classList.remove('active');
             suggestionEditTab?.classList.add('suggestion-mode');
+            
+            // 提案モード用のツールバーボタンを表示
+            const suggestionButtons = document.getElementById('suggestionToolbarButtons');
+            if (suggestionButtons) {
+                suggestionButtons.style.display = 'flex';
+            }
             
             // 提案モードに切り替えた時、編集履歴を開始
             if (this.currentArticle && window.editHistoryManager) {
@@ -849,6 +865,153 @@ class RewriteSystem {
     }
     
     /**
+     * 提案モード用のツールバーボタンを設定
+     */
+    setupSuggestionToolbarButtons() {
+        const deletionBtn = document.getElementById('addDeletionMarkerBtn');
+        const additionBtn = document.getElementById('addAdditionMarkerBtn');
+        
+        if (deletionBtn) {
+            deletionBtn.addEventListener('click', () => {
+                this.addDeletionMarker();
+            });
+        }
+        
+        if (additionBtn) {
+            additionBtn.addEventListener('click', () => {
+                this.addAdditionMarker();
+            });
+        }
+    }
+    
+    /**
+     * 提案モード用のキーボードショートカットを設定
+     */
+    setupSuggestionKeyboardShortcuts() {
+        if (!this.quill) return;
+        
+        this.quill.root.addEventListener('keydown', (e) => {
+            if (this.currentEditMode !== 'suggestion') return;
+            
+            // Ctrl+Shift+D: 削除マーカー
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                this.addDeletionMarker();
+            }
+            
+            // Ctrl+Shift+A: 追加マーカー
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                this.addAdditionMarker();
+            }
+        });
+    }
+    
+    /**
+     * 削除マーカーを追加（確実に動作する方法）
+     */
+    addDeletionMarker() {
+        if (!this.quill || this.currentEditMode !== 'suggestion') {
+            if (typeof showToast === 'function') {
+                showToast('提案モードを選択してください', 'error');
+            }
+            return;
+        }
+        
+        const selection = this.quill.getSelection(true);
+        if (!selection || selection.length === 0) {
+            if (typeof showToast === 'function') {
+                showToast('テキストを選択してください', 'error');
+            } else {
+                alert('テキストを選択してください');
+            }
+            return;
+        }
+        
+        try {
+            const commentId = `del_${Date.now()}_${selection.index}`;
+            
+            // formatTextを使用（値はtrueで有効化）
+            this.quill.formatText(selection.index, selection.length, 'deletion', true);
+            
+            // コメントIDを属性に設定
+            setTimeout(() => {
+                const leaf = this.quill.getLeaf(selection.index);
+                if (leaf && leaf[0] && leaf[0].domNode) {
+                    const node = leaf[0].domNode.closest('.suggestion-deletion') || leaf[0].domNode;
+                    if (node) {
+                        node.setAttribute('data-comment-id', commentId);
+                        node.setAttribute('data-change-type', 'deletion');
+                    }
+                }
+            }, 100);
+            
+            console.log('削除マーカーを追加しました:', selection);
+            
+            if (typeof showToast === 'function') {
+                showToast('削除マーカーを追加しました', 'success');
+            }
+        } catch (e) {
+            console.error('削除マーカー追加エラー:', e);
+            if (typeof showToast === 'function') {
+                showToast('削除マーカーの追加に失敗しました', 'error');
+            }
+        }
+    }
+    
+    /**
+     * 追加マーカーを追加（確実に動作する方法）
+     */
+    addAdditionMarker() {
+        if (!this.quill || this.currentEditMode !== 'suggestion') {
+            if (typeof showToast === 'function') {
+                showToast('提案モードを選択してください', 'error');
+            }
+            return;
+        }
+        
+        const selection = this.quill.getSelection(true);
+        if (!selection || selection.length === 0) {
+            if (typeof showToast === 'function') {
+                showToast('テキストを選択してください', 'error');
+            } else {
+                alert('テキストを選択してください');
+            }
+            return;
+        }
+        
+        try {
+            const commentId = `add_${Date.now()}_${selection.index}`;
+            
+            // formatTextを使用（値はtrueで有効化）
+            this.quill.formatText(selection.index, selection.length, 'addition', true);
+            
+            // コメントIDを属性に設定
+            setTimeout(() => {
+                const leaf = this.quill.getLeaf(selection.index);
+                if (leaf && leaf[0] && leaf[0].domNode) {
+                    const node = leaf[0].domNode.closest('.suggestion-addition') || leaf[0].domNode;
+                    if (node) {
+                        node.setAttribute('data-comment-id', commentId);
+                        node.setAttribute('data-change-type', 'addition');
+                    }
+                }
+            }, 100);
+            
+            console.log('追加マーカーを追加しました:', selection);
+            
+            if (typeof showToast === 'function') {
+                showToast('追加マーカーを追加しました', 'success');
+            }
+        } catch (e) {
+            console.error('追加マーカー追加エラー:', e);
+            if (typeof showToast === 'function') {
+                showToast('追加マーカーの追加に失敗しました', 'error');
+            }
+        }
+    }
+    
+    /**
      * 選択範囲に提案マーカーを追加
      */
     addSuggestionMarker(range) {
@@ -862,11 +1025,7 @@ class RewriteSystem {
         
         try {
             // 選択範囲に提案マーカーを適用
-            this.quill.formatText(range.index, range.length, 'suggestion', {
-                suggestionId: `temp_${Date.now()}`,
-                userId: user.uid,
-                userName: user.displayName || user.email
-            });
+            this.quill.formatText(range.index, range.length, 'suggestion', true);
         } catch (e) {
             console.error('提案マーカーの追加エラー:', e);
         }

@@ -816,6 +816,17 @@
                                 <span class="material-icons-round">search</span>
                                 検索
                             </button>
+                            <!-- 提案モード用ボタン（提案モード時のみ表示） -->
+                            <div id="suggestionToolbarButtons" style="display: none; gap: 0.5rem;">
+                                <button class="toolbar-btn suggestion-toolbar-btn" id="addDeletionMarkerBtn" title="選択範囲を削除マーカー化（Ctrl+Shift+D）">
+                                    <span class="material-icons-round">strikethrough_s</span>
+                                    削除
+                                </button>
+                                <button class="toolbar-btn suggestion-toolbar-btn" id="addAdditionMarkerBtn" title="選択範囲を追加マーカー化（Ctrl+Shift+A）">
+                                    <span class="material-icons-round">add_circle</span>
+                                    追加
+                                </button>
+                            </div>
                             <!-- プレビューボタンを追加 -->
                             <button class="toolbar-btn" id="previewBtn" title="プレビュー">
                                 <span class="material-icons-round">preview</span>

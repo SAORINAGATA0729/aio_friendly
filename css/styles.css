@@ -1343,6 +1343,24 @@ tr:last-child td {
     background: var(--primary-dark);
 }
 
+/* 提案モード用ツールバーボタン */
+#suggestionToolbarButtons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.suggestion-toolbar-btn {
+    background: #fef3c7 !important;
+    color: #d97706 !important;
+    border-color: #f59e0b !important;
+}
+
+.suggestion-toolbar-btn:hover {
+    background: #fde68a !important;
+    color: #b45309 !important;
+}
+
 /* 提案マーカーのスタイル */
 .suggestion-marker {
     background-color: #fef3c7;
