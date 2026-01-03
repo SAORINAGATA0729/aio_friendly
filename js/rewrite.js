@@ -1408,7 +1408,12 @@ ${article.keyword}について、重要なポイントをまとめました。
         }
         
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1167',message:'updateScore: Before HTML structure check',data:{checklistScoreHTML:checklistScore.innerHTML.substring(0,200),checklistScoreText:checklistScore.textContent?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+        const initialHTML = checklistScore.innerHTML;
+        const initialText = checklistScore.textContent;
+        const hasChildNodes = checklistScore.hasChildNodes();
+        const childNodesCount = checklistScore.childNodes.length;
+        const firstChildType = checklistScore.firstChild?.nodeType;
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1410',message:'updateScore: Before HTML structure check',data:{checklistScoreHTML:initialHTML.substring(0,500),checklistScoreText:initialText?.substring(0,200),hasChildNodes:hasChildNodes,childNodesCount:childNodesCount,firstChildType:firstChildType},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         
         // HTML構造が正しくない場合（単純なテキストになっている場合）、正しい構造を再構築
@@ -1418,14 +1423,23 @@ ${article.keyword}について、重要なポイントをまとめました。
         const totalCountEl = document.getElementById('totalCount');
         const scoreBarFill = document.getElementById('scoreBarFill');
         
+        // HTML構造が正しくないかどうかを判定
+        // 1. 必要な要素が存在しない
+        // 2. checklistScoreの直接の子要素がdiv.score-statusでない
+        // 3. 単純なテキストノードのみ（子要素が存在しない、またはテキストノードのみ）
+        const hasCorrectStructure = scoreNumber && scoreRank && checkedCountEl && totalCountEl && scoreBarFill;
+        const hasScoreStatus = checklistScore.querySelector('.score-status') !== null;
+        const isPlainText = !hasChildNodes || (childNodesCount === 1 && firstChildType === Node.TEXT_NODE);
+        
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1175',message:'updateScore: Element existence check',data:{scoreNumberExists:!!scoreNumber,scoreRankExists:!!scoreRank,checkedCountExists:!!checkedCountEl,totalCountExists:!!totalCountEl,scoreBarFillExists:!!scoreBarFill},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1423',message:'updateScore: Element existence check',data:{scoreNumberExists:!!scoreNumber,scoreRankExists:!!scoreRank,checkedCountExists:!!checkedCountEl,totalCountExists:!!totalCountEl,scoreBarFillExists:!!scoreBarFill,hasCorrectStructure:hasCorrectStructure,hasScoreStatus:hasScoreStatus,isPlainText:isPlainText},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
         
         // HTML構造が正しくない場合、再構築
-        if (!scoreNumber || !scoreRank || !checkedCountEl || !totalCountEl || !scoreBarFill) {
+        if (!hasCorrectStructure || !hasScoreStatus || isPlainText) {
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1176',message:'updateScore: Rebuilding HTML structure',data:{oldHTML:checklistScore.innerHTML.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+            const reason = !hasCorrectStructure ? 'missing elements' : !hasScoreStatus ? 'missing score-status' : isPlainText ? 'plain text' : 'unknown';
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1426',message:'updateScore: Rebuilding HTML structure',data:{oldHTML:initialHTML.substring(0,500),reason:reason},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
             // #endregion
             checklistScore.innerHTML = `
                 <div class="score-status">
