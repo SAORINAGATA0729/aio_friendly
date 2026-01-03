@@ -1191,13 +1191,17 @@ tr:last-child td {
     background-color: #fecaca;
 }
 
-.suggestion-deletion .comment-icon {
-    font-size: 12px !important;
-    vertical-align: middle;
+.suggestion-deletion::after {
+    content: '💬';
+    font-size: 12px;
     margin-left: 4px;
-    color: #b91c1c !important;
+    vertical-align: middle;
     cursor: pointer;
-    display: inline-block;
+    opacity: 0.7;
+}
+
+.suggestion-deletion:hover::after {
+    opacity: 1;
 }
 
 /* 提案モードの追加マーカー（赤背景） */
@@ -1215,13 +1219,17 @@ tr:last-child td {
     background-color: #fecaca;
 }
 
-.suggestion-addition .comment-icon {
-    font-size: 12px !important;
-    vertical-align: middle;
+.suggestion-addition::after {
+    content: '💬';
+    font-size: 12px;
     margin-left: 4px;
-    color: #b91c1c !important;
+    vertical-align: middle;
     cursor: pointer;
-    display: inline-block;
+    opacity: 0.7;
+}
+
+.suggestion-addition:hover::after {
+    opacity: 1;
 }
 
 /* コメントダイアログ */

@@ -469,22 +469,14 @@ class RewriteSystem {
                 static create(value) {
                     const node = super.create();
                     node.setAttribute('class', 'suggestion-deletion');
-                    node.setAttribute('data-comment-id', value?.commentId || '');
+                    node.setAttribute('data-comment-id', value?.commentId || `del_${Date.now()}`);
                     node.setAttribute('data-change-type', 'deletion');
-                    
-                    // コメントアイコンを追加
-                    const icon = document.createElement('span');
-                    icon.className = 'material-icons-round comment-icon';
-                    icon.textContent = 'comment';
-                    icon.style.cssText = 'font-size: 12px; vertical-align: middle; margin-left: 4px; color: #b91c1c; cursor: pointer;';
-                    node.appendChild(icon);
-                    
                     return node;
                 }
                 
                 static formats(node) {
                     return {
-                        commentId: node.getAttribute('data-comment-id')
+                        commentId: node.getAttribute('data-comment-id') || ''
                     };
                 }
             }
@@ -498,22 +490,14 @@ class RewriteSystem {
                 static create(value) {
                     const node = super.create();
                     node.setAttribute('class', 'suggestion-addition');
-                    node.setAttribute('data-comment-id', value?.commentId || '');
+                    node.setAttribute('data-comment-id', value?.commentId || `add_${Date.now()}`);
                     node.setAttribute('data-change-type', 'addition');
-                    
-                    // コメントアイコンを追加
-                    const icon = document.createElement('span');
-                    icon.className = 'material-icons-round comment-icon';
-                    icon.textContent = 'comment';
-                    icon.style.cssText = 'font-size: 12px; vertical-align: middle; margin-left: 4px; color: #b91c1c; cursor: pointer;';
-                    node.appendChild(icon);
-                    
                     return node;
                 }
                 
                 static formats(node) {
                     return {
-                        commentId: node.getAttribute('data-comment-id')
+                        commentId: node.getAttribute('data-comment-id') || ''
                     };
                 }
             }
@@ -565,12 +549,11 @@ class RewriteSystem {
                     }
                 }
                 
-                // 削除マーカーまたは追加マーカーをクリック（コメントアイコン）
+                // 削除マーカーまたは追加マーカーをクリック
                 const deletionMarker = e.target.closest('.suggestion-deletion');
                 const additionMarker = e.target.closest('.suggestion-addition');
-                const commentIcon = e.target.classList.contains('comment-icon');
                 
-                if (commentIcon && (deletionMarker || additionMarker)) {
+                if (deletionMarker || additionMarker) {
                     const marker = deletionMarker || additionMarker;
                     const commentId = marker.getAttribute('data-comment-id') || `comment_${Date.now()}`;
                     const changeType = marker.getAttribute('data-change-type') || (deletionMarker ? 'deletion' : 'addition');
@@ -908,57 +891,102 @@ class RewriteSystem {
     }
     
     /**
-     * 変更箇所をマーカーで表示
+     * 変更箇所をマーカーで表示（改良版：選択範囲ベース）
      */
     async markChanges(originalContent, currentContent) {
-        if (!window.editHistoryManager || !this.quill) return;
+        if (!window.editHistoryManager || !this.quill || this.currentEditMode !== 'suggestion') return;
         
         try {
-            // diffを計算
-            const diff = await window.editHistoryManager.calculateDiff(originalContent, currentContent);
+            console.log('変更を検出しました。マーカーを追加します...');
             
-            if (!diff || !diff.diffs) return;
-            
-            // Quillのテキストを取得
-            const quillText = this.quill.getText();
-            let currentIndex = 0;
-            
-            // 変更箇所をQuillエディタに反映
-            for (const [operation, text] of diff.diffs) {
-                const textLength = text.length;
+            // 選択範囲がある場合は、その範囲にマーカーを追加
+            const selection = this.quill.getSelection(true);
+            if (selection && selection.length > 0) {
+                const range = { index: selection.index, length: selection.length };
                 
-                if (operation === -1) {
-                    // 削除: 取り消し線を追加
-                    if (currentIndex < quillText.length) {
-                        const range = { 
-                            index: currentIndex, 
-                            length: Math.min(textLength, quillText.length - currentIndex) 
-                        };
-                        const commentId = `del_${Date.now()}_${currentIndex}`;
-                        this.quill.formatText(range.index, range.length, 'deletion', {
-                            commentId: commentId
-                        });
+                // 選択範囲のテキストを取得
+                const selectedText = this.quill.getText(range.index, range.length);
+                
+                // 選択範囲が元のコンテンツに存在するかチェック
+                const isDeletion = originalContent.includes(selectedText);
+                const isAddition = !isDeletion && selectedText.trim().length > 0;
+                
+                if (isDeletion) {
+                    // 削除マーカーを追加
+                    const commentId = `del_${Date.now()}_${range.index}`;
+                    this.quill.formatText(range.index, range.length, 'deletion', {
+                        commentId: commentId
+                    });
+                    console.log('削除マーカーを追加:', range);
+                } else if (isAddition) {
+                    // 追加マーカーを追加
+                    const commentId = `add_${Date.now()}_${range.index}`;
+                    this.quill.formatText(range.index, range.length, 'addition', {
+                        commentId: commentId
+                    });
+                    console.log('追加マーカーを追加:', range);
+                }
+            } else {
+                // 選択範囲がない場合は、diffを計算してマーカーを追加
+                const diff = await window.editHistoryManager.calculateDiff(originalContent, currentContent);
+                
+                if (!diff || !diff.diffs || diff.diffs.length === 0) {
+                    console.log('変更が検出されませんでした');
+                    return;
+                }
+                
+                console.log('Diff結果:', diff.diffs.length, '箇所の変更を検出');
+                
+                // Quillのテキストを取得
+                const quillText = this.quill.getText();
+                let textIndex = 0;
+                
+                // 変更箇所をQuillエディタに反映
+                for (const [operation, text] of diff.diffs) {
+                    if (operation === -1) {
+                        // 削除: 取り消し線を追加
+                        if (textIndex < quillText.length && text.trim().length > 0) {
+                            const range = { 
+                                index: textIndex, 
+                                length: Math.min(text.length, quillText.length - textIndex) 
+                            };
+                            const commentId = `del_${Date.now()}_${textIndex}`;
+                            try {
+                                this.quill.formatText(range.index, range.length, 'deletion', {
+                                    commentId: commentId
+                                });
+                                console.log('削除マーカーを追加:', range);
+                            } catch (e) {
+                                console.error('削除マーカー追加エラー:', e);
+                            }
+                        }
+                    } else if (operation === 1) {
+                        // 追加: 赤背景を追加
+                        if (textIndex < quillText.length && text.trim().length > 0) {
+                            const range = { 
+                                index: textIndex, 
+                                length: Math.min(text.length, quillText.length - textIndex) 
+                            };
+                            const commentId = `add_${Date.now()}_${textIndex}`;
+                            try {
+                                this.quill.formatText(range.index, range.length, 'addition', {
+                                    commentId: commentId
+                                });
+                                console.log('追加マーカーを追加:', range);
+                            } catch (e) {
+                                console.error('追加マーカー追加エラー:', e);
+                            }
+                        }
+                        textIndex += text.length;
+                    } else {
+                        // 変更なし
+                        textIndex += text.length;
                     }
-                } else if (operation === 1) {
-                    // 追加: 赤背景を追加
-                    if (currentIndex < quillText.length) {
-                        const range = { 
-                            index: currentIndex, 
-                            length: Math.min(textLength, quillText.length - currentIndex) 
-                        };
-                        const commentId = `add_${Date.now()}_${currentIndex}`;
-                        this.quill.formatText(range.index, range.length, 'addition', {
-                            commentId: commentId
-                        });
-                    }
-                    currentIndex += textLength;
-                } else {
-                    // 変更なし
-                    currentIndex += textLength;
                 }
             }
         } catch (e) {
             console.error('変更マーカー追加エラー:', e);
+            console.error('エラー詳細:', e.stack);
         }
     }
     
