@@ -1,0 +1,9 @@
+{
+  "name": "aio-pdca-system",
+  "version": "1.0.0",
+  "description": "AIO改修マネージャー",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
+

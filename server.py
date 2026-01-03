@@ -6,6 +6,7 @@ import json
 import re
 import sys
 import os
+import ssl
 
 PORT = 8000
 
@@ -32,22 +33,101 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
             target_url = params.get('url', [None])[0]
 
             if not target_url:
-                self.send_error(400, "Missing 'url' parameter")
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": "Missing 'url' parameter"}).encode('utf-8'))
+                return
+
+            # URLデコード
+            try:
+                target_url = urllib.parse.unquote(target_url)
+            except Exception as decode_error:
+                print(f"URL decode error: {decode_error}")
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": f"Invalid URL encoding: {str(decode_error)}"}).encode('utf-8'))
                 return
 
             print(f"Fetching: {target_url}")
 
             # 記事の取得（User-Agentを設定してブラウザのふりをする）
-            req = urllib.request.Request(
-                target_url, 
-                headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
-            )
+            # SSL証明書の検証を無効化（開発環境用）
+            # より確実な方法として、ssl._create_unverified_context()を使用
+            try:
+                ssl_context = ssl._create_unverified_context()
+                print(f"[DEBUG] SSL context created using _create_unverified_context()")
+            except AttributeError:
+                # フォールバック: create_default_context()を使用
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                print(f"[DEBUG] SSL context created using create_default_context(): check_hostname={ssl_context.check_hostname}, verify_mode={ssl_context.verify_mode}")
             
-            with urllib.request.urlopen(req) as response:
-                html_content = response.read().decode('utf-8')
+            try:
+                req = urllib.request.Request(
+                    target_url, 
+                    headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'}
+                )
+                
+                print(f"[DEBUG] Opening URL with SSL context...")
+                with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
+                    html_content = response.read().decode('utf-8')
+                print(f"[DEBUG] Successfully fetched content, length: {len(html_content)}")
+            except urllib.error.HTTPError as e:
+                print(f"HTTP Error: {e.code} - {e.reason}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": f"HTTP Error {e.code}: {e.reason}"}).encode('utf-8'))
+                return
+            except urllib.error.URLError as e:
+                import traceback
+                print(f"[DEBUG] URL Error caught: {e.reason}")
+                print(f"[DEBUG] Error type: {type(e).__name__}")
+                print(f"[DEBUG] Error args: {e.args}")
+                print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+                # SSLエラーの場合、より詳細な情報を出力
+                if 'SSL' in str(e.reason) or 'CERTIFICATE' in str(e.reason):
+                    print(f"[DEBUG] SSL Error detected! SSL context was: check_hostname={ssl_context.check_hostname}, verify_mode={ssl_context.verify_mode}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": f"URL Error: {e.reason}"}).encode('utf-8'))
+                return
+            except Exception as fetch_error:
+                import traceback
+                print(f"[DEBUG] Fetch error: {fetch_error}")
+                print(f"[DEBUG] Error type: {type(fetch_error).__name__}")
+                print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+                # SSLエラーの場合、より詳細な情報を出力
+                if 'SSL' in str(fetch_error) or 'CERTIFICATE' in str(fetch_error):
+                    print(f"[DEBUG] SSL Error detected in general exception! SSL context was: check_hostname={ssl_context.check_hostname}, verify_mode={ssl_context.verify_mode}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": f"Fetch error: {str(fetch_error)}"}).encode('utf-8'))
+                return
 
             # HTMLをMarkdownに簡易変換
-            markdown_content = self.html_to_markdown(html_content)
+            try:
+                markdown_content = self.html_to_markdown(html_content)
+            except Exception as convert_error:
+                print(f"Conversion error: {convert_error}")
+                import traceback
+                print(f"Traceback: {traceback.format_exc()}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": f"Conversion error: {str(convert_error)}"}).encode('utf-8'))
+                return
 
             # JSONレスポンスの作成
             response_data = {
@@ -64,11 +144,17 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(response_data).encode('utf-8'))
 
         except Exception as e:
+            import traceback
             print(f"Error: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode('utf-8'))
+            error_msg = str(e)
+            if len(error_msg) > 500:
+                error_msg = error_msg[:500] + "..."
+            self.wfile.write(json.dumps({"success": False, "error": error_msg}).encode('utf-8'))
 
     def html_to_markdown(self, html):
         """

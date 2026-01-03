@@ -42,27 +42,71 @@ module.exports = async function handler(req, res) {
         let htmlContent;
         let response;
 
-        // fetchが利用可能か確認（Node.js 18以降では利用可能）
-        if (typeof fetch === 'undefined') {
-            // Node.js 18未満の場合はnode-fetchを使用
-            try {
-                const nodeFetch = require('node-fetch');
-                response = await nodeFetch(targetUrl, {
+        // SSL証明書の検証を無効化（環境変数を使用）
+        // Vercel環境では、環境変数NODE_TLS_REJECT_UNAUTHORIZED=0を設定する必要がある
+        // または、node-fetchを使用してSSL検証を無効化する
+        const originalRejectUnauthorized = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+        console.log('[DEBUG] Set NODE_TLS_REJECT_UNAUTHORIZED=0');
+
+        try {
+            // fetchが利用可能か確認（Node.js 18以降では利用可能）
+            if (typeof fetch === 'undefined') {
+                // Node.js 18未満の場合はnode-fetchを使用
+                try {
+                    const nodeFetch = require('node-fetch');
+                    const https = require('https');
+                    const httpsAgent = new https.Agent({
+                        rejectUnauthorized: false
+                    });
+                    response = await nodeFetch(targetUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+                        },
+                        agent: targetUrl.startsWith('https://') ? httpsAgent : undefined
+                    });
+                    console.log('[DEBUG] Successfully fetched using node-fetch with SSL disabled');
+                } catch (requireError) {
+                    console.error('[ERROR] node-fetch require error:', requireError);
+                    throw new Error('node-fetch is not available. Please install it or use Node.js 18+');
+                }
+            } else {
+                // HTMLを取得（Node.js 18以降のfetchを使用）
+                // 環境変数NODE_TLS_REJECT_UNAUTHORIZED=0が設定されているため、SSL検証が無効化される
+                response = await fetch(targetUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
                     }
                 });
-            } catch (requireError) {
-                console.error('[ERROR] node-fetch require error:', requireError);
-                throw new Error('node-fetch is not available. Please install it or use Node.js 18+');
+                console.log('[DEBUG] Successfully fetched using native fetch with SSL disabled');
             }
-        } else {
-            // HTMLを取得
-            response = await fetch(targetUrl, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
-                }
-            });
+        } catch (fetchError) {
+            // fetchが失敗した場合（SSLエラーなど）、node-fetchをフォールバックとして使用
+            console.error('[DEBUG] Fetch failed, trying node-fetch with SSL disabled:', fetchError.message);
+            try {
+                const nodeFetch = require('node-fetch');
+                const https = require('https');
+                const httpsAgent = new https.Agent({
+                    rejectUnauthorized: false
+                });
+                response = await nodeFetch(targetUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+                    },
+                    agent: targetUrl.startsWith('https://') ? httpsAgent : undefined
+                });
+                console.log('[DEBUG] Successfully fetched using node-fetch with SSL disabled (fallback)');
+            } catch (nodeFetchError) {
+                console.error('[ERROR] node-fetch also failed:', nodeFetchError);
+                throw fetchError; // 元のエラーを投げる
+            }
+        } finally {
+            // 環境変数を元に戻す
+            if (originalRejectUnauthorized !== undefined) {
+                process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalRejectUnauthorized;
+            } else {
+                delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+            }
         }
 
         if (!response.ok) {

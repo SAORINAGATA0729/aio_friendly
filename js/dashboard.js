@@ -658,13 +658,39 @@ class Dashboard {
     // --- プラン選択機能の実装メソッド ---
     
     setupPlanSelection() {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:660',message:'setupPlanSelection called',data:{plansCount:this.plans?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        
         const planSelect = document.getElementById('selectedPlanId');
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:662',message:'planSelect element check',data:{planSelectExists:!!planSelect,planSelectId:planSelect?.id,planSelectValue:planSelect?.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        
         if (planSelect) {
+            // 既存のイベントリスナーを削除（重複防止）
+            // cloneNodeではなく、既存のイベントリスナーを削除してから再設定
+            const existingValue = planSelect.value;
+            planSelect.replaceWith(planSelect.cloneNode(true));
+            const freshPlanSelect = document.getElementById('selectedPlanId');
+            if (freshPlanSelect) {
+                freshPlanSelect.value = existingValue;
+            }
+            
             // プラン一覧をドロップダウンに追加
             this.updatePlanSelectOptions();
             
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:675',message:'before addEventListener',data:{freshPlanSelectExists:!!freshPlanSelect,optionsCount:freshPlanSelect?.options?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
+            
             // プラン選択時のイベント
-            planSelect.addEventListener('change', (e) => {
+            if (freshPlanSelect) {
+                freshPlanSelect.addEventListener('change', (e) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:680',message:'planSelect change event fired',data:{planId:e.target.value,previousPlanId:this.selectedPlanId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
+                // #endregion
+                
                 const planId = e.target.value;
                 if (planId) {
                     this.loadPlanArticles(planId);
@@ -676,15 +702,29 @@ class Dashboard {
                     // 通常の記事一覧を表示
                     this.renderArticleList('all');
                 }
-            });
+                });
+            }
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:695',message:'setupPlanSelection completed',data:{hasEventListener:!!freshPlanSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+            // #endregion
+        } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:698',message:'planSelect element not found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
         }
     }
     
     updatePlanSelectOptions() {
         const planSelect = document.getElementById('selectedPlanId');
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:712',message:'updatePlanSelectOptions called',data:{planSelectExists:!!planSelect,plansCount:this.plans?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        
         if (!planSelect) return;
         
         // 既存のオプションをクリア（最初の「プランを選択してください」以外）
+        const initialLength = planSelect.children.length;
         while (planSelect.children.length > 1) {
             planSelect.removeChild(planSelect.lastChild);
         }
@@ -696,6 +736,10 @@ class Dashboard {
             option.textContent = plan.name;
             planSelect.appendChild(option);
         });
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:730',message:'updatePlanSelectOptions completed',data:{initialOptionsCount:initialLength,finalOptionsCount:planSelect.children.length,addedPlans:this.plans.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
     }
     
     loadPlanArticles(planId) {
