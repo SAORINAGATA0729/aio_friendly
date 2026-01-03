@@ -2557,14 +2557,6 @@ class Dashboard {
         //     });
         // }
 
-        // バックアップボタン
-        const backupBtn = document.getElementById('backupBtn');
-        if (backupBtn) {
-            backupBtn.addEventListener('click', () => {
-                dataManager.createBackup();
-            });
-        }
-        
         // 記事一覧のイベントリスナー（イベント委譲を使用）
         const articleList = document.getElementById('articleList');
         if (articleList) {
