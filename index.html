@@ -258,11 +258,11 @@
                             <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">2週間後計測数値</h4>
                             <button type="button" id="import2weeksCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                 <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
-                                CSVからインポート
+                                CSVからインポート（全体数値）
                             </button>
                         </div>
                         <input type="file" id="csv2weeksFileInput" accept=".csv" style="display: none;">
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
                             <div>
                                 <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">AIO引用数</label>
                                 <input type="number" id="metrics2weeksAioCitations" class="form-input">
@@ -280,6 +280,35 @@
                                 <input type="number" id="metrics2weeksBrandClicks" class="form-input">
                             </div>
                         </div>
+                        
+                        <!-- 2週間後記事ごとの数値入力テーブル -->
+                        <div style="padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h5 style="margin: 0; font-size: 0.95rem; color: var(--text-primary); font-weight: 600;">記事ごとの数値入力（2週間後）</h5>
+                                <button type="button" id="import2weeksArticleCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                    CSVからインポート
+                                </button>
+                            </div>
+                            <input type="file" id="csv2weeksArticleFileInput" accept=".csv" style="display: none;">
+                            <div style="overflow-x: auto;">
+                                <table id="articleMetrics2weeksTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="background: #f9fafb; border-bottom: 2px solid var(--border-color);">
+                                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151;">記事名/URL</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">クリック数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">表示回数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">CTR (%)</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">順位</th>
+                                            <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #374151;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="articleMetrics2weeksBody">
+                                        <!-- 動的に追加される -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 3週間後数値 -->
@@ -288,11 +317,11 @@
                             <h4 style="margin: 0; font-size: 1rem; color: var(--text-primary); font-weight: 600;">3週間後計測数値</h4>
                             <button type="button" id="import3weeksCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
                                 <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
-                                CSVからインポート
+                                CSVからインポート（全体数値）
                             </button>
                         </div>
                         <input type="file" id="csv3weeksFileInput" accept=".csv" style="display: none;">
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
                             <div>
                                 <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">AIO引用数</label>
                                 <input type="number" id="metrics3weeksAioCitations" class="form-input">
@@ -308,6 +337,35 @@
                             <div>
                                 <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">ブランド認知度</label>
                                 <input type="number" id="metrics3weeksBrandClicks" class="form-input">
+                            </div>
+                        </div>
+                        
+                        <!-- 3週間後記事ごとの数値入力テーブル -->
+                        <div style="padding: 1rem; background: white; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h5 style="margin: 0; font-size: 0.95rem; color: var(--text-primary); font-weight: 600;">記事ごとの数値入力（3週間後）</h5>
+                                <button type="button" id="import3weeksArticleCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
+                                    CSVからインポート
+                                </button>
+                            </div>
+                            <input type="file" id="csv3weeksArticleFileInput" accept=".csv" style="display: none;">
+                            <div style="overflow-x: auto;">
+                                <table id="articleMetrics3weeksTable" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                    <thead>
+                                        <tr style="background: #f9fafb; border-bottom: 2px solid var(--border-color);">
+                                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: #374151;">記事名/URL</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">クリック数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">表示回数</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">CTR (%)</th>
+                                            <th style="padding: 0.75rem; text-align: right; font-weight: 600; color: #374151;">順位</th>
+                                            <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: #374151;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="articleMetrics3weeksBody">
+                                        <!-- 動的に追加される -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

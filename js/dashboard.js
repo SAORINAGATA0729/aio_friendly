@@ -2899,6 +2899,36 @@ class Dashboard {
             });
         }
 
+        // 2週間後記事ごとのCSVインポート
+        const import2weeksArticleCsvBtn = document.getElementById('import2weeksArticleCsvBtn');
+        const csv2weeksArticleFileInput = document.getElementById('csv2weeksArticleFileInput');
+        if (import2weeksArticleCsvBtn && csv2weeksArticleFileInput) {
+            import2weeksArticleCsvBtn.addEventListener('click', () => {
+                csv2weeksArticleFileInput.click();
+            });
+            
+            csv2weeksArticleFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importCheckArticleCsvFile(e.target.files[0], '2weeks');
+                }
+            });
+        }
+
+        // 3週間後記事ごとのCSVインポート
+        const import3weeksArticleCsvBtn = document.getElementById('import3weeksArticleCsvBtn');
+        const csv3weeksArticleFileInput = document.getElementById('csv3weeksArticleFileInput');
+        if (import3weeksArticleCsvBtn && csv3weeksArticleFileInput) {
+            import3weeksArticleCsvBtn.addEventListener('click', () => {
+                csv3weeksArticleFileInput.click();
+            });
+            
+            csv3weeksArticleFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    this.importCheckArticleCsvFile(e.target.files[0], '3weeks');
+                }
+            });
+        }
+
         // データ保存
         if (saveCheckDataBtn) {
             saveCheckDataBtn.addEventListener('click', () => {
@@ -2950,6 +2980,11 @@ class Dashboard {
         document.getElementById('currentTraffic').value = plan.metrics?.traffic ?? '';
         document.getElementById('currentBrandClicks').value = plan.metrics?.brandClicks ?? '';
 
+        // プランから記事ごとの数値を引き継ぎ（現状として表示）
+        if (plan.articleMetrics && plan.articleMetrics.length > 0) {
+            // 現状の記事ごとの数値は表示しない（必要に応じて追加可能）
+        }
+
         // 保存済みのCheckデータを読み込む
         await this.loadCheckData(planId);
     }
@@ -2974,6 +3009,11 @@ class Dashboard {
                     document.getElementById('metrics2weeksAvgRanking').value = data.metrics2weeks.avgRanking ?? '';
                     document.getElementById('metrics2weeksTraffic').value = data.metrics2weeks.traffic ?? '';
                     document.getElementById('metrics2weeksBrandClicks').value = data.metrics2weeks.brandClicks ?? '';
+                    
+                    // 2週間後の記事ごとの数値を復元
+                    if (data.articleMetrics2weeks && data.articleMetrics2weeks.length > 0) {
+                        this.renderCheckArticleMetricsTable(data.articleMetrics2weeks, '2weeks');
+                    }
                 }
                 
                 // 3週間後の数値を復元
@@ -2982,6 +3022,11 @@ class Dashboard {
                     document.getElementById('metrics3weeksAvgRanking').value = data.metrics3weeks.avgRanking ?? '';
                     document.getElementById('metrics3weeksTraffic').value = data.metrics3weeks.traffic ?? '';
                     document.getElementById('metrics3weeksBrandClicks').value = data.metrics3weeks.brandClicks ?? '';
+                    
+                    // 3週間後の記事ごとの数値を復元
+                    if (data.articleMetrics3weeks && data.articleMetrics3weeks.length > 0) {
+                        this.renderCheckArticleMetricsTable(data.articleMetrics3weeks, '3weeks');
+                    }
                 }
 
                 // 結果を表示
@@ -3016,6 +3061,104 @@ class Dashboard {
         if (data.brandClicks) document.getElementById(`${prefix}BrandClicks`).value = data.brandClicks;
     }
 
+    importCheckArticleCsvFile(file, period) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const csvText = e.target.result;
+            const metrics = this.parseArticleMetricsCsv(csvText);
+            if (metrics && metrics.length > 0) {
+                this.renderCheckArticleMetricsTable(metrics, period);
+                alert(`${period === '2weeks' ? '2週間後' : '3週間後'}の記事データ${metrics.length}件をインポートしました`);
+            } else {
+                alert('CSVデータの形式が正しくありません');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    renderCheckArticleMetricsTable(metrics = [], period) {
+        const tbodyId = period === '2weeks' ? 'articleMetrics2weeksBody' : 'articleMetrics3weeksBody';
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        
+        if (metrics.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center; color: #6b7280;">記事を追加してください</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = metrics.map((metric, index) => `
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 0.75rem;">
+                    <input type="text" class="check-article-name-input" data-period="${period}" data-index="${index}" value="${metric.name || ''}" 
+                        placeholder="記事名またはURL" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" class="check-article-clicks-input" data-period="${period}" data-index="${index}" value="${metric.clicks || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" class="check-article-impressions-input" data-period="${period}" data-index="${index}" value="${metric.impressions || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" step="0.01" class="check-article-ctr-input" data-period="${period}" data-index="${index}" value="${metric.ctr || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem;">
+                    <input type="number" step="0.1" class="check-article-position-input" data-period="${period}" data-index="${index}" value="${metric.position || ''}" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
+                </td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    <button type="button" class="remove-check-article-metric-btn" data-period="${period}" data-index="${index}" 
+                        style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0.25rem;">
+                        <span class="material-icons-round" style="font-size: 20px;">delete</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // 削除ボタンのイベントリスナーを設定
+        tbody.querySelectorAll('.remove-check-article-metric-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const period = btn.dataset.period;
+                const index = parseInt(btn.dataset.index);
+                const currentMetrics = this.getCheckArticleMetricsFromTable(period);
+                currentMetrics.splice(index, 1);
+                this.renderCheckArticleMetricsTable(currentMetrics, period);
+            });
+        });
+    }
+
+    getCheckArticleMetricsFromTable(period) {
+        const tbodyId = period === '2weeks' ? 'articleMetrics2weeksBody' : 'articleMetrics3weeksBody';
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return [];
+        
+        const metrics = [];
+        const rows = tbody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const nameInput = row.querySelector('.check-article-name-input');
+            const clicksInput = row.querySelector('.check-article-clicks-input');
+            const impressionsInput = row.querySelector('.check-article-impressions-input');
+            const ctrInput = row.querySelector('.check-article-ctr-input');
+            const positionInput = row.querySelector('.check-article-position-input');
+            
+            if (nameInput && nameInput.value.trim()) {
+                metrics.push({
+                    name: nameInput.value.trim(),
+                    clicks: parseInt(clicksInput?.value) || 0,
+                    impressions: parseInt(impressionsInput?.value) || 0,
+                    ctr: parseFloat(ctrInput?.value) || 0,
+                    position: parseFloat(positionInput?.value) || 0
+                });
+            }
+        });
+        
+        return metrics;
+    }
+
     saveCheckData() {
         const checkPlanSelect = document.getElementById('checkPlanSelect');
         const planId = checkPlanSelect.value;
@@ -3040,7 +3183,9 @@ class Dashboard {
                 avgRanking: parseFloat(document.getElementById('metrics3weeksAvgRanking').value) || 0,
                 traffic: parseFloat(document.getElementById('metrics3weeksTraffic').value) || 0,
                 brandClicks: parseFloat(document.getElementById('metrics3weeksBrandClicks').value) || 0
-            }
+            },
+            articleMetrics2weeks: this.getCheckArticleMetricsFromTable('2weeks'),
+            articleMetrics3weeks: this.getCheckArticleMetricsFromTable('3weeks')
         };
 
         localStorage.setItem(`checkData_${planId}`, JSON.stringify(checkData));
