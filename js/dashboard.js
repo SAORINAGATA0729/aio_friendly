@@ -2376,8 +2376,8 @@ class Dashboard {
                         </a>
                         <button type="button" class="open-article-btn" data-article-id="${article.id}"
                             style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
-                            <span class="material-icons-round" style="font-size: 14px;">open_in_new</span>
-                            開く
+                            <span class="material-icons-round" style="font-size: 14px;">edit</span>
+                            記事編集
                         </button>
                     </div>
                     ${articleSlug ? `<div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${articleSlug}</div>` : ''}
