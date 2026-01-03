@@ -513,7 +513,8 @@ class Dashboard {
         }
         this.renderPlans();
         this.updatePlanSelectOptions();
-        this.updateCheckPlanSelect();
+        this.updateRecordPlanSelect();
+        this.updateReportPlanSelect();
     }
 
     async savePlans() {
@@ -613,7 +614,8 @@ class Dashboard {
         await this.savePlans();
         this.renderPlans();
         this.updatePlanSelectOptions();
-        this.updateCheckPlanSelect();
+        this.updateRecordPlanSelect();
+        this.updateReportPlanSelect();
         
         // 現在選択されているプランが削除された場合、選択をリセット
         const planSelect = document.getElementById('selectedPlanId');
@@ -647,7 +649,8 @@ class Dashboard {
             
             // プラン一覧をドロップダウンに追加
             this.updatePlanSelectOptions();
-            this.updateCheckPlanSelect();
+            this.updateRecordPlanSelect();
+            this.updateReportPlanSelect();
             
             // #region agent log
             fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:675',message:'before addEventListener',data:{freshPlanSelectExists:!!freshPlanSelect,optionsCount:freshPlanSelect?.options?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
