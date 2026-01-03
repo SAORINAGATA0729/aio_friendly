@@ -2819,8 +2819,8 @@ class Dashboard {
         return formatted;
     }
 
-    setupCheckTab() {
-        const checkPlanSelect = document.getElementById('checkPlanSelect');
+    setupRecordTab() {
+        const recordPlanSelect = document.getElementById('recordPlanSelect');
         const publishDate = document.getElementById('publishDate');
         const measurement2weeks = document.getElementById('measurement2weeks');
         const measurement3weeks = document.getElementById('measurement3weeks');
@@ -2828,22 +2828,22 @@ class Dashboard {
         const import3weeksCsvBtn = document.getElementById('import3weeksCsvBtn');
         const csv2weeksFileInput = document.getElementById('csv2weeksFileInput');
         const csv3weeksFileInput = document.getElementById('csv3weeksFileInput');
-        const saveCheckDataBtn = document.getElementById('saveCheckDataBtn');
-        const checkMetricsSection = document.getElementById('checkMetricsSection');
-        const checkResultsSection = document.getElementById('checkResultsSection');
+        const saveRecordDataBtn = document.getElementById('saveRecordDataBtn');
+        const recordMetricsSection = document.getElementById('recordMetricsSection');
+        const recordResultsSection = document.getElementById('recordResultsSection');
 
         // プラン選択ドロップダウンを更新
-        this.updateCheckPlanSelect();
+        this.updateRecordPlanSelect();
 
         // プラン選択時の処理
-        if (checkPlanSelect) {
-            checkPlanSelect.addEventListener('change', (e) => {
+        if (recordPlanSelect) {
+            recordPlanSelect.addEventListener('change', (e) => {
                 const planId = e.target.value;
                 if (planId) {
-                    this.loadPlanForCheck(planId);
+                    this.loadPlanForRecord(planId);
                 } else {
-                    checkMetricsSection.style.display = 'none';
-                    checkResultsSection.style.display = 'none';
+                    recordMetricsSection.style.display = 'none';
+                    recordResultsSection.style.display = 'none';
                 }
             });
         }
@@ -2874,7 +2874,7 @@ class Dashboard {
             
             csv2weeksFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    this.importCheckCsvFile(e.target.files[0], '2weeks');
+                    this.importRecordCsvFile(e.target.files[0], '2weeks');
                 }
             });
         }
@@ -2887,7 +2887,7 @@ class Dashboard {
             
             csv3weeksFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    this.importCheckCsvFile(e.target.files[0], '3weeks');
+                    this.importRecordCsvFile(e.target.files[0], '3weeks');
                 }
             });
         }
@@ -2902,7 +2902,7 @@ class Dashboard {
             
             csv2weeksArticleFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    this.importCheckArticleCsvFile(e.target.files[0], '2weeks');
+                    this.importRecordArticleCsvFile(e.target.files[0], '2weeks');
                 }
             });
         }
@@ -2917,69 +2917,53 @@ class Dashboard {
             
             csv3weeksArticleFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    this.importCheckArticleCsvFile(e.target.files[0], '3weeks');
+                    this.importRecordArticleCsvFile(e.target.files[0], '3weeks');
                 }
             });
         }
 
-        // データ保存
-        if (saveCheckDataBtn) {
-            saveCheckDataBtn.addEventListener('click', () => {
-                this.saveCheckData();
-            });
-        }
-
-        // レポート生成
-        const generateCheckReportHtmlBtn = document.getElementById('generateCheckReportHtmlBtn');
-        const generateCheckReportPdfBtn = document.getElementById('generateCheckReportPdfBtn');
-        
-        if (generateCheckReportHtmlBtn) {
-            generateCheckReportHtmlBtn.addEventListener('click', () => {
-                this.generateCheckReportHtml();
-            });
-        }
-        
-        if (generateCheckReportPdfBtn) {
-            generateCheckReportPdfBtn.addEventListener('click', () => {
-                this.generateCheckReportPdf();
+        // データを保存
+        if (saveRecordDataBtn) {
+            saveRecordDataBtn.addEventListener('click', async () => {
+                await this.saveRecordData();
             });
         }
     }
 
-    updateCheckPlanSelect() {
-        const checkPlanSelect = document.getElementById('checkPlanSelect');
-        if (!checkPlanSelect) return;
+    updateRecordPlanSelect() {
+        const recordPlanSelect = document.getElementById('recordPlanSelect');
+        if (!recordPlanSelect) return;
 
-        checkPlanSelect.innerHTML = '<option value="">プランを選択してください</option>';
+        recordPlanSelect.innerHTML = '<option value="">プランを選択してください</option>';
         
         this.plans.forEach(plan => {
             const option = document.createElement('option');
             option.value = plan.id;
             option.textContent = plan.name;
-            checkPlanSelect.appendChild(option);
+            recordPlanSelect.appendChild(option);
         });
     }
 
-    async loadPlanForCheck(planId) {
+    async loadPlanForRecord(planId) {
         const plan = this.plans.find(p => p.id === planId);
         if (!plan) return;
 
-        const checkMetricsSection = document.getElementById('checkMetricsSection');
-        checkMetricsSection.style.display = 'block';
+        const recordMetricsSection = document.getElementById('recordMetricsSection');
+        if (recordMetricsSection) recordMetricsSection.style.display = 'block';
 
         // 現状数値をプランから引き継ぎ
-        document.getElementById('currentAioCitations').value = plan.metrics?.aioCitations ?? '';
-        document.getElementById('currentAvgRanking').value = plan.metrics?.avgRanking ?? '';
-        document.getElementById('currentTraffic').value = plan.metrics?.traffic ?? '';
-        document.getElementById('currentBrandClicks').value = plan.metrics?.brandClicks ?? '';
+        const elAio = document.getElementById('currentAioCitations');
+        const elRank = document.getElementById('currentAvgRanking');
+        const elTraffic = document.getElementById('currentTraffic');
+        const elBrand = document.getElementById('currentBrandClicks');
 
-        // プランから記事ごとの数値を引き継ぎ（現状として表示）
-        if (plan.articleMetrics && plan.articleMetrics.length > 0) {
-            // 現状の記事ごとの数値は表示しない（必要に応じて追加可能）
-        }
+        if (elAio) elAio.value = plan.metrics?.aioCitations ?? '';
+        if (elRank) elRank.value = plan.metrics?.avgRanking ?? '';
+        if (elTraffic) elTraffic.value = plan.metrics?.traffic ?? '';
+        if (elBrand) elBrand.value = plan.metrics?.brandClicks ?? '';
 
-        // 保存済みのCheckデータを読み込む
-        await this.loadCheckData(planId);
+        // 保存済みのRecordデータを読み込む
+        await this.loadRecordData(planId);
     }
 
     async loadRecordData(planId) {
