@@ -40,11 +40,7 @@
         <main class="main-content">
             <!-- PDCAタブ -->
             <div class="pdca-tabs">
-                <button class="pdca-tab active" data-tab="overview">
-                    <span class="material-icons-round">dashboard</span>
-                    Overview
-                </button>
-                <button class="pdca-tab" data-tab="plan">
+                <button class="pdca-tab active" data-tab="plan">
                     <span class="material-icons-round">lightbulb</span>
                     Plan
                 </button>
@@ -56,70 +52,10 @@
                     <span class="material-icons-round">assessment</span>
                     Check
                 </button>
-                <button class="pdca-tab" data-tab="action">
-                    <span class="material-icons-round">trending_up</span>
-                    Action
-                </button>
-            </div>
-
-            <!-- Overviewタブコンテンツ -->
-            <div id="overviewTab" class="tab-content active">
-                <h2>Overview <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">全体サマリー</span></h2>
-                
-                <!-- 現状把握カード -->
-                <div class="dashboard-cards">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <span class="material-icons-round">search</span>
-                            <h3>AIO引用数</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="metric-value" id="aioCitationCount">857</div>
-                            <div class="metric-label">件（目標: 1,200件以上）</div>
-                            <div class="metric-change" id="aioCitationChange">+0件</div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <span class="material-icons-round">trending_up</span>
-                            <h3>検索順位（Tier 1）</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="metric-value" id="searchRankingAvg">4.88</div>
-                            <div class="metric-label">位（目標: 5.0位以下）</div>
-                            <div class="metric-change" id="searchRankingChange">±0位</div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <span class="material-icons-round">bar_chart</span>
-                            <h3>トラフィック</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="metric-value" id="trafficClicks">102,000</div>
-                            <div class="metric-label">クリック数（12月）</div>
-                            <div class="metric-change" id="trafficChange">+0件</div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <span class="material-icons-round">visibility</span>
-                            <h3>ブランド認知度</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="metric-value" id="brandClicks">22</div>
-                            <div class="metric-label">クリック数（12月）</div>
-                            <div class="metric-change" id="brandChange">+0件</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Planタブコンテンツ -->
-            <div id="planTab" class="tab-content">
+            <div id="planTab" class="tab-content active">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <h2>Plan <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">プランニングシートを作る</span></h2>
                     <button id="createPlanBtn" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -426,54 +362,6 @@
                 </div>
             </div>
 
-            <!-- Actionタブコンテンツ -->
-            <div id="actionTab" class="tab-content">
-                <h2>Action <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">振り返り & レポート</span></h2>
-                
-                <!-- 効果測定結果 -->
-                <div class="results-section">
-                    <h3>効果測定結果</h3>
-                    <div id="resultsSummary" class="results-summary">
-                        <!-- 結果が動的に生成される -->
-                    </div>
-                </div>
-
-                <!-- 改善提案 -->
-                <div class="improvement-section">
-                    <h3>改善提案</h3>
-                    <form id="improvementForm">
-                        <div class="form-group">
-                            <label for="improvementTitle">改善タイトル</label>
-                            <input type="text" id="improvementTitle" class="form-input" placeholder="例: 表の活用を増やす">
-                        </div>
-                        <div class="form-group">
-                            <label for="improvementDescription">改善内容</label>
-                            <textarea id="improvementDescription" class="form-textarea" rows="5" placeholder="具体的な改善内容を記述してください"></textarea>
-                        </div>
-                        <div style="text-align: right;">
-                            <button type="submit" class="btn btn-primary">
-                                <span class="material-icons-round">save</span>
-                                改善提案を保存
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- レポート生成 -->
-                <div class="report-section">
-                    <h3>レポート生成</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <button id="generateReportBtn" class="btn btn-primary">
-                            <span class="material-icons-round">description</span>
-                            レポートを生成
-                        </button>
-                        <button id="exportPdfBtn" class="btn btn-secondary" style="color: var(--text-primary);">
-                            <span class="material-icons-round">picture_as_pdf</span>
-                            PDFでダウンロード
-                        </button>
-                    </div>
-                </div>
-            </div>
         </main>
     </div>
 

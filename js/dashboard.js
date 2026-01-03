@@ -5,7 +5,7 @@
 
 class Dashboard {
     constructor() {
-        this.currentTab = 'overview'; // 初期タブをOverviewに変更
+        this.currentTab = 'plan'; // 初期タブをPlanに変更
         this.progressData = null;
         this.baselineData = null;
         this.evidenceRecords = []; // エビデンス記録の配列
@@ -1592,9 +1592,7 @@ class Dashboard {
                 // Planタブが選択されたらプラン一覧を表示
                 this.renderPlans();
             } else if (tabName === 'check') {
-                this.renderComparisonChart();
-            } else if (tabName === 'action') {
-                this.renderResults();
+                // CheckタブはsetupCheckTabで処理される
             }
         }, 200);
     }
