@@ -3,6 +3,37 @@
  * AIフレンドリーな記事リライトをサポート
  */
 
+// トースト通知を表示する関数
+window.showToast = function(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'check_circle';
+    if (type === 'error') icon = 'error';
+    
+    toast.innerHTML = `
+        <span class="material-icons-round">${icon}</span>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // アニメーション用
+    setTimeout(() => {
+        toast.classList.add('active');
+    }, 10);
+    
+    // 3秒後に消去
+    setTimeout(() => {
+        toast.classList.remove('active');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
+        }, 400);
+    }, 3000);
+};
+
 class RewriteSystem {
     constructor() {
         this.currentArticle = null;
