@@ -970,11 +970,7 @@ class Dashboard {
         header.innerHTML = `
             <div>記事情報</div>
             <div style="text-align: center;">ブランド</div>
-            <div style="text-align: center;">クリック数</div>
-            <div style="text-align: center;">表示回数</div>
-            <div style="text-align: center;">CTR (%)</div>
-            <div style="text-align: center;">順位</div>
-            <div style="text-align: center;">AIOランク</div>
+            <div style="text-align: center;">ステータス</div>
         `;
         
         // insertBeforeを使用する前に、articleListが親ノードの子要素であることを確認
@@ -2512,80 +2508,12 @@ class Dashboard {
                 </select>
             </div>
             <div style="display: flex; justify-content: center; align-items: center;">
-                <span style="
-                    padding: 0.3rem 0.5rem;
-                    border: 1px solid var(--border-color);
-                    border-radius: 0.4rem;
-                    font-size: 0.85rem;
-                    text-align: center;
-                    background: #f3f4f6;
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    min-width: 80px;
-                ">
-                    ${(article.clicks || 0).toLocaleString()}
-                </span>
-            </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
-                <span style="
-                    padding: 0.3rem 0.5rem;
-                    border: 1px solid var(--border-color);
-                    border-radius: 0.4rem;
-                    font-size: 0.85rem;
-                    text-align: center;
-                    background: #f3f4f6;
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    min-width: 80px;
-                ">
-                    ${(article.impressions || 0).toLocaleString()}
-                </span>
-            </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
-                <span style="
-                    padding: 0.3rem 0.5rem;
-                    border: 1px solid var(--border-color);
-                    border-radius: 0.4rem;
-                    font-size: 0.85rem;
-                    text-align: center;
-                    background: #f3f4f6;
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    min-width: 70px;
-                ">
-                    ${(article.ctr || 0).toFixed(2)}%
-                </span>
-            </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
-                <span style="
-                    padding: 0.3rem 0.5rem;
-                    border: 1px solid var(--border-color);
-                    border-radius: 0.4rem;
-                    font-size: 0.85rem;
-                    text-align: center;
-                    background: #f3f4f6;
-                    color: var(--text-primary);
-                    font-weight: 600;
-                    min-width: 60px;
-                ">
-                    ${(article.position || 0).toFixed(1)}
-                </span>
-            </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
-                <span class="article-score-display" data-article-id="${article.id}" 
-                    style="
-                        padding: 0.3rem 0.5rem;
-                        border-radius: 0.4rem;
-                        border: 1px solid var(--border-color);
-                        background: #f3f4f6;
-                        color: var(--text-primary);
-                        font-size: 0.85rem;
-                        font-weight: 600;
-                        text-align: center;
-                        min-width: 70px;
-                    ">
-                    ${aioRank}
-                </span>
+                <select class="article-status-select" data-article-id="${article.id}" 
+                    style="padding: 0.3rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; background: white; cursor: pointer; min-width: 100px;">
+                    <option value="未着手" ${article.status === '未着手' ? 'selected' : ''}>未着手</option>
+                    <option value="進行中" ${article.status === '進行中' ? 'selected' : ''}>進行中</option>
+                    <option value="完了" ${article.status === '完了' ? 'selected' : ''}>完了</option>
+                </select>
             </div>
         `;
 
@@ -2727,6 +2655,23 @@ class Dashboard {
                 await this.updateArticleBrand(article.id, newBrand);
             });
             brandSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+        
+        // ステータスセレクトボックスのイベントリスナー
+        const statusSelect = item.querySelector('.article-status-select');
+        if (statusSelect) {
+            statusSelect.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newStatus = e.target.value;
+                await this.updateArticleStatus(article.id, newStatus);
+                // 進捗状況を更新
+                if (this.currentPlanArticles) {
+                    this.updateProgressFromArticles(this.currentPlanArticles);
+                }
+            });
+            statusSelect.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
         }
