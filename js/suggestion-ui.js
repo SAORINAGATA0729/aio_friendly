@@ -176,7 +176,7 @@ class SuggestionUIManager {
     /**
      * 差分表示モーダルを作成
      */
-    createDiffModal(suggestion) {
+    async createDiffModal(suggestion) {
         // 既存のモーダルを削除
         const existingModal = document.getElementById('diffModal');
         if (existingModal) {
@@ -188,6 +188,7 @@ class SuggestionUIManager {
         modal.className = 'modal active';
         
         const commentsHtml = this.renderComments(suggestion);
+        const diffHtml = await this.renderVisualDiff(suggestion.originalContent, suggestion.newContent);
 
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
@@ -218,7 +219,7 @@ class SuggestionUIManager {
                     
                     <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1rem;">変更内容（赤：削除、緑：追加）</h4>
                     <div id="diffContent" class="diff-content" style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; line-height: 1.8; white-space: pre-wrap; overflow-y: auto; max-height: 400px; margin-bottom: 1.5rem;">
-                        ${this.renderVisualDiff(suggestion.originalContent, suggestion.newContent)}
+                        ${diffHtml}
                     </div>
 
                     <div class="suggestion-comments">
@@ -243,27 +244,25 @@ class SuggestionUIManager {
     /**
      * 視覚的な差分レンダリング（赤字・取り消し線 / 緑字・太字）
      */
-    renderVisualDiff(original, modified) {
-        // 簡易的な差分アルゴリズム（本来はdiff-match-patchなどのライブラリ推奨）
-        // ここでは行単位ではなく、より詳細な比較を行いたいが、実装コストとの兼ね合いで
-        // 行単位のロジックをベースに、表示だけカスタマイズする
+    async renderVisualDiff(original, modified) {
+        // diff-match-patchを使用した詳細な差分表示
+        // originalContentとnewContentが渡される想定（suggestion.diffオブジェクトではなく、生テキストから計算する方が柔軟）
+        // ただし、editHistoryManager.saveSuggestionで既に計算済みのdiffがあればそれを使ってもいいが、
+        // calculateDiffが非同期かつライブラリロードを含むようになったため、ここで再計算するのが確実。
         
-        // 注: 本当の文字単位Diffは複雑なので、簡易的に行単位で処理し、
-        // 変更箇所（modified）の場合は、古い行を赤で、新しい行を緑で表示する
+        const result = await editHistoryManager.calculateDiff(original, modified);
+        const diffs = result.diffs;
         
-        const diff = editHistoryManager.calculateDiff(original, modified);
-        
-        return diff.changes.map(change => {
-            if (change.type === 'added') {
-                return `<ins>${this.escapeHtml(change.modifiedLine)}</ins>\n`;
-            } else if (change.type === 'deleted') {
-                return `<del>${this.escapeHtml(change.originalLine)}</del>\n`;
-            } else if (change.type === 'modified') {
-                // 変更があった行は、削除された行と追加された行を並べて表示
-                return `<del>${this.escapeHtml(change.originalLine)}</del>\n<ins>${this.escapeHtml(change.modifiedLine)}</ins>\n`;
-            } else {
-                // 変更なし
-                return `<span>${this.escapeHtml(change.originalLine)}</span>\n`;
+        return diffs.map(diff => {
+            const [operation, text] = diff;
+            const escapedText = this.escapeHtml(text);
+            
+            if (operation === 1) { // INSERT
+                return `<ins>${escapedText}</ins>`;
+            } else if (operation === -1) { // DELETE
+                return `<del>${escapedText}</del>`;
+            } else { // EQUAL
+                return `<span>${escapedText}</span>`;
             }
         }).join('');
     }
