@@ -816,17 +816,6 @@
                                 <span class="material-icons-round">search</span>
                                 検索
                             </button>
-                            <!-- 提案モード用ボタン（提案モード時のみ表示） -->
-                            <div id="suggestionToolbarButtons" style="display: none; gap: 0.5rem;">
-                                <button class="toolbar-btn suggestion-toolbar-btn" id="addDeletionMarkerBtn" title="選択範囲を削除マーカー化（Ctrl+Shift+D）">
-                                    <span class="material-icons-round">strikethrough_s</span>
-                                    削除
-                                </button>
-                                <button class="toolbar-btn suggestion-toolbar-btn" id="addAdditionMarkerBtn" title="選択範囲を追加マーカー化（Ctrl+Shift+A）">
-                                    <span class="material-icons-round">add_circle</span>
-                                    追加
-                                </button>
-                            </div>
                             <!-- プレビューボタンを追加 -->
                             <button class="toolbar-btn" id="previewBtn" title="プレビュー">
                                 <span class="material-icons-round">preview</span>
@@ -870,13 +859,25 @@
 
     <!-- 提案モード用フロートボタン（下部固定） -->
     <div id="suggestionFloatButtons" class="suggestion-float-buttons" style="display: none;">
+        <!-- コメント履歴エリア -->
+        <div id="suggestionCommentHistory" class="suggestion-comment-history">
+            <div class="comment-history-header">
+                <span class="material-icons-round">comment</span>
+                <span>コメント履歴</span>
+            </div>
+            <div id="commentHistoryList" class="comment-history-list">
+                <!-- コメントが動的に追加される -->
+            </div>
+        </div>
+        
+        <!-- フロートボタン -->
         <button class="float-btn float-btn-deletion" id="floatDeletionBtn" title="選択範囲を削除マーカー化（Ctrl+Shift+D）">
             <span class="material-icons-round">strikethrough_s</span>
             <span class="float-btn-label">削除</span>
         </button>
-        <button class="float-btn float-btn-addition" id="floatAdditionBtn" title="選択範囲を追加マーカー化（Ctrl+Shift+A）">
-            <span class="material-icons-round">add_circle</span>
-            <span class="float-btn-label">追加</span>
+        <button class="float-btn float-btn-comment" id="floatCommentBtn" title="選択範囲にコメントを追加">
+            <span class="material-icons-round">comment</span>
+            <span class="float-btn-label">コメント追加</span>
         </button>
     </div>
 

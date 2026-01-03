@@ -793,12 +793,6 @@ class RewriteSystem {
             this.suggestionBaseContent = null;
             this.suggestionChanges = [];
             
-            // 提案モード用のツールバーボタンを非表示
-            const suggestionButtons = document.getElementById('suggestionToolbarButtons');
-            if (suggestionButtons) {
-                suggestionButtons.style.display = 'none';
-            }
-            
             // フロートボタンを非表示
             const floatButtons = document.getElementById('suggestionFloatButtons');
             if (floatButtons) {
@@ -809,17 +803,14 @@ class RewriteSystem {
             normalEditTab?.classList.remove('active');
             suggestionEditTab?.classList.add('suggestion-mode');
             
-            // 提案モード用のツールバーボタンを表示
-            const suggestionButtons = document.getElementById('suggestionToolbarButtons');
-            if (suggestionButtons) {
-                suggestionButtons.style.display = 'flex';
-            }
-            
             // フロートボタンを表示
             const floatButtons = document.getElementById('suggestionFloatButtons');
             if (floatButtons) {
                 floatButtons.style.display = 'flex';
             }
+            
+            // コメント履歴を更新
+            this.updateCommentHistory();
             
             // 提案モードに切り替えた時、編集履歴を開始
             if (this.currentArticle && window.editHistoryManager) {
@@ -898,7 +889,7 @@ class RewriteSystem {
         
         // フロートボタン
         const floatDeletionBtn = document.getElementById('floatDeletionBtn');
-        const floatAdditionBtn = document.getElementById('floatAdditionBtn');
+        const floatCommentBtn = document.getElementById('floatCommentBtn');
         
         if (floatDeletionBtn) {
             floatDeletionBtn.addEventListener('click', () => {
@@ -906,9 +897,9 @@ class RewriteSystem {
             });
         }
         
-        if (floatAdditionBtn) {
-            floatAdditionBtn.addEventListener('click', () => {
-                this.addAdditionMarker();
+        if (floatCommentBtn) {
+            floatCommentBtn.addEventListener('click', () => {
+                this.addCommentToSelection();
             });
         }
     }
@@ -1250,9 +1241,113 @@ class RewriteSystem {
     }
     
     /**
+     * 選択範囲にコメントを追加
+     */
+    addCommentToSelection() {
+        if (!this.quill || this.currentEditMode !== 'suggestion') {
+            if (typeof showToast === 'function') {
+                showToast('提案モードを選択してください', 'error');
+            }
+            return;
+        }
+        
+        const selection = this.quill.getSelection(true);
+        if (!selection || selection.length === 0) {
+            if (typeof showToast === 'function') {
+                showToast('テキストを選択してください', 'error');
+            } else {
+                alert('テキストを選択してください');
+            }
+            return;
+        }
+        
+        // 選択範囲のテキストを取得
+        const selectedText = this.quill.getText(selection.index, selection.length);
+        const commentId = `comment_${Date.now()}_${selection.index}`;
+        
+        // コメントダイアログを表示
+        this.showCommentDialogForSelection(selection, selectedText, commentId);
+    }
+    
+    /**
+     * 選択範囲用のコメントダイアログを表示
+     */
+    showCommentDialogForSelection(selection, selectedText, commentId) {
+        // 既存のコメントダイアログを削除
+        const existingDialog = document.querySelector('.comment-dialog');
+        if (existingDialog) {
+            existingDialog.remove();
+        }
+        
+        const dialog = document.createElement('div');
+        dialog.className = 'comment-dialog';
+        dialog.innerHTML = `
+            <div class="comment-dialog-content">
+                <div class="comment-dialog-header">
+                    <h4>コメントを追加</h4>
+                    <button class="comment-dialog-close">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+                <div class="comment-dialog-body">
+                    <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #6b7280;">
+                        選択範囲: "${selectedText.substring(0, 50)}${selectedText.length > 50 ? '...' : ''}"
+                    </div>
+                    <textarea class="comment-input-textarea" placeholder="コメントを入力してください..." rows="4"></textarea>
+                </div>
+                <div class="comment-dialog-footer">
+                    <button class="btn-cancel">キャンセル</button>
+                    <button class="btn-save-comment">保存</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // フロートボタンの位置にダイアログを配置
+        const floatButtons = document.getElementById('suggestionFloatButtons');
+        const rect = floatButtons ? floatButtons.getBoundingClientRect() : { right: window.innerWidth - 20, top: window.innerHeight - 200 };
+        const dialogContent = dialog.querySelector('.comment-dialog-content');
+        dialogContent.style.position = 'absolute';
+        dialogContent.style.right = `${window.innerWidth - rect.right}px`;
+        dialogContent.style.bottom = `${window.innerHeight - rect.top + 10}px`;
+        dialogContent.style.zIndex = '10001';
+        
+        // イベントリスナー
+        const closeBtn = dialog.querySelector('.comment-dialog-close');
+        const cancelBtn = dialog.querySelector('.btn-cancel');
+        const saveBtn = dialog.querySelector('.btn-save-comment');
+        const textarea = dialog.querySelector('.comment-input-textarea');
+        
+        const closeDialog = () => dialog.remove();
+        
+        closeBtn?.addEventListener('click', closeDialog);
+        cancelBtn?.addEventListener('click', closeDialog);
+        
+        saveBtn?.addEventListener('click', async () => {
+            const commentText = textarea.value.trim();
+            if (!commentText) return;
+            
+            // コメントを保存
+            await this.saveComment(commentId, commentText, 'comment', selection, selectedText);
+            closeDialog();
+        });
+        
+        // ダイアログ外をクリックで閉じる
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                closeDialog();
+            }
+        });
+        
+        // テキストエリアにフォーカス
+        setTimeout(() => textarea?.focus(), 100);
+    }
+    
+    /**
      * コメントを保存
      */
-    async saveComment(commentId, commentText, changeType) {
+    async saveComment(commentId, commentText, changeType, selection = null, selectedText = '') {
         if (!this.currentArticle || !window.editHistoryManager) return;
         
         const authMgr = window.authManager || authManager;
@@ -1267,15 +1362,24 @@ class RewriteSystem {
         
         const user = authMgr.getCurrentUser();
         
-        // コメントを変更履歴に保存
-        this.suggestionChanges.push({
+        // コメントデータを作成
+        const commentData = {
             id: commentId,
-            type: changeType, // 'deletion' or 'addition'
+            type: changeType, // 'deletion', 'addition', or 'comment'
             comment: commentText,
             userId: user.uid,
             userName: user.displayName || user.email,
-            timestamp: new Date().toISOString()
-        });
+            userAvatar: user.photoURL || null,
+            timestamp: new Date().toISOString(),
+            selection: selection ? { index: selection.index, length: selection.length } : null,
+            selectedText: selectedText
+        };
+        
+        // コメントを変更履歴に保存
+        this.suggestionChanges.push(commentData);
+        
+        // コメント履歴を更新
+        this.updateCommentHistory();
         
         console.log('コメントを保存しました:', commentId, commentText);
         
@@ -1284,6 +1388,59 @@ class RewriteSystem {
         } else {
             alert('コメントを追加しました');
         }
+    }
+    
+    /**
+     * コメント履歴を更新
+     */
+    updateCommentHistory() {
+        const historyList = document.getElementById('commentHistoryList');
+        if (!historyList) return;
+        
+        // コメントを時系列順にソート
+        const sortedComments = [...this.suggestionChanges].sort((a, b) => 
+            new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        
+        if (sortedComments.length === 0) {
+            historyList.innerHTML = '<div class="comment-history-empty">コメントはまだありません</div>';
+            return;
+        }
+        
+        historyList.innerHTML = sortedComments.map(comment => {
+            const date = new Date(comment.timestamp);
+            const dateStr = date.toLocaleString('ja-JP', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            return `
+                <div class="comment-history-item">
+                    <div class="comment-history-user">
+                        ${comment.userAvatar ? 
+                            `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
+                            `<span class="material-icons-round">account_circle</span>`
+                        }
+                        <span class="comment-user-name">${comment.userName || '不明'}</span>
+                        <span class="comment-date">${dateStr}</span>
+                    </div>
+                    <div class="comment-history-text">${this.escapeHtml(comment.comment)}</div>
+                    ${comment.selectedText ? `<div class="comment-selected-text">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 30))}${comment.selectedText.length > 30 ? '...' : ''}"</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    /**
+     * HTMLエスケープ
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     /**
