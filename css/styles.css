@@ -1274,6 +1274,67 @@ tr:last-child td {
     opacity: 1;
 }
 
+/* 提案モードのコメントマーカー（青背景） */
+.suggestion-comment {
+    background-color: #e0f2fe; /* 薄い青 */
+    border-bottom: 2px solid #0ea5e9;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.suggestion-comment:hover {
+    background-color: #bae6fd;
+}
+
+.suggestion-comment.active {
+    background-color: #7dd3fc;
+    box-shadow: 0 0 0 2px #0ea5e9;
+}
+
+/* コメント履歴の返信 */
+.comment-reply-list {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.comment-reply-item {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    position: relative;
+    padding-left: 1rem;
+    border-left: 2px solid #e5e7eb;
+}
+
+.reply-input-container {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.reply-input {
+    flex: 1;
+    padding: 0.4rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.reply-btn {
+    padding: 0.4rem 0.8rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
 /* コメントダイアログ */
 .comment-dialog {
     position: fixed;

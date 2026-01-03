@@ -503,9 +503,30 @@ class RewriteSystem {
             AdditionMarker.blotName = 'addition';
             AdditionMarker.tagName = 'ins';
             AdditionMarker.className = 'suggestion-addition';
+
+            // コメントマーカー（青背景）のカスタムBlot
+            class CommentMarker extends Inline {
+                static create(value) {
+                    const node = super.create();
+                    node.setAttribute('class', 'suggestion-comment');
+                    const commentId = value?.commentId || (typeof value === 'string' ? value : `comment_${Date.now()}`);
+                    node.setAttribute('data-comment-id', commentId);
+                    node.setAttribute('data-change-type', 'comment');
+                    return node;
+                }
+                
+                static formats(node) {
+                    return node.getAttribute('data-comment-id') || true;
+                }
+            }
+            
+            CommentMarker.blotName = 'comment';
+            CommentMarker.tagName = 'span';
+            CommentMarker.className = 'suggestion-comment';
             
             Quill.register(DeletionMarker, true);
             Quill.register(AdditionMarker, true);
+            Quill.register(CommentMarker, true);
             
             this.quill = new Quill('#quillEditor', {
                 theme: 'snow',
@@ -528,7 +549,7 @@ class RewriteSystem {
                     }
                 },
                 placeholder: '記事を編集してください...',
-                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block', 'suggestion', 'deletion', 'addition']
+                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block', 'suggestion', 'deletion', 'addition', 'comment']
             });
             
             // 画像をクリックしたときにALTタグを編集できるように
@@ -1362,6 +1383,17 @@ class RewriteSystem {
         
         const user = authMgr.getCurrentUser();
         
+        // 選択範囲がある場合はマーカー（青背景）を適用
+        if (selection && changeType === 'comment') {
+            try {
+                this.quill.formatText(selection.index, selection.length, 'comment', {
+                    commentId: commentId
+                });
+            } catch (e) {
+                console.error('コメントマーカーの適用に失敗:', e);
+            }
+        }
+        
         // コメントデータを作成
         const commentData = {
             id: commentId,
@@ -1372,7 +1404,8 @@ class RewriteSystem {
             userAvatar: user.photoURL || null,
             timestamp: new Date().toISOString(),
             selection: selection ? { index: selection.index, length: selection.length } : null,
-            selectedText: selectedText
+            selectedText: selectedText,
+            replies: [] // 返信リストを初期化
         };
         
         // コメントを変更履歴に保存
@@ -1385,8 +1418,83 @@ class RewriteSystem {
         
         if (typeof showToast === 'function') {
             showToast('コメントを追加しました', 'success');
+        }
+    }
+    
+    /**
+     * 返信を保存
+     */
+    async saveReply(commentId, replyText) {
+        if (!this.currentArticle) return;
+        
+        const authMgr = window.authManager || authManager;
+        if (!authMgr || !authMgr.isAuthenticated()) {
+            if (typeof showToast === 'function') {
+                showToast('返信するにはログインが必要です', 'error');
+            }
+            return;
+        }
+        
+        const user = authMgr.getCurrentUser();
+        
+        // コメントを検索
+        const commentIndex = this.suggestionChanges.findIndex(c => c.id === commentId);
+        if (commentIndex === -1) {
+            console.error('コメントが見つかりません:', commentId);
+            return;
+        }
+        
+        // 返信データを作成
+        const reply = {
+            id: `reply_${Date.now()}`,
+            text: replyText,
+            userId: user.uid,
+            userName: user.displayName || user.email,
+            userAvatar: user.photoURL || null,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 返信を追加
+        if (!this.suggestionChanges[commentIndex].replies) {
+            this.suggestionChanges[commentIndex].replies = [];
+        }
+        this.suggestionChanges[commentIndex].replies.push(reply);
+        
+        // UI更新
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('返信を追加しました', 'success');
+        }
+    }
+
+    /**
+     * コメント箇所へスクロール
+     */
+    scrollToComment(commentId) {
+        if (!this.quill) return;
+        
+        // コメントIDを持つ要素を検索
+        // data-comment-id属性を持つ要素を探す（標準的な方法）
+        const selector = `[data-comment-id="${commentId}"]`;
+        const element = this.quill.root.querySelector(selector);
+        
+        if (element) {
+            // 要素が見つかった場合はスクロール
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // ハイライト表示（一時的にクラスを追加）
+            element.classList.add('active');
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 2000);
         } else {
-            alert('コメントを追加しました');
+            // 要素が見つからない場合、選択範囲情報から位置を特定してスクロール
+            const comment = this.suggestionChanges.find(c => c.id === commentId);
+            if (comment && comment.selection) {
+                this.quill.setSelection(comment.selection.index, comment.selection.length);
+                this.quill.scrollIntoView();
+            }
         }
     }
     
@@ -1397,7 +1505,7 @@ class RewriteSystem {
         const historyList = document.getElementById('commentHistoryList');
         if (!historyList) return;
         
-        // コメントを時系列順にソート
+        // コメントを時系列順にソート（新しい順）
         const sortedComments = [...this.suggestionChanges].sort((a, b) => 
             new Date(b.timestamp) - new Date(a.timestamp)
         );
@@ -1416,8 +1524,23 @@ class RewriteSystem {
                 minute: '2-digit' 
             });
             
+            // 返信のHTML生成
+            const repliesHtml = (comment.replies || []).map(reply => {
+                const rDate = new Date(reply.timestamp);
+                const rDateStr = rDate.toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return `
+                    <div class="comment-reply-item">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #6b7280; margin-bottom: 2px;">
+                            <span>${reply.userName}</span>
+                            <span>${rDateStr}</span>
+                        </div>
+                        <div>${this.escapeHtml(reply.text)}</div>
+                    </div>
+                `;
+            }).join('');
+            
             return `
-                <div class="comment-history-item">
+                <div class="comment-history-item" data-comment-id="${comment.id}" onclick="if(!event.target.closest('.reply-input-container')) window.rewriteSystem.scrollToComment('${comment.id}')">
                     <div class="comment-history-user">
                         ${comment.userAvatar ? 
                             `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
@@ -1428,9 +1551,31 @@ class RewriteSystem {
                     </div>
                     <div class="comment-history-text">${this.escapeHtml(comment.comment)}</div>
                     ${comment.selectedText ? `<div class="comment-selected-text">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 30))}${comment.selectedText.length > 30 ? '...' : ''}"</div>` : ''}
+                    
+                    <div class="comment-reply-list">
+                        ${repliesHtml}
+                        <div class="reply-input-container">
+                            <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
+                            <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
+                        </div>
+                    </div>
                 </div>
             `;
         }).join('');
+    }
+
+    /**
+     * 返信ボタンハンドラ
+     */
+    handleReply(commentId, btnElement) {
+        const container = btnElement.closest('.reply-input-container');
+        const input = container.querySelector('.reply-input');
+        const text = input.value.trim();
+        
+        if (text) {
+            this.saveReply(commentId, text);
+            input.value = ''; // 入力をクリア
+        }
     }
     
     /**
