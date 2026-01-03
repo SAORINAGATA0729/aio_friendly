@@ -3060,13 +3060,13 @@ class Dashboard {
         if (data.brandClicks) document.getElementById(`${prefix}BrandClicks`).value = data.brandClicks;
     }
 
-    importCheckArticleCsvFile(file, period) {
+    importRecordArticleCsvFile(file, period) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const csvText = e.target.result;
             const metrics = this.parseArticleMetricsCsv(csvText);
             if (metrics && metrics.length > 0) {
-                this.renderCheckArticleMetricsTable(metrics, period);
+                this.renderRecordArticleMetricsTable(metrics, period);
                 alert(`${period === '2weeks' ? '2週間後' : '3週間後'}の記事データ${metrics.length}件をインポートしました`);
             } else {
                 alert('CSVデータの形式が正しくありません');
@@ -3075,7 +3075,7 @@ class Dashboard {
         reader.readAsText(file);
     }
 
-    renderCheckArticleMetricsTable(metrics = [], period) {
+    renderRecordArticleMetricsTable(metrics = [], period) {
         const tbodyId = period === '2weeks' ? 'articleMetrics2weeksBody' : 'articleMetrics3weeksBody';
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
@@ -3088,28 +3088,28 @@ class Dashboard {
         tbody.innerHTML = metrics.map((metric, index) => `
             <tr style="border-bottom: 1px solid #f3f4f6;">
                 <td style="padding: 0.75rem;">
-                    <input type="text" class="check-article-name-input" data-period="${period}" data-index="${index}" value="${metric.name || ''}" 
+                    <input type="text" class="record-article-name-input" data-period="${period}" data-index="${index}" value="${metric.name || ''}" 
                         placeholder="記事名またはURL" 
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem;">
                 </td>
                 <td style="padding: 0.75rem;">
-                    <input type="number" class="check-article-clicks-input" data-period="${period}" data-index="${index}" value="${metric.clicks || ''}" 
+                    <input type="number" class="record-article-clicks-input" data-period="${period}" data-index="${index}" value="${metric.clicks || ''}" 
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
                 </td>
                 <td style="padding: 0.75rem;">
-                    <input type="number" class="check-article-impressions-input" data-period="${period}" data-index="${index}" value="${metric.impressions || ''}" 
+                    <input type="number" class="record-article-impressions-input" data-period="${period}" data-index="${index}" value="${metric.impressions || ''}" 
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
                 </td>
                 <td style="padding: 0.75rem;">
-                    <input type="number" step="0.01" class="check-article-ctr-input" data-period="${period}" data-index="${index}" value="${metric.ctr || ''}" 
+                    <input type="number" step="0.01" class="record-article-ctr-input" data-period="${period}" data-index="${index}" value="${metric.ctr || ''}" 
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
                 </td>
                 <td style="padding: 0.75rem;">
-                    <input type="number" step="0.1" class="check-article-position-input" data-period="${period}" data-index="${index}" value="${metric.position || ''}" 
+                    <input type="number" step="0.1" class="record-article-position-input" data-period="${period}" data-index="${index}" value="${metric.position || ''}" 
                         style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; text-align: right;">
                 </td>
                 <td style="padding: 0.75rem; text-align: center;">
-                    <button type="button" class="remove-check-article-metric-btn" data-period="${period}" data-index="${index}" 
+                    <button type="button" class="remove-record-article-metric-btn" data-period="${period}" data-index="${index}" 
                         style="color: #ef4444; background: none; border: none; cursor: pointer; padding: 0.25rem;">
                         <span class="material-icons-round" style="font-size: 20px;">delete</span>
                     </button>
@@ -3118,18 +3118,18 @@ class Dashboard {
         `).join('');
         
         // 削除ボタンのイベントリスナーを設定
-        tbody.querySelectorAll('.remove-check-article-metric-btn').forEach(btn => {
+        tbody.querySelectorAll('.remove-record-article-metric-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const period = btn.dataset.period;
                 const index = parseInt(btn.dataset.index);
-                const currentMetrics = this.getCheckArticleMetricsFromTable(period);
+                const currentMetrics = this.getRecordArticleMetricsFromTable(period);
                 currentMetrics.splice(index, 1);
-                this.renderCheckArticleMetricsTable(currentMetrics, period);
+                this.renderRecordArticleMetricsTable(currentMetrics, period);
             });
         });
     }
 
-    getCheckArticleMetricsFromTable(period) {
+    getRecordArticleMetricsFromTable(period) {
         const tbodyId = period === '2weeks' ? 'articleMetrics2weeksBody' : 'articleMetrics3weeksBody';
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return [];
@@ -3138,11 +3138,11 @@ class Dashboard {
         const rows = tbody.querySelectorAll('tr');
         
         rows.forEach(row => {
-            const nameInput = row.querySelector('.check-article-name-input');
-            const clicksInput = row.querySelector('.check-article-clicks-input');
-            const impressionsInput = row.querySelector('.check-article-impressions-input');
-            const ctrInput = row.querySelector('.check-article-ctr-input');
-            const positionInput = row.querySelector('.check-article-position-input');
+            const nameInput = row.querySelector('.record-article-name-input');
+            const clicksInput = row.querySelector('.record-article-clicks-input');
+            const impressionsInput = row.querySelector('.record-article-impressions-input');
+            const ctrInput = row.querySelector('.record-article-ctr-input');
+            const positionInput = row.querySelector('.record-article-position-input');
             
             if (nameInput && nameInput.value.trim()) {
                 metrics.push({
@@ -3158,16 +3158,17 @@ class Dashboard {
         return metrics;
     }
 
-    saveCheckData() {
-        const checkPlanSelect = document.getElementById('checkPlanSelect');
-        const planId = checkPlanSelect.value;
+    async saveRecordData() {
+        const recordPlanSelect = document.getElementById('recordPlanSelect');
+        const planId = recordPlanSelect?.value;
         if (!planId) {
             alert('プランを選択してください');
             return;
         }
 
-        const checkData = {
+        const recordData = {
             planId: planId,
+            updatedAt: new Date().toISOString(),
             publishDate: document.getElementById('publishDate').value,
             measurement2weeks: document.getElementById('measurement2weeks').value,
             measurement3weeks: document.getElementById('measurement3weeks').value,
@@ -3183,15 +3184,34 @@ class Dashboard {
                 traffic: parseFloat(document.getElementById('metrics3weeksTraffic').value) || 0,
                 brandClicks: parseFloat(document.getElementById('metrics3weeksBrandClicks').value) || 0
             },
-            articleMetrics2weeks: this.getCheckArticleMetricsFromTable('2weeks'),
-            articleMetrics3weeks: this.getCheckArticleMetricsFromTable('3weeks')
+            articleMetrics2weeks: this.getRecordArticleMetricsFromTable('2weeks'),
+            articleMetrics3weeks: this.getRecordArticleMetricsFromTable('3weeks')
         };
 
-        localStorage.setItem(`checkData_${planId}`, JSON.stringify(checkData));
-        alert('データを保存しました');
+        localStorage.setItem(`checkData_${planId}`, JSON.stringify(recordData));
         
-        // 結果を表示
-        this.renderCheckResults(planId);
+        // 保存完了メッセージ
+        const resultSection = document.getElementById('recordResultsSection');
+        if (resultSection) {
+            resultSection.style.display = 'block';
+            resultSection.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <p style="margin: 0; display: flex; align-items: center; font-weight: 500;">
+                        <span class="material-icons-round" style="margin-right: 0.5rem; color: #16a34a;">check_circle</span>
+                        データが保存されました（${new Date().toLocaleTimeString()}）
+                    </p>
+                    <a href="#" onclick="document.querySelector('[data-tab=\\'report\\']').click(); return false;" style="color: #2563eb; text-decoration: underline; font-size: 0.9rem;">
+                        Reportタブで分析結果を見る
+                    </a>
+                </div>
+            `;
+        }
+        
+        // アラートも出す
+        alert('データを保存しました！');
+        
+        // Reportタブの内容も更新しておく（もし開かれていれば）
+        this.generateReport();
     }
 
     renderCheckResults(planId) {
