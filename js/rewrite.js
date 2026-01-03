@@ -1871,7 +1871,12 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             await this._saveContentToStorage(content);
 
-            alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
+            // トースト通知を表示
+            if (typeof showToast === 'function') {
+                showToast(authManager && authManager.isAuthenticated() ? '保存・提案を記録しました' : '保存しました', 'success');
+            } else {
+                alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
+            }
             
             // 提案履歴を更新
             if (window.suggestionUIManager && this.currentArticle) {
@@ -1886,7 +1891,11 @@ ${article.keyword}について、重要なポイントをまとめました。
             }
         } catch (error) {
             console.error('保存エラー:', error);
-            alert('保存に失敗しました: ' + error.message);
+            if (typeof showToast === 'function') {
+                showToast('保存に失敗しました: ' + error.message, 'error');
+            } else {
+                alert('保存に失敗しました: ' + error.message);
+            }
         }
     }
 

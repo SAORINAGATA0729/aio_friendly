@@ -893,6 +893,114 @@ tr:last-child td {
     margin-top: 1rem;
 }
 
+/* チャット・コメント機能 */
+.suggestion-comments {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.comment-item {
+    font-size: 0.85rem;
+    background: #f8fafc;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+}
+
+.comment-user {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+}
+
+.comment-text {
+    color: var(--text-secondary);
+}
+
+.comment-input-area {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.comment-input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.comment-submit-btn {
+    padding: 0.4rem;
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    border-radius: 0.4rem;
+}
+
+.comment-submit-btn:hover {
+    background: #eff6ff;
+}
+
+/* 差分表示のスタイル */
+.diff-content del {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    text-decoration: line-through;
+    padding: 0 2px;
+}
+
+.diff-content ins {
+    background-color: #dcfce7;
+    color: #15803d;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0 2px;
+}
+
+/* トースト通知 */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1f2937;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+}
+
+.toast.active {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.toast-success {
+    background: #10b981;
+}
+
+.toast-error {
+    background: #ef4444;
+}
+
 /* レスポンシブ */
 @media (max-width: 1024px) {
     .rewrite-container {
