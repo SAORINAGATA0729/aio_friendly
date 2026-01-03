@@ -1780,7 +1780,38 @@ class RewriteSystem {
      * 変更を承認
      */
     approveChange(commentId) {
+        if (!this.quill) {
+            if (typeof showToast === 'function') {
+                showToast('エディタが初期化されていません', 'error');
+            }
+            return;
+        }
+        
+        // 変更履歴から該当する変更を取得
+        const change = this.suggestionChanges.find(c => c.id === commentId);
+        if (!change) {
+            if (typeof showToast === 'function') {
+                showToast('変更が見つかりません', 'error');
+            }
+            return;
+        }
+        
+        // 承認状態を保存
         this.saveApprovalStatus(commentId, 'approved');
+        
+        // 変更タイプに応じて処理
+        if (change.type === 'deletion') {
+            // 削除提案を承認 → 実際にテキストを削除
+            this.applyDeletion(change);
+        } else if (change.type === 'addition') {
+            // 追加提案を承認 → マーカーを削除して通常テキストに
+            this.applyAddition(change);
+        } else if (change.type === 'comment') {
+            // コメントを承認 → コメントマーカーを削除（コメントは残す）
+            this.applyComment(change, true);
+        }
+        
+        // 変更履歴を更新
         this.updateCommentHistory();
         
         if (typeof showToast === 'function') {
@@ -1792,11 +1823,228 @@ class RewriteSystem {
      * 変更を非承認
      */
     rejectChange(commentId) {
+        if (!this.quill) {
+            if (typeof showToast === 'function') {
+                showToast('エディタが初期化されていません', 'error');
+            }
+            return;
+        }
+        
+        // 変更履歴から該当する変更を取得
+        const change = this.suggestionChanges.find(c => c.id === commentId);
+        if (!change) {
+            if (typeof showToast === 'function') {
+                showToast('変更が見つかりません', 'error');
+            }
+            return;
+        }
+        
+        // 承認状態を保存
         this.saveApprovalStatus(commentId, 'rejected');
+        
+        // 変更タイプに応じて処理
+        if (change.type === 'deletion') {
+            // 削除提案を非承認 → マーカーを削除して元のテキストに戻す
+            this.rejectDeletion(change);
+        } else if (change.type === 'addition') {
+            // 追加提案を非承認 → 追加されたテキストを削除
+            this.rejectAddition(change);
+        } else if (change.type === 'comment') {
+            // コメントを非承認 → コメントマーカーを削除
+            this.applyComment(change, false);
+        }
+        
+        // 変更履歴を更新
         this.updateCommentHistory();
         
         if (typeof showToast === 'function') {
             showToast('非承認しました', 'success');
+        }
+    }
+    
+    /**
+     * マーカーを検索して範囲を取得
+     */
+    findMarkerRange(commentId) {
+        if (!this.quill) return null;
+        
+        // data-comment-id属性を持つ要素を検索
+        const marker = this.quill.root.querySelector(`[data-comment-id="${commentId}"]`);
+        if (!marker) return null;
+        
+        try {
+            // QuillのgetBoundsを使用して範囲を取得
+            const range = this.quill.getBounds(marker);
+            if (range) {
+                return { index: range.index, length: range.length };
+            }
+        } catch (e) {
+            console.error('マーカー範囲取得エラー:', e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 削除提案を適用（実際にテキストを削除）
+     */
+    applyDeletion(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('削除範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除してテキストも削除
+            this.quill.deleteText(index, length);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('削除適用エラー:', e);
+        }
+    }
+    
+    /**
+     * 削除提案を非承認（マーカーを削除して元のテキストに戻す）
+     */
+    rejectDeletion(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('削除範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除（テキストは残す）
+            this.quill.formatText(index, length, 'deletion', false);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('削除非承認エラー:', e);
+        }
+    }
+    
+    /**
+     * 追加提案を適用（マーカーを削除して通常テキストに）
+     */
+    applyAddition(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('追加範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除（テキストは残す）
+            this.quill.formatText(index, length, 'addition', false);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('追加適用エラー:', e);
+        }
+    }
+    
+    /**
+     * 追加提案を非承認（追加されたテキストを削除）
+     */
+    rejectAddition(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('追加範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // 追加されたテキストを削除
+            this.quill.deleteText(index, length);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('追加非承認エラー:', e);
+        }
+    }
+    
+    /**
+     * コメントを適用/非承認（マーカーを削除）
+     */
+    applyComment(change, isApproved) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('コメント範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // コメントマーカーを削除
+            this.quill.formatText(index, length, 'comment', false);
+            
+            // 承認の場合はコメントを残す、非承認の場合は削除
+            if (!isApproved) {
+                // suggestionChangesから削除
+                const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+                if (indexInArray !== -1) {
+                    this.suggestionChanges.splice(indexInArray, 1);
+                }
+            }
+        } catch (e) {
+            console.error('コメント処理エラー:', e);
         }
     }
 
