@@ -1290,9 +1290,19 @@ class RewriteSystem {
         // 重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
         content = this.removeDuplicateH1AndEyeCatch(content);
         
-        // 編集履歴の開始（提案モードの場合のみ、元のコンテンツを保存）
-        // 通常編集モードの場合は、編集履歴を開始しない
-        // 提案モードに切り替えた時に編集履歴を開始する
+        // 編集履歴の開始（元のコンテンツを保存）
+        const historyManager = window.editHistoryManager || editHistoryManager;
+        if (historyManager && article) {
+            console.log('編集履歴を開始します:', article.id, content.substring(0, 100) + '...');
+            historyManager.startEdit(article.id, content);
+        } else {
+            if (!historyManager) {
+                console.warn('editHistoryManagerが見つかりません');
+            }
+            if (!article) {
+                console.warn('articleが設定されていません');
+            }
+        }
         
         // 提案履歴を表示
         if (suggestionUIManager) {
@@ -2150,18 +2160,20 @@ ${article.keyword}について、重要なポイントをまとめました。
                 return;
             }
             
-            // 編集履歴を記録（提案モードかつログインしている場合のみ）
+            // 編集履歴を記録（ログインしている場合）
             const historyManager = window.editHistoryManager || editHistoryManager;
             const authMgr = window.authManager || authManager;
             
-            if (this.currentEditMode === 'suggestion' && authMgr && authMgr.isAuthenticated() && historyManager) {
+            // 提案モードの時だけではなく、ログインしていれば常に編集履歴を保存
+            if (authMgr && authMgr.isAuthenticated() && historyManager) {
                 const user = authMgr.getCurrentUser();
                 try {
                     console.log('編集履歴を保存します...', {
                         articleId: this.currentArticle.id,
                         contentLength: content.length,
                         userId: user.uid,
-                        userName: user.displayName || user.email
+                        userName: user.displayName || user.email,
+                        editMode: this.currentEditMode
                     });
                     
                     const suggestionId = await historyManager.saveSuggestion(
