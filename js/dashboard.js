@@ -2568,10 +2568,16 @@ class Dashboard {
         const titleInput = item.querySelector('.article-title-input');
         const keywordInput = item.querySelector('.article-keyword-input');
         
+        // デバウンス用のタイマー
+        let titleSaveTimer = null;
+        let keywordSaveTimer = null;
+        
         if (titleInput) {
             titleInput.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
+            
+            // changeイベント（フォーカスが外れた時）
             titleInput.addEventListener('change', async (e) => {
                 e.stopPropagation();
                 const newTitle = e.target.value;
@@ -2586,12 +2592,54 @@ class Dashboard {
                 // データを保存
                 await this.saveProgressData();
             });
+            
+            // blurイベント（フォーカスが外れた時にも保存）
+            titleInput.addEventListener('blur', async (e) => {
+                e.stopPropagation();
+                if (titleSaveTimer) {
+                    clearTimeout(titleSaveTimer);
+                }
+                const newTitle = e.target.value;
+                // 記事データを更新
+                if (this.currentPlanArticles) {
+                    const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                    if (articleToUpdate && articleToUpdate.title !== newTitle) {
+                        articleToUpdate.title = newTitle;
+                        articleToUpdate.h1Title = newTitle;
+                        // データを保存
+                        await this.saveProgressData();
+                    }
+                }
+            });
+            
+            // inputイベント（入力中もデバウンスして保存）
+            titleInput.addEventListener('input', (e) => {
+                e.stopPropagation();
+                if (titleSaveTimer) {
+                    clearTimeout(titleSaveTimer);
+                }
+                titleSaveTimer = setTimeout(async () => {
+                    const newTitle = e.target.value;
+                    // 記事データを更新
+                    if (this.currentPlanArticles) {
+                        const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                        if (articleToUpdate) {
+                            articleToUpdate.title = newTitle;
+                            articleToUpdate.h1Title = newTitle;
+                            // データを保存
+                            await this.saveProgressData();
+                        }
+                    }
+                }, 1000); // 1秒後に保存
+            });
         }
         
         if (keywordInput) {
             keywordInput.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
+            
+            // changeイベント（フォーカスが外れた時）
             keywordInput.addEventListener('change', async (e) => {
                 e.stopPropagation();
                 const newKeyword = e.target.value;
@@ -2604,6 +2652,44 @@ class Dashboard {
                 }
                 // データを保存
                 await this.saveProgressData();
+            });
+            
+            // blurイベント（フォーカスが外れた時にも保存）
+            keywordInput.addEventListener('blur', async (e) => {
+                e.stopPropagation();
+                if (keywordSaveTimer) {
+                    clearTimeout(keywordSaveTimer);
+                }
+                const newKeyword = e.target.value;
+                // 記事データを更新
+                if (this.currentPlanArticles) {
+                    const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                    if (articleToUpdate && articleToUpdate.keyword !== newKeyword) {
+                        articleToUpdate.keyword = newKeyword;
+                        // データを保存
+                        await this.saveProgressData();
+                    }
+                }
+            });
+            
+            // inputイベント（入力中もデバウンスして保存）
+            keywordInput.addEventListener('input', (e) => {
+                e.stopPropagation();
+                if (keywordSaveTimer) {
+                    clearTimeout(keywordSaveTimer);
+                }
+                keywordSaveTimer = setTimeout(async () => {
+                    const newKeyword = e.target.value;
+                    // 記事データを更新
+                    if (this.currentPlanArticles) {
+                        const articleToUpdate = this.currentPlanArticles.find(a => a.id === article.id);
+                        if (articleToUpdate) {
+                            articleToUpdate.keyword = newKeyword;
+                            // データを保存
+                            await this.saveProgressData();
+                        }
+                    }
+                }, 1000); // 1秒後に保存
             });
         }
         

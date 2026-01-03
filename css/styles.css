@@ -1428,16 +1428,16 @@ tr:last-child td {
     transform: scale(1.1);
 }
 
-/* 提案モードの追加マーカー（赤背景） */
+/* 提案モードの追加マーカー（目立つ色に変更） */
 .suggestion-addition {
-    background-color: #dbeafe; /* 青系に変更して視認性向上 */
-    color: #1e40af;
-    font-weight: 500;
+    background-color: #fef3c7; /* 黄色背景で視認性向上 */
+    color: #92400e; /* 濃い茶色の文字 */
+    font-weight: 600;
     padding: 0 2px;
     position: relative;
     cursor: pointer;
     text-decoration: none;
-    border-bottom: 2px solid #3b82f6;
+    border-bottom: 2px solid #f59e0b; /* オレンジの下線 */
     border-radius: 2px;
 }
 
