@@ -1012,6 +1012,11 @@ class RewriteSystem {
         // 重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
         content = this.removeDuplicateH1AndEyeCatch(content);
         
+        // 編集履歴の開始（元のコンテンツを保存）
+        if (editHistoryManager) {
+            editHistoryManager.startEdit(article.id, content);
+        }
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:531',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
@@ -1712,6 +1717,14 @@ ${article.keyword}について、重要なポイントをまとめました。
             return;
         }
 
+        // ログイン確認
+        if (!authManager || !authManager.isAuthenticated()) {
+            const proceed = confirm('編集履歴を記録するにはGoogleログインが必要です。\n\nログインせずに保存しますか？（編集履歴は記録されません）');
+            if (!proceed) {
+                return;
+            }
+        }
+
         try {
             let content;
             
@@ -1742,6 +1755,24 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             const slug = this.getSlugFromUrl(this.currentArticle.url);
             
+            // 編集履歴を記録（ログインしている場合）
+            if (authManager && authManager.isAuthenticated() && editHistoryManager) {
+                const user = authManager.getCurrentUser();
+                try {
+                    await editHistoryManager.saveSuggestion(
+                        this.currentArticle.id,
+                        content,
+                        user.uid,
+                        user.displayName || user.email,
+                        user.email
+                    );
+                    console.log('編集履歴を記録しました');
+                } catch (historyError) {
+                    console.error('編集履歴の記録エラー:', historyError);
+                    // エラーがあっても保存は続行
+                }
+            }
+            
             try {
                 const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
                 if (!saved) {
@@ -1764,7 +1795,7 @@ ${article.keyword}について、重要なポイントをまとめました。
                 }
             }
 
-            alert('保存しました！');
+            alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
             
             // ダッシュボードを更新
             if (typeof dashboard !== 'undefined') {

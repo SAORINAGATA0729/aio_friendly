@@ -12,6 +12,35 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase設定（後で実際の設定値に置き換える）
+        const firebaseConfig = {
+            // TODO: Firebaseプロジェクト作成後に設定値を追加
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+        
+        // グローバルに公開
+        window.firebaseApp = app;
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.googleProvider = googleProvider;
+    </script>
     <!-- docx.js for Word export - 動的インポートを使用 -->
     <!-- 注意: docx.jsはES6モジュール形式のため、グローバル変数として利用できません -->
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -24,6 +53,21 @@
                 <span class="material-icons-round">psychology</span>
                 AIO改修マネージャー
             </h1>
+            <div class="header-actions">
+                <div id="authSection">
+                    <button id="googleLoginBtn" class="btn btn-primary" style="display: none;">
+                        <span class="material-icons-round">account_circle</span>
+                        Googleでログイン
+                    </button>
+                    <div id="userInfo" style="display: none; align-items: center; gap: 0.5rem;">
+                        <img id="userAvatar" src="" alt="" style="width: 32px; height: 32px; border-radius: 50%;">
+                        <span id="userName" style="font-size: 0.9rem;"></span>
+                        <button id="logoutBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                            ログアウト
+                        </button>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <!-- メインコンテンツ -->
@@ -833,6 +877,8 @@
 
     <!-- スクリプト -->
     <script src="/js/data-manager.js?v=1.0.4"></script>
+    <script src="/js/auth.js?v=1.0.0"></script>
+    <script src="/js/edit-history.js?v=1.0.0"></script>
     <script src="/js/dashboard.js?v=1.0.4"></script>
     <script src="/js/rewrite.js?v=1.0.4" onerror="window.rewriteJsLoadError = true; console.error('❌ rewrite.jsの読み込みに失敗しました');"></script>
     <script src="/js/monitoring.js?v=1.0.4"></script>
