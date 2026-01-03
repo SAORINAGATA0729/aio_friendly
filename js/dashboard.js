@@ -32,7 +32,6 @@ class Dashboard {
         this.setupEvidenceManagement();
         this.setupPlanManagement();
         this.setupPlanSelection();
-        this.setupBrandFilter();
         this.setupRecordTab();
         this.setupReportTab();
         
@@ -691,30 +690,6 @@ class Dashboard {
         }
     }
     
-    setupBrandFilter() {
-        const brandFilter = document.getElementById('brandFilter');
-        if (brandFilter) {
-            brandFilter.addEventListener('change', () => {
-                // 現在のフィルター状態を取得
-                const filterButtons = document.querySelectorAll('.filter-btn');
-                let currentFilter = 'all';
-                filterButtons.forEach(btn => {
-                    if (btn.classList.contains('active')) {
-                        currentFilter = btn.dataset.filter || 'all';
-                    }
-                });
-                
-                // 記事一覧を再表示
-                if (this.selectedPlanId) {
-                    // プランが選択されている場合はプランの記事一覧を再表示
-                    this.renderPlanArticleList(this.currentPlanArticles);
-                } else {
-                    // プランが選択されていない場合は通常の記事一覧を再表示
-                    this.renderArticleList(currentFilter);
-                }
-            });
-        }
-    }
     
     updatePlanSelectOptions() {
         const planSelect = document.getElementById('selectedPlanId');
@@ -978,6 +953,7 @@ class Dashboard {
         header.className = 'article-list-header plan-mode';
         header.innerHTML = `
             <div>記事情報</div>
+            <div style="text-align: center;">ブランド</div>
             <div style="text-align: center;">クリック数</div>
             <div style="text-align: center;">表示回数</div>
             <div style="text-align: center;">CTR (%)</div>
@@ -1016,50 +992,6 @@ class Dashboard {
         
         // フィルターボタンの動作も更新（イベント委譲で処理するため、ここでは何もしない）
         // this.updateFilterButtons(); // 削除
-        
-        // ブランドフィルターの適用
-        const brandFilter = document.getElementById('brandFilter');
-        const selectedBrand = brandFilter ? brandFilter.value : 'all';
-        
-        // URLからブランドを判定する関数
-        const getBrandFromUrl = (url) => {
-            if (!url) return 'unknown';
-            try {
-                const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
-                const hostname = urlObj.hostname.toLowerCase();
-                if (hostname.includes('giftee')) return 'giftee';
-                if (hostname.includes('kaaan')) return 'KAAAN';
-                return 'unknown';
-            } catch {
-                return 'unknown';
-            }
-        };
-        
-        // ブランドフィルターを適用
-        if (selectedBrand !== 'all') {
-            const filteredItems = Array.from(articleList.children).filter(item => {
-                const articleId = item.dataset.articleId;
-                const article = articles.find(a => a.id === articleId);
-                if (!article) return false;
-                const articleBrand = getBrandFromUrl(article.url);
-                return articleBrand === selectedBrand;
-            });
-            
-            // フィルタリングされたアイテムのみ表示
-            Array.from(articleList.children).forEach(item => {
-                const articleId = item.dataset.articleId;
-                const article = articles.find(a => a.id === articleId);
-                if (article) {
-                    const articleBrand = getBrandFromUrl(article.url);
-                    item.style.display = articleBrand === selectedBrand ? '' : 'none';
-                }
-            });
-        } else {
-            // すべて表示
-            Array.from(articleList.children).forEach(item => {
-                item.style.display = '';
-            });
-        }
         
         // 進捗状況を更新（フィルタリング前のプランの全記事で計算）
         // 重要：articlesはフィルタリング済みだが、進捗は全記事で計算
@@ -1497,6 +1429,50 @@ class Dashboard {
                status === '進行中' ? 'inProgress' : 'notStarted';
     }
 
+    async updateArticleBrand(articleId, newBrand) {
+        // プランが選択されている場合はプランの記事を更新
+        if (this.selectedPlanId && this.currentPlanArticles) {
+            const article = this.currentPlanArticles.find(a => a.id === articleId);
+            if (article) {
+                article.brand = newBrand;
+                // プランデータを保存
+                const plans = JSON.parse(localStorage.getItem('plans') || '[]');
+                const plan = plans.find(p => p.id === this.selectedPlanId);
+                if (plan && plan.articles) {
+                    const planArticle = plan.articles.find(a => a.id === articleId);
+                    if (planArticle) {
+                        planArticle.brand = newBrand;
+                        localStorage.setItem('plans', JSON.stringify(plans));
+                    }
+                }
+            }
+        } else {
+            // 通常の記事一覧の場合は進捗データを更新
+            if (this.progressData && this.progressData.articles) {
+                const article = this.progressData.articles.find(a => a.id === articleId);
+                if (article) {
+                    article.brand = newBrand;
+                    await dataManager.saveProgress(this.progressData);
+                }
+            }
+        }
+        
+        // 記事一覧を再表示
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        let currentFilter = 'all';
+        filterButtons.forEach(btn => {
+            if (btn.classList.contains('active')) {
+                currentFilter = btn.dataset.filter || 'all';
+            }
+        });
+        
+        if (this.selectedPlanId) {
+            await this.renderPlanArticleList(this.currentPlanArticles);
+        } else {
+            this.renderArticleList(currentFilter);
+        }
+    }
+    
     async updateArticleStatus(articleId, newStatus) {
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1388',message:'updateArticleStatus called',data:{articleId,newStatus,selectedPlanId:this.selectedPlanId,currentPlanArticlesCount:this.currentPlanArticles?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -2245,6 +2221,7 @@ class Dashboard {
         header.className = 'article-list-header';
         header.innerHTML = `
             <div>記事情報</div>
+            <div style="text-align: center;">ブランド</div>
             <div style="text-align: center;">ステータス</div>
             <div style="text-align: center;">AIO引用数</div>
             <div style="text-align: center;">スコア</div>
@@ -2267,41 +2244,14 @@ class Dashboard {
         }
         
         articleList.innerHTML = '';
-
-        // ブランドフィルターを取得
-        const brandFilter = document.getElementById('brandFilter');
-        const selectedBrand = brandFilter ? brandFilter.value : 'all';
-        
-        // URLからブランドを判定する関数
-        const getBrandFromUrl = (url) => {
-            if (!url) return 'unknown';
-            try {
-                const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
-                const hostname = urlObj.hostname.toLowerCase();
-                if (hostname.includes('giftee')) return 'giftee';
-                if (hostname.includes('kaaan')) return 'KAAAN';
-                return 'unknown';
-            } catch {
-                return 'unknown';
-            }
-        };
         
         const articles = this.progressData.articles.filter(article => {
             // ステータスフィルター
-            let statusMatch = true;
-            if (filter === 'all') statusMatch = true;
-            else if (filter === 'notStarted') statusMatch = article.status === '未着手';
-            else if (filter === 'inProgress') statusMatch = article.status === '進行中';
-            else if (filter === 'completed') statusMatch = article.status === '完了';
-            
-            // ブランドフィルター
-            let brandMatch = true;
-            if (selectedBrand !== 'all') {
-                const articleBrand = getBrandFromUrl(article.url);
-                brandMatch = articleBrand === selectedBrand;
-            }
-            
-            return statusMatch && brandMatch;
+            if (filter === 'all') return true;
+            if (filter === 'notStarted') return article.status === '未着手';
+            if (filter === 'inProgress') return article.status === '進行中';
+            if (filter === 'completed') return article.status === '完了';
+            return true;
         });
 
         articles.forEach(article => {
@@ -2336,6 +2286,14 @@ class Dashboard {
                     <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
                     ${article.keyword}
                 </div>
+            </div>
+            <div style="display: flex; justify-content: center;">
+                <select class="article-brand-select" data-article-id="${article.id}" 
+                    style="padding: 0.3rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; background: white; cursor: pointer; min-width: 100px;">
+                    <option value="">未設定</option>
+                    <option value="giftee" ${article.brand === 'giftee' ? 'selected' : ''}>giftee</option>
+                    <option value="KAAAN" ${article.brand === 'KAAAN' ? 'selected' : ''}>KAAAN</option>
+                </select>
             </div>
             <div style="display: flex; justify-content: center;">
                 <select class="article-status-select ${statusClass}" data-article-id="${article.id}">
@@ -2439,6 +2397,19 @@ class Dashboard {
             });
         }
         
+        // ブランドセレクトボックスのイベントリスナー
+        const brandSelect = item.querySelector('.article-brand-select');
+        if (brandSelect) {
+            brandSelect.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newBrand = e.target.value;
+                await this.updateArticleBrand(article.id, newBrand);
+            });
+            brandSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+        
         // ステータスセレクトボックスのクリックイベントを停止
         const statusSelect = item.querySelector('.article-status-select');
         if (statusSelect) {
@@ -2499,6 +2470,14 @@ class Dashboard {
                     </div>
                     ${articleSlug ? `<div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${articleSlug}</div>` : ''}
                 </div>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <select class="article-brand-select" data-article-id="${article.id}" 
+                    style="padding: 0.3rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem; background: white; cursor: pointer; min-width: 100px;">
+                    <option value="">未設定</option>
+                    <option value="giftee" ${article.brand === 'giftee' ? 'selected' : ''}>giftee</option>
+                    <option value="KAAAN" ${article.brand === 'KAAAN' ? 'selected' : ''}>KAAAN</option>
+                </select>
             </div>
             <div style="display: flex; justify-content: center; align-items: center;">
                 <span style="
@@ -2625,6 +2604,19 @@ class Dashboard {
                 }
                 // データを保存
                 await this.saveProgressData();
+            });
+        }
+        
+        // ブランドセレクトボックスのイベントリスナー
+        const brandSelect = item.querySelector('.article-brand-select');
+        if (brandSelect) {
+            brandSelect.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newBrand = e.target.value;
+                await this.updateArticleBrand(article.id, newBrand);
+            });
+            brandSelect.addEventListener('click', (e) => {
+                e.stopPropagation();
             });
         }
         
@@ -2782,6 +2774,13 @@ class Dashboard {
                     const articleId = parseInt(e.target.dataset.articleId);
                     const newStatus = e.target.value;
                     await this.updateArticleStatus(articleId, newStatus);
+                }
+                // ブランド変更
+                if (e.target.classList.contains('article-brand-select')) {
+                    e.stopPropagation();
+                    const articleId = parseInt(e.target.dataset.articleId);
+                    const newBrand = e.target.value;
+                    await this.updateArticleBrand(articleId, newBrand);
                 }
                 // スコアランク変更のイベントリスナーは削除（読み取り専用のため）
             });

@@ -866,76 +866,69 @@ class RewriteSystem {
         if (!this.quill) return;
         
         let lastText = '';
-        let lastSelection = null;
+        let lastLength = 0;
         let isProcessing = false;
         let debounceTimer = null;
-        
-        // 選択範囲の変更を監視
-        this.quill.on('selection-change', (range, oldRange, source) => {
-            if (range) {
-                lastSelection = { index: range.index, length: range.length };
-            }
-        });
         
         // テキスト変更を監視
         this.quill.on('text-change', async (delta, oldDelta, source) => {
             if (this.currentEditMode !== 'suggestion' || isProcessing) return;
             
-            // デバウンス処理（500ms後に実行）
+            // デバウンス処理（300ms後に実行）
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(async () => {
                 isProcessing = true;
                 
                 try {
                     const currentText = this.quill.getText();
+                    const currentLength = currentText.length;
                     const currentHtml = this.quill.root.innerHTML;
                     const currentMarkdown = this.htmlToMarkdown(currentHtml);
                     
-                    // 加筆されたテキストを検出して自動的にマーカー化
-                    if (lastText && currentText.length > lastText.length && delta && delta.ops) {
-                        // テキストが追加された場合、Delta操作から追加位置を特定
-                        let insertIndex = 0;
-                        let insertText = '';
+                    // テキストが追加された場合を検出
+                    if (lastText && currentLength > lastLength) {
+                        // 追加された部分を特定
+                        const addedLength = currentLength - lastLength;
                         
-                        for (const op of delta.ops) {
-                            if (op.insert && typeof op.insert === 'string' && op.insert.trim().length > 0) {
-                                // テキストが追加された場合
-                                insertText = op.insert;
-                                // 既にマーカーが適用されていないかチェック
-                                const format = this.quill.getFormat(insertIndex, insertText.length);
-                                if (!format || (!format.addition && !format.deletion && !format.comment)) {
-                                    // 追加されたテキストに自動的に追加マーカーを適用
-                                    setTimeout(() => {
-                                        try {
-                                            const commentId = `auto_add_${Date.now()}_${insertIndex}`;
-                                            this.quill.formatText(insertIndex, insertText.length, 'addition', {
-                                                commentId: commentId
-                                            });
-                                            
-                                            // 変更履歴に追加
-                                            const changeData = {
-                                                id: commentId,
-                                                type: 'addition',
-                                                comment: '自動検出: 加筆',
-                                                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
-                                                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
-                                                timestamp: new Date().toISOString(),
-                                                selection: { index: insertIndex, length: insertText.length },
-                                                selectedText: insertText.substring(0, 50),
-                                                replies: []
-                                            };
-                                            this.suggestionChanges.push(changeData);
-                                            this.updateCommentHistory();
-                                        } catch (e) {
-                                            console.error('自動マーカー追加エラー:', e);
-                                        }
-                                    }, 100);
-                                }
-                                insertIndex += insertText.length;
-                            } else if (op.retain && typeof op.retain === 'number') {
-                                insertIndex += op.retain;
-                            } else if (op.delete && typeof op.delete === 'number') {
-                                // 削除の場合はインデックスを変更しない（既に削除されているため）
+                        // 現在のカーソル位置を取得
+                        const selection = this.quill.getSelection(true);
+                        if (selection) {
+                            // カーソル位置から逆算して追加位置を特定
+                            const insertIndex = Math.max(0, selection.index - addedLength);
+                            const insertLength = addedLength;
+                            
+                            // 追加されたテキストを取得
+                            const addedText = currentText.substring(insertIndex, insertIndex + insertLength);
+                            
+                            // 既にマーカーが適用されていないかチェック
+                            const format = this.quill.getFormat(insertIndex, insertLength);
+                            if (!format || (!format.addition && !format.deletion && !format.comment)) {
+                                // 追加されたテキストに自動的に追加マーカーを適用
+                                setTimeout(() => {
+                                    try {
+                                        const commentId = `auto_add_${Date.now()}_${insertIndex}`;
+                                        this.quill.formatText(insertIndex, insertLength, 'addition', {
+                                            commentId: commentId
+                                        });
+                                        
+                                        // 変更履歴に追加
+                                        const changeData = {
+                                            id: commentId,
+                                            type: 'addition',
+                                            comment: '自動検出: 加筆',
+                                            userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                                            userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                                            timestamp: new Date().toISOString(),
+                                            selection: { index: insertIndex, length: insertLength },
+                                            selectedText: addedText.substring(0, 50),
+                                            replies: []
+                                        };
+                                        this.suggestionChanges.push(changeData);
+                                        this.updateCommentHistory();
+                                    } catch (e) {
+                                        console.error('自動マーカー追加エラー:', e);
+                                    }
+                                }, 100);
                             }
                         }
                     }
@@ -946,17 +939,19 @@ class RewriteSystem {
                     }
                     
                     lastText = currentText;
+                    lastLength = currentLength;
                 } catch (e) {
                     console.error('変更追跡エラー:', e);
                 } finally {
                     isProcessing = false;
                 }
-            }, 500);
+            }, 300);
         });
         
         // 初期テキストを保存
         setTimeout(() => {
             lastText = this.quill.getText();
+            lastLength = lastText.length;
         }, 500);
     }
     
