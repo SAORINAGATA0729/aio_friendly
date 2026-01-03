@@ -798,6 +798,12 @@ class RewriteSystem {
             if (suggestionButtons) {
                 suggestionButtons.style.display = 'none';
             }
+            
+            // フロートボタンを非表示
+            const floatButtons = document.getElementById('suggestionFloatButtons');
+            if (floatButtons) {
+                floatButtons.style.display = 'none';
+            }
         } else if (mode === 'suggestion') {
             suggestionEditTab?.classList.add('active');
             normalEditTab?.classList.remove('active');
@@ -807,6 +813,12 @@ class RewriteSystem {
             const suggestionButtons = document.getElementById('suggestionToolbarButtons');
             if (suggestionButtons) {
                 suggestionButtons.style.display = 'flex';
+            }
+            
+            // フロートボタンを表示
+            const floatButtons = document.getElementById('suggestionFloatButtons');
+            if (floatButtons) {
+                floatButtons.style.display = 'flex';
             }
             
             // 提案モードに切り替えた時、編集履歴を開始
@@ -868,6 +880,7 @@ class RewriteSystem {
      * 提案モード用のツールバーボタンを設定
      */
     setupSuggestionToolbarButtons() {
+        // ツールバーのボタン
         const deletionBtn = document.getElementById('addDeletionMarkerBtn');
         const additionBtn = document.getElementById('addAdditionMarkerBtn');
         
@@ -879,6 +892,22 @@ class RewriteSystem {
         
         if (additionBtn) {
             additionBtn.addEventListener('click', () => {
+                this.addAdditionMarker();
+            });
+        }
+        
+        // フロートボタン
+        const floatDeletionBtn = document.getElementById('floatDeletionBtn');
+        const floatAdditionBtn = document.getElementById('floatAdditionBtn');
+        
+        if (floatDeletionBtn) {
+            floatDeletionBtn.addEventListener('click', () => {
+                this.addDeletionMarker();
+            });
+        }
+        
+        if (floatAdditionBtn) {
+            floatAdditionBtn.addEventListener('click', () => {
                 this.addAdditionMarker();
             });
         }
@@ -2625,12 +2654,27 @@ ${article.keyword}について、重要なポイントをまとめました。
             if (authMgr && authMgr.isAuthenticated() && historyManager) {
                 const user = authMgr.getCurrentUser();
                 try {
+                    // editHistoryManagerのcurrentEditが存在するか確認
+                    if (!historyManager.currentEdit || !historyManager.currentEdit.originalContent) {
+                        console.warn('⚠️ 編集履歴が開始されていません。開始します...');
+                        // 編集履歴を開始（フォールバック）
+                        const savedContent = localStorage.getItem(`article_${this.currentArticle.id}_content`);
+                        if (savedContent) {
+                            historyManager.startEdit(this.currentArticle.id, savedContent);
+                        } else {
+                            // 現在のコンテンツをベースとして使用
+                            historyManager.startEdit(this.currentArticle.id, content);
+                        }
+                    }
+                    
                     console.log('編集履歴を保存します...', {
                         articleId: this.currentArticle.id,
                         contentLength: content.length,
                         userId: user.uid,
                         userName: user.displayName || user.email,
-                        editMode: this.currentEditMode
+                        editMode: this.currentEditMode,
+                        hasCurrentEdit: !!historyManager.currentEdit,
+                        originalContentLength: historyManager.currentEdit?.originalContent?.length || 0
                     });
                     
                     const suggestionId = await historyManager.saveSuggestion(
@@ -2643,19 +2687,31 @@ ${article.keyword}について、重要なポイントをまとめました。
                     
                     if (suggestionId) {
                         console.log('✅ 編集履歴を記録しました:', suggestionId);
+                        if (typeof showToast === 'function') {
+                            showToast('保存・提案を記録しました', 'success');
+                        }
                     } else {
                         console.log('ℹ️ 変更がないため編集履歴は記録されませんでした');
+                        if (typeof showToast === 'function') {
+                            showToast('保存しました（変更なし）', 'success');
+                        }
                     }
                 } catch (historyError) {
                     console.error('❌ 編集履歴の記録エラー:', historyError);
                     console.error('エラー詳細:', historyError.stack);
+                    console.error('エラーオブジェクト:', historyError);
                     // エラーがあっても保存は続行
+                    if (typeof showToast === 'function') {
+                        showToast('保存しました（履歴記録に失敗）', 'warning');
+                    }
                 }
             } else {
                 if (!authMgr || !authMgr.isAuthenticated()) {
                     console.log('ℹ️ ログインしていないため編集履歴は記録されません');
                 } else if (!historyManager) {
                     console.warn('⚠️ editHistoryManagerが見つかりません');
+                    console.warn('window.editHistoryManager:', window.editHistoryManager);
+                    console.warn('editHistoryManager:', editHistoryManager);
                 }
             }
             
