@@ -3873,6 +3873,32 @@ class Dashboard {
             </div>
         `;
 
+        const tableExplanationHtml = `
+            <div style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px; page-break-inside: avoid;">
+                <h4 style="font-size: 0.95rem; font-weight: 600; color: #1e40af; margin-bottom: 0.5rem;">📋 表の見方</h4>
+                <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.85rem; color: #4b5563; line-height: 1.6;">
+                    <li><strong>各セルの見方</strong>：
+                        <ul style="margin-top: 0.25rem; padding-left: 1.25rem;">
+                            <li>大きな数字：<strong>3週間後の結果</strong>（施策後の最終的な数値）</li>
+                            <li>小さな数字：<strong>実施前（前）</strong>と<strong>2週間後（2週）</strong>の推移</li>
+                        </ul>
+                    </li>
+                    <li><strong>色の意味</strong>：
+                        <span style="color: #dc2626; font-weight: bold;">赤</span> = 改善（数値が向上）、
+                        <span style="color: #2563eb; font-weight: bold;">青</span> = 悪化（数値が低下）
+                        <br>※順位は低い方が良いため、色の意味が逆になります
+                    </li>
+                    <li><strong>評価基準</strong>：実施前（または2週間後）と3週間後を比較し、<strong>クリック数・CTRの向上</strong>と<strong>検索順位の改善</strong>を総合的に判定
+                        <ul style="margin-top: 0.25rem; padding-left: 1.25rem;">
+                            <li><span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 4px; font-weight: 600;">◯ 改善</span>：複数の指標で改善が見られた記事</li>
+                            <li><span style="background: #dbeafe; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-weight: 600;">✕ 悪化</span>：複数の指標で悪化が見られた記事</li>
+                            <li><span style="background: #f3f4f6; color: #4b5563; padding: 2px 6px; border-radius: 4px; font-weight: 600;">△ 維持</span>：大きな変化が見られなかった記事</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        `;
+
         let tableHtml = `
             <div style="page-break-inside: avoid;">
             <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
@@ -3893,7 +3919,7 @@ class Dashboard {
             </div>
         `;
 
-        container.innerHTML = summaryHtml + summaryCardsHtml + tableHtml;
+        container.innerHTML = summaryHtml + summaryCardsHtml + tableExplanationHtml + tableHtml;
         } catch (e) {
             console.error('記事パフォーマンス表示エラー:', e);
             const container = document.getElementById('articlePerformanceTable');
