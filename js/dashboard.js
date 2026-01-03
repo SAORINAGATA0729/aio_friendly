@@ -3003,6 +3003,8 @@ class Dashboard {
                     // 2週間後の記事ごとの数値を復元
                     if (data.articleMetrics2weeks && data.articleMetrics2weeks.length > 0) {
                         this.renderRecordArticleMetricsTable(data.articleMetrics2weeks, '2weeks');
+                    } else {
+                        this.renderRecordArticleMetricsTable([], '2weeks');
                     }
                 }
                 
@@ -3022,17 +3024,49 @@ class Dashboard {
                     // 3週間後の記事ごとの数値を復元
                     if (data.articleMetrics3weeks && data.articleMetrics3weeks.length > 0) {
                         this.renderRecordArticleMetricsTable(data.articleMetrics3weeks, '3weeks');
+                    } else {
+                        this.renderRecordArticleMetricsTable([], '3weeks');
                     }
                 }
 
-                // 結果を表示（Recordタブでは簡易表示）
+                // 結果を表示
                 const recordResultsSection = document.getElementById('recordResultsSection');
                 if (recordResultsSection) {
                     recordResultsSection.style.display = 'block';
+                    // 保存メッセージなどは初期状態では表示しない（保存時のみ）
+                    recordResultsSection.innerHTML = ''; 
                 }
             } catch (error) {
                 console.error('Recordデータの読み込みエラー:', error);
             }
+        } else {
+            // データがない場合はフォームをリセット
+            const publishDate = document.getElementById('publishDate');
+            if (publishDate) publishDate.value = '';
+            
+            const measurement2weeks = document.getElementById('measurement2weeks');
+            if (measurement2weeks) measurement2weeks.value = '';
+            
+            const measurement3weeks = document.getElementById('measurement3weeks');
+            if (measurement3weeks) measurement3weeks.value = '';
+            
+            ['metrics2weeks', 'metrics3weeks'].forEach(prefix => {
+                const elAio = document.getElementById(`${prefix}AioCitations`);
+                const elRank = document.getElementById(`${prefix}AvgRanking`);
+                const elTraffic = document.getElementById(`${prefix}Traffic`);
+                const elBrand = document.getElementById(`${prefix}BrandClicks`);
+                
+                if (elAio) elAio.value = '';
+                if (elRank) elRank.value = '';
+                if (elTraffic) elTraffic.value = '';
+                if (elBrand) elBrand.value = '';
+            });
+
+            this.renderRecordArticleMetricsTable([], '2weeks');
+            this.renderRecordArticleMetricsTable([], '3weeks');
+            
+            const recordResultsSection = document.getElementById('recordResultsSection');
+            if (recordResultsSection) recordResultsSection.style.display = 'none';
         }
     }
 
@@ -3211,7 +3245,7 @@ class Dashboard {
         alert('データを保存しました！');
         
         // Reportタブの内容も更新しておく（もし開かれていれば）
-        this.generateReport();
+        this.generateReport(planId);
     }
 
     renderCheckResults(planId) {
@@ -3354,9 +3388,15 @@ class Dashboard {
         });
     }
 
-    async generateReport() {
+    async generateReport(targetPlanId = null) {
         const planSelect = document.getElementById('reportPlanSelect');
-        const planId = planSelect?.value;
+        
+        // targetPlanIdが指定されていれば、プルダウンも同期する
+        if (targetPlanId && planSelect) {
+            planSelect.value = targetPlanId;
+        }
+
+        const planId = targetPlanId || planSelect?.value;
         if (!planId) {
             // アラートは出さない（初期表示時など）
             return;
