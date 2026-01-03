@@ -446,14 +446,17 @@ class Dashboard {
         document.getElementById('planName').value = plan.name || '';
         document.getElementById('planObjective').value = plan.objective || '';
         document.getElementById('planOverview').value = plan.overview || '';
-        document.getElementById('planAioCitations').value = plan.metrics?.aioCitations || '';
-        document.getElementById('planAvgRanking').value = plan.metrics?.avgRanking || '';
-        document.getElementById('planTraffic').value = plan.metrics?.traffic || '';
-        document.getElementById('planBrandClicks').value = plan.metrics?.brandClicks || '';
+        // 0の値も正しく表示するように修正（?? を使用）
+        document.getElementById('planAioCitations').value = plan.metrics?.aioCitations ?? '';
+        document.getElementById('planAvgRanking').value = plan.metrics?.avgRanking ?? '';
+        document.getElementById('planTraffic').value = plan.metrics?.traffic ?? '';
+        document.getElementById('planBrandClicks').value = plan.metrics?.brandClicks ?? '';
         
         // 記事ごとの数値データを表示（URLも含まれる）
         if (plan.articleMetrics && plan.articleMetrics.length > 0) {
             this.renderArticleMetricsTable(plan.articleMetrics);
+            // 記事テーブルを表示した後、自動計算で上書きしないように注意
+            // updateMetricsFromArticleTable()は呼ばない
         } else {
             this.renderArticleMetricsTable([]);
         }
@@ -1031,26 +1034,28 @@ class Dashboard {
         const metrics = this.getArticleMetricsFromTable();
         if (metrics.length === 0) return;
         
-        // 合計値を計算
+        // 合計値を計算（参考用、全体の数値入力欄には自動反映しない）
         const totalClicks = metrics.reduce((sum, m) => sum + (m.clicks || 0), 0);
         const totalImpressions = metrics.reduce((sum, m) => sum + (m.impressions || 0), 0);
         const avgPosition = metrics.length > 0 
             ? metrics.reduce((sum, m) => sum + (m.position || 0), 0) / metrics.length 
             : 0;
         
-        // 全体の数値入力欄に反映
-        const trafficInput = document.getElementById('planTraffic');
-        if (trafficInput) {
-            trafficInput.value = totalClicks;
-        }
-        
-        const avgRankingInput = document.getElementById('planAvgRanking');
-        if (avgRankingInput) {
-            avgRankingInput.value = avgPosition.toFixed(2);
-        }
+        // 全体の数値入力欄への自動反映を削除
+        // CSVからインポートした手動入力の値を保持するため
+        // const trafficInput = document.getElementById('planTraffic');
+        // if (trafficInput) {
+        //     trafficInput.value = totalClicks;
+        // }
+        // 
+        // const avgRankingInput = document.getElementById('planAvgRanking');
+        // if (avgRankingInput) {
+        //     avgRankingInput.value = avgPosition.toFixed(2);
+        // }
         
         // AIO引用数は記事ごとの数値からは計算できないので、手動入力のまま
         // ブランド認知度も同様
+        // トラフィックと検索順位も、手動入力の値を優先する
     }
     
     importArticleMetricsCsvFile(file) {
