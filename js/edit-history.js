@@ -21,6 +21,48 @@ class EditHistoryManager {
     }
 
     /**
+     * 変更差分を計算（diff-match-patchを使用）
+     */
+    async calculateDiff(original, modified) {
+        if (!window.diff_match_patch) {
+            // ライブラリを動的ロード
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        const dmp = new diff_match_patch();
+        const diffs = dmp.diff_main(original, modified);
+        dmp.diff_cleanupSemantic(diffs);
+
+        // 統計情報を計算
+        let addedLines = 0;
+        let deletedLines = 0;
+        let modifiedLines = 0;
+
+        diffs.forEach(diff => {
+            const [operation, text] = diff;
+            if (operation === 1) addedLines++; // INSERT
+            if (operation === -1) deletedLines++; // DELETE
+        });
+
+        // 変更行数は概算（操作数ベース）
+        modifiedLines = Math.max(addedLines, deletedLines);
+
+        return {
+            diffs: diffs, // 生のdiffデータ [operation, text]
+            changes: [], // 互換性のため残すが使用しない
+            addedLines: addedLines,
+            deletedLines: deletedLines,
+            modifiedLines: modifiedLines
+        };
+    }
+
+    /**
      * 変更を記録（提案として保存）
      */
     async saveSuggestion(articleId, newContent, userId, userName, userEmail) {
@@ -33,9 +75,9 @@ class EditHistoryManager {
             const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
             // 変更差分を計算
-            const diff = this.calculateDiff(this.currentEdit.originalContent, newContent);
+            const diff = await this.calculateDiff(this.currentEdit.originalContent, newContent);
             
-            if (diff.changes.length === 0) {
+            if (diff.diffs.length <= 1 && diff.diffs[0][0] === 0) {
                 console.log('変更がありません');
                 return null;
             }
@@ -69,10 +111,10 @@ class EditHistoryManager {
     /**
      * localStorageにフォールバック保存
      */
-    saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail) {
-        const diff = this.calculateDiff(this.currentEdit.originalContent, newContent);
+    async saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail) {
+        const diff = await this.calculateDiff(this.currentEdit.originalContent, newContent);
         
-        if (diff.changes.length === 0) {
+        if (diff.diffs.length <= 1 && diff.diffs[0][0] === 0) {
             return null;
         }
 
@@ -96,56 +138,6 @@ class EditHistoryManager {
         localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
         
         return key;
-    }
-
-    /**
-     * 変更差分を計算（簡易版）
-     */
-    calculateDiff(original, modified) {
-        const originalLines = original.split('\n');
-        const modifiedLines = modified.split('\n');
-        
-        const changes = [];
-        let originalIndex = 0;
-        let modifiedIndex = 0;
-        
-        while (originalIndex < originalLines.length || modifiedIndex < modifiedLines.length) {
-            const originalLine = originalLines[originalIndex] || '';
-            const modifiedLine = modifiedLines[modifiedIndex] || '';
-            
-            if (originalLine === modifiedLine) {
-                originalIndex++;
-                modifiedIndex++;
-            } else {
-                // 変更を検出
-                const change = {
-                    type: originalLine ? (modifiedLine ? 'modified' : 'deleted') : 'added',
-                    lineNumber: modifiedIndex + 1,
-                    originalLine: originalLine,
-                    modifiedLine: modifiedLine
-                };
-                changes.push(change);
-                
-                if (originalLine && modifiedLine) {
-                    // 両方ある場合は変更
-                    originalIndex++;
-                    modifiedIndex++;
-                } else if (originalLine) {
-                    // 削除
-                    originalIndex++;
-                } else {
-                    // 追加
-                    modifiedIndex++;
-                }
-            }
-        }
-        
-        return {
-            changes: changes,
-            addedLines: changes.filter(c => c.type === 'added').length,
-            deletedLines: changes.filter(c => c.type === 'deleted').length,
-            modifiedLines: changes.filter(c => c.type === 'modified').length
-        };
     }
 
     /**
@@ -275,40 +267,39 @@ class EditHistoryManager {
     /**
      * コメントを追加
      */
-    async addComment(suggestionId, commentText, user) {
-        if (!commentText || !commentText.trim()) return false;
-
-        const comment = {
-            id: `comment_${Date.now()}`,
-            text: commentText,
-            userId: user.uid,
-            userName: user.displayName || user.email,
-            userAvatar: user.photoURL || null,
-            createdAt: new Date().toISOString()
-        };
-
+    async addComment(suggestionId, text, user) {
         if (!window.firebaseDb) {
-            return this.addCommentToLocalStorage(suggestionId, comment);
+            return this.addCommentToLocalStorage(suggestionId, text, user);
         }
 
         try {
-            const { doc, updateDoc, arrayUnion } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            const { doc, updateDoc, arrayUnion, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
             
+            const comment = {
+                id: 'comment_' + Date.now(),
+                text: text,
+                userId: user.uid,
+                userName: user.displayName || user.email,
+                userAvatar: user.photoURL || null,
+                createdAt: new Date().toISOString() // serverTimestamp()だと配列内で扱いにくいためISO文字
+            };
+
             await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
-                comments: arrayUnion(comment)
+                comments: arrayUnion(comment),
+                updatedAt: serverTimestamp()
             });
             
             return true;
         } catch (error) {
-            console.error('コメントの追加エラー:', error);
-            return this.addCommentToLocalStorage(suggestionId, comment);
+            console.error('コメント追加エラー:', error);
+            return this.addCommentToLocalStorage(suggestionId, text, user);
         }
     }
 
     /**
      * localStorageにコメントを追加
      */
-    addCommentToLocalStorage(suggestionId, comment) {
+    addCommentToLocalStorage(suggestionId, text, user) {
         const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
         const index = suggestions.findIndex(s => s.id === suggestionId);
         
@@ -316,7 +307,13 @@ class EditHistoryManager {
             if (!suggestions[index].comments) {
                 suggestions[index].comments = [];
             }
-            suggestions[index].comments.push(comment);
+            suggestions[index].comments.push({
+                id: 'comment_' + Date.now(),
+                text: text,
+                userId: user.uid,
+                userName: user.displayName || user.email,
+                createdAt: new Date().toISOString()
+            });
             localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
             return true;
         }
