@@ -3638,10 +3638,11 @@ class Dashboard {
         }
 
         // ==========================================
-        // 1. 集計 (SC風サマリー用)
+        // 1. 集計
         // ==========================================
         const totals = {
             before: { clicks: 0, imp: 0, posSum: 0, posCount: 0 },
+            w2: { clicks: 0, imp: 0, posSum: 0, posCount: 0 },
             w3: { clicks: 0, imp: 0, posSum: 0, posCount: 0 }
         };
 
@@ -3674,19 +3675,20 @@ class Dashboard {
             const ctr2 = parseFloat(w2.ctr) || 0;
             const ctr3 = parseFloat(w3.ctr) || 0;
 
-            // 集計加算 (Before, 3w)
+            // 集計加算
             if (before.clicks) totals.before.clicks += clkBefore;
             if (before.impressions) totals.before.imp += impBefore;
             if (before.position) { totals.before.posSum += posBefore; totals.before.posCount++; }
+
+            if (w2.clicks) totals.w2.clicks += clk2;
+            if (w2.impressions) totals.w2.imp += imp2;
+            if (w2.position) { totals.w2.posSum += pos2; totals.w2.posCount++; }
 
             if (w3.clicks) totals.w3.clicks += clk3;
             if (w3.impressions) totals.w3.imp += imp3;
             if (w3.position) { totals.w3.posSum += pos3; totals.w3.posCount++; }
 
-            // 評価ロジック (3w vs 2w or Before if available?)
-            // トレンドを見るなら直近の動きも大事だが、成果としては Before -> 3w が重要
-            // ここでは Before -> 3w の比較を優先したいが、Beforeがない場合は 2w -> 3w
-            
+            // 評価ロジック (Before or 2w -> 3w)
             const baseClk = before.clicks ? clkBefore : clk2;
             const basePos = before.position ? posBefore : pos2;
             const baseCtr = before.ctr ? ctrBefore : ctr2;
@@ -3697,56 +3699,63 @@ class Dashboard {
             if (ctr3 > baseCtr) score++; else if (ctr3 < baseCtr) score--;
 
             let evalSymbol = '△';
-            let evalClass = 'text-gray-500';
+            let badgeStyle = 'background: #f3f4f6; color: #4b5563;';
             
             if (score > 0) {
                 evalSymbol = '◯';
-                evalClass = 'text-red-600';
+                badgeStyle = 'background: #fee2e2; color: #dc2626;';
                 improvedCount++;
             } else if (score < 0) {
                 evalSymbol = '✕';
-                evalClass = 'text-blue-600';
+                badgeStyle = 'background: #dbeafe; color: #2563eb;';
                 worsenedCount++;
             } else {
                 unchangedCount++;
             }
 
-            // 色付けロジック
-            const getColor = (v2, v3) => {
-                if (v3 > v2) return 'color: #dc2626; font-weight: bold;';
-                if (v3 < v2) return 'color: #2563eb; font-weight: bold;';
+            // 色付けロジック (比較対象: BeforeがあればBefore、なければ2w)
+            const getColor = (current, previous, isReverse = false) => {
+                if (current === 0) return '';
+                if (!previous) return ''; // 比較対象なし
+                
+                if (isReverse) { // 順位など（低い方が良い）
+                    if (current < previous) return 'color: #dc2626;'; // 良(赤)
+                    if (current > previous) return 'color: #2563eb;'; // 悪(青)
+                } else {
+                    if (current > previous) return 'color: #dc2626;'; // 良(赤)
+                    if (current < previous) return 'color: #2563eb;'; // 悪(青)
+                }
                 return '';
             };
 
             // Before表示用ヘルパー
-            const formatBefore = (val) => val ? this.formatNumber(val) : '<span style="color:#9ca3af;">-</span>';
-            const formatBeforePos = (val) => val ? val : '<span style="color:#9ca3af;">-</span>';
-            const formatBeforeCtr = (val, hasVal) => hasVal ? val + '%' : '<span style="color:#9ca3af;">-</span>';
+            const formatBefore = (val) => val ? this.formatNumber(val) : '-';
+            const formatBeforePos = (val) => val ? val : '-';
+            const formatBeforeCtr = (val, hasVal) => hasVal ? val + '%' : '-';
 
+            // 縦積みレイアウト生成
             rowsHtml += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        ${formatBeforePos(posBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        ${pos2} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        <span style="${getColor(pos2, pos3)}">${pos3}</span>
+                        <div style="font-weight: bold; font-size: 1.1rem; ${getColor(pos3, basePos, true)}">${pos3}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBeforePos(posBefore)} <span style="color:#d1d5db">|</span> 2w: ${pos2}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        ${formatBefore(clkBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        ${this.formatNumber(clk2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        <span style="${getColor(clk2, clk3)}">${this.formatNumber(clk3)}</span>
+                        <div style="font-weight: bold; font-size: 1.1rem; ${getColor(clk3, baseClk)}">${this.formatNumber(clk3)}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBefore(clkBefore)} <span style="color:#d1d5db">|</span> 2w: ${this.formatNumber(clk2)}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        ${formatBefore(impBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        ${this.formatNumber(imp2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        <span style="${getColor(imp2, imp3)}">${this.formatNumber(imp3)}</span>
+                        <div style="font-weight: bold; font-size: 1.1rem; ${getColor(imp3, before.impressions ? impBefore : imp2)}">${this.formatNumber(imp3)}</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBefore(impBefore)} <span style="color:#d1d5db">|</span> 2w: ${this.formatNumber(imp2)}</div>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        ${formatBeforeCtr(ctrBefore, before.ctr)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        ${ctr2}% <span style="color: #9ca3af; margin: 0 4px;">→</span> 
-                        <span style="${getColor(ctr2, ctr3)}">${ctr3}%</span>
+                        <div style="font-weight: bold; font-size: 1.1rem; ${getColor(ctr3, baseCtr)}">${ctr3}%</div>
+                        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">B: ${formatBeforeCtr(ctrBefore, before.ctr)} <span style="color:#d1d5db">|</span> 2w: ${ctr2}%</div>
                     </td>
-                    <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem;" class="${evalClass}">${evalSymbol}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; ${badgeStyle}">${evalSymbol}</span>
+                    </td>
                 </tr>
             `;
         });
@@ -3768,31 +3777,22 @@ class Dashboard {
         };
 
         // SC風サマリーカードHTML (Before -> After 対比)
-        // 変化率などを出すとさらに良いが、シンプルに Before -> After 表示にする
-        // Beforeが0の場合は '-' 表示
-        
         const renderDiff = (before, after, unit = '') => {
-            if (before === '-' || before == 0) return ''; // Beforeなし
+            if (before === '-' || before == 0) return '';
             const diff = after - before;
             const sign = diff > 0 ? '+' : '';
-            const color = diff > 0 ? '#16a34a' : (diff < 0 ? '#dc2626' : '#6b7280'); // Increase=Green, Decrease=Red (For Clicks/Imp/CTR)
-            // Wait, usually Red is Up in Japan? User said "Up=Red".
-            // So Diff > 0 -> Red.
-            const colorUp = '#dc2626'; 
-            const colorDown = '#2563eb';
-            const finalColor = diff > 0 ? colorUp : (diff < 0 ? colorDown : '#6b7280');
-            
-            return `<span style="color: ${finalColor}; font-size: 0.9rem; margin-left: 0.5rem;">${sign}${this.formatNumber(diff)}${unit}</span>`;
+            // 良=赤, 悪=青
+            const color = diff > 0 ? '#dc2626' : (diff < 0 ? '#2563eb' : '#6b7280');
+            return `<span style="color: ${color}; font-size: 0.9rem; margin-left: 0.5rem; font-weight: bold;">${sign}${this.formatNumber(diff)}${unit}</span>`;
         };
         
-        // 順位用Diff (低い方が良い)
         const renderPosDiff = (before, after) => {
             if (before === '-' || before == 0) return '';
             const diff = after - before;
-            const sign = diff > 0 ? '+' : ''; // + means rank increased (worsened)
-            // Worsened -> Blue, Improved (Negative diff) -> Red
+            const sign = diff > 0 ? '+' : '';
+            // 順位: 減少(負)=赤, 増加(正)=青
             const color = diff < 0 ? '#dc2626' : (diff > 0 ? '#2563eb' : '#6b7280');
-            return `<span style="color: ${color}; font-size: 0.9rem; margin-left: 0.5rem;">${sign}${diff.toFixed(1)}</span>`;
+            return `<span style="color: ${color}; font-size: 0.9rem; margin-left: 0.5rem; font-weight: bold;">${sign}${diff.toFixed(1)}</span>`;
         };
 
         const summaryCardsHtml = `
@@ -3804,7 +3804,7 @@ class Dashboard {
                         ${renderDiff(stats.before.clicks, stats.w3.clicks)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${this.formatNumber(stats.before.clicks)} <span style="margin: 0 4px;">→</span> After: ${this.formatNumber(stats.w3.clicks)}
+                        Before: ${this.formatNumber(stats.before.clicks)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3814,7 +3814,7 @@ class Dashboard {
                         ${renderDiff(stats.before.imp, stats.w3.imp)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${this.formatNumber(stats.before.imp)} <span style="margin: 0 4px;">→</span> After: ${this.formatNumber(stats.w3.imp)}
+                        Before: ${this.formatNumber(stats.before.imp)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3824,7 +3824,7 @@ class Dashboard {
                         ${renderDiff(stats.before.ctr, stats.w3.ctr, '%')}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${stats.before.ctr}% <span style="margin: 0 4px;">→</span> After: ${stats.w3.ctr}%
+                        Before: ${stats.before.ctr}%
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
@@ -3834,28 +3834,23 @@ class Dashboard {
                         ${renderPosDiff(stats.before.pos, stats.w3.pos)}
                     </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: ${stats.before.pos}位 <span style="margin: 0 4px;">→</span> After: ${stats.w3.pos}位
+                        Before: ${stats.before.pos}位
                     </div>
                 </div>
             </div>
         `;
 
         // 総評エリア
-        const total = articles.length;
-        
-        // スコア計算 (改善数 / 総数 * 100)
         const score = total > 0 ? Math.round((improvedCount / total) * 100) : 0;
-        
-        // 総合評価判定 (70点以上: ◯, 40点以上: △, それ未満: ✕)
         let overallSymbol = '✕';
-        let overallColor = '#2563eb'; // Blue (Bad)
+        let overallColor = '#2563eb';
         
         if (score >= 70) {
             overallSymbol = '◯';
-            overallColor = '#dc2626'; // Red (Good)
+            overallColor = '#dc2626';
         } else if (score >= 40) {
             overallSymbol = '△';
-            overallColor = '#d97706'; // Orange
+            overallColor = '#d97706';
         }
 
         const summaryHtml = `
@@ -3878,11 +3873,11 @@ class Dashboard {
             <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
                 <thead>
                     <tr style="background: #f3f4f6;">
-                        <th style="padding: 0.75rem; text-align: left;">記事名</th>
-                        <th style="padding: 0.75rem; text-align: center;">順位<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
-                        <th style="padding: 0.75rem; text-align: center;">クリック<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
-                        <th style="padding: 0.75rem; text-align: center;">Imp<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
-                        <th style="padding: 0.75rem; text-align: center;">CTR<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
+                        <th style="padding: 0.75rem; text-align: left; width: 30%;">記事名</th>
+                        <th style="padding: 0.75rem; text-align: center;">順位</th>
+                        <th style="padding: 0.75rem; text-align: center;">クリック</th>
+                        <th style="padding: 0.75rem; text-align: center;">Imp</th>
+                        <th style="padding: 0.75rem; text-align: center;">CTR</th>
                         <th style="padding: 0.75rem; text-align: center;">評価</th>
                     </tr>
                 </thead>
