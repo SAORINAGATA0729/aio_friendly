@@ -1021,6 +1021,9 @@ class RewriteSystem {
         // HTML変換後も重複するH1とアイキャッチ画像を削除（念のため）
         htmlContent = this.removeDuplicateH1AndEyeCatchFromHtml(htmlContent);
         
+        // 画像URLを絶対URLに変換（相対URLの場合）
+        htmlContent = this.convertImageUrlsToAbsolute(htmlContent, article.url);
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:540',message:'openRewriteModal: HTML content after markdownToHtml and cleanup',data:{htmlContentLength:htmlContent.length,htmlContentPreview:htmlContent.substring(0,500),h1Count:(htmlContent.match(/<h1[^>]*>/gi)||[]).length,imgCount:(htmlContent.match(/<img[^>]*>/gi)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
@@ -1257,6 +1260,53 @@ class RewriteSystem {
         return htmlContent;
     }
 
+    convertImageUrlsToAbsolute(htmlContent, articleUrl) {
+        if (!htmlContent || !articleUrl) return htmlContent;
+        
+        try {
+            // 記事URLからベースURLを取得
+            const articleUrlObj = new URL(articleUrl);
+            const baseUrl = `${articleUrlObj.protocol}//${articleUrlObj.host}`;
+            
+            // 画像タグのsrc属性を絶対URLに変換
+            htmlContent = htmlContent.replace(/<img([^>]*)\ssrc="([^"]*)"([^>]*)>/gi, (match, before, src, after) => {
+                // すでに絶対URLの場合はそのまま
+                if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
+                    return match;
+                }
+                
+                // 相対URLを絶対URLに変換
+                let absoluteUrl;
+                if (src.startsWith('/')) {
+                    // ルート相対URL
+                    absoluteUrl = baseUrl + src;
+                } else {
+                    // 相対URL（記事URLを基準に解決）
+                    try {
+                        absoluteUrl = new URL(src, articleUrl).href;
+                    } catch (e) {
+                        // URL解決に失敗した場合は元のURLをそのまま使用
+                        absoluteUrl = src;
+                    }
+                }
+                
+                return `<img${before} src="${absoluteUrl}"${after}>`;
+            });
+            
+            // #region agent log
+            const convertedImgCount = (htmlContent.match(/<img[^>]*>/gi) || []).length;
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1262',message:'convertImageUrlsToAbsolute: Converted image URLs',data:{baseUrl:baseUrl,articleUrl:articleUrl,convertedImgCount:convertedImgCount},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'U'})}).catch(()=>{});
+            // #endregion
+        } catch (error) {
+            console.error('[ERROR] Failed to convert image URLs to absolute:', error);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1275',message:'convertImageUrlsToAbsolute: Error',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'U'})}).catch(()=>{});
+            // #endregion
+        }
+        
+        return htmlContent;
+    }
+
     createArticleTemplate(article) {
         return `# ${article.title}
 
@@ -1487,16 +1537,52 @@ ${article.keyword}について、重要なポイントをまとめました。
             scoreRankEl.className = 'rank-value';
             scoreRankEl.classList.add(`rank-${rank}`);
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1214',message:'updateScore: After updating scoreRank',data:{scoreRankText:scoreRankEl.textContent,scoreRankClassName:scoreRankEl.className,rank:rank},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1489',message:'updateScore: After updating scoreRank',data:{scoreRankText:scoreRankEl.textContent,scoreRankClassName:scoreRankEl.className,rank:rank},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
             // #endregion
         }
         if (checkedCountElNew) checkedCountElNew.textContent = checkedCount;
         if (totalCountElNew) totalCountElNew.textContent = totalItems;
         if (scoreBarFillEl) scoreBarFillEl.style.width = `${score}%`;
         
+        // 最終的なHTML構造を確認し、必要に応じて再構築
+        const finalCheck = document.getElementById('scoreNumber');
+        const finalRankCheck = document.getElementById('scoreRank');
+        const finalHasScoreStatus = checklistScore.querySelector('.score-status') !== null;
+        
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1222',message:'updateScore: Final state',data:{checklistScoreHTML:checklistScore.innerHTML.substring(0,300),scoreRankFinalText:scoreRankEl?.textContent,scoreRankFinalClassName:scoreRankEl?.className},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1498',message:'updateScore: Final state check',data:{checklistScoreHTML:checklistScore.innerHTML.substring(0,500),scoreRankFinalText:scoreRankEl?.textContent,scoreRankFinalClassName:scoreRankEl?.className,finalCheckExists:!!finalCheck,finalRankCheckExists:!!finalRankCheck,finalHasScoreStatus:finalHasScoreStatus},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'F'})}).catch(()=>{});
         // #endregion
+        
+        // 最終チェック：HTML構造が失われている場合は再構築
+        if (!finalCheck || !finalRankCheck || !finalHasScoreStatus) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1505',message:'updateScore: Final structure check failed, rebuilding',data:{finalCheckExists:!!finalCheck,finalRankCheckExists:!!finalRankCheck,finalHasScoreStatus:finalHasScoreStatus},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+            // #endregion
+            // HTML構造を再構築してから値を設定
+            checklistScore.innerHTML = `
+                <div class="score-status">
+                    <div class="score-main">
+                        <span class="score-label">現状</span>
+                        <span id="scoreNumber">${score}</span>
+                        <span class="score-unit">点</span>
+                        <span class="score-separator">/</span>
+                        <span class="score-total">100点</span>
+                    </div>
+                    <div class="score-rank-display">
+                        <span class="rank-label">RANK</span>
+                        <span id="scoreRank" class="rank-value rank-${rank}">${rank}</span>
+                    </div>
+                </div>
+                <div class="score-progress">
+                    <div class="score-bar">
+                        <div class="score-bar-fill" id="scoreBarFill" style="width: ${score}%"></div>
+                    </div>
+                    <div class="score-text">
+                        <span id="checkedCount">${checkedCount}</span> / <span id="totalCount">${totalItems}</span> 項目
+                    </div>
+                </div>
+            `;
+        }
     }
 
     getRank(score) {
