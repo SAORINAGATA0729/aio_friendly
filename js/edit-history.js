@@ -1,17 +1,13 @@
 /**
  * 編集履歴管理
- * Googleドキュメントの提案モードのような機能を提供
  */
 
 class EditHistoryManager {
     constructor() {
-        this.currentEdit = null; // 現在編集中の記事
-        this.originalContent = null; // 元のコンテンツ
+        this.currentEdit = null;
+        this.originalContent = null;
     }
 
-    /**
-     * 編集開始時に元のコンテンツを保存
-     */
     startEdit(articleId, originalContent) {
         this.currentEdit = {
             articleId: articleId,
@@ -21,44 +17,76 @@ class EditHistoryManager {
     }
 
     /**
-     * 変更差分を計算（diff-match-patchを使用）
+     * 変更差分を計算
      */
     async calculateDiff(original, modified) {
-        if (!window.diff_match_patch) {
-            // ライブラリを動的ロード
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js';
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
+        // diff_match_patchのロードを試みる
+        if (typeof diff_match_patch === 'undefined') {
+            await this.loadDiffLibrary();
         }
 
-        const dmp = new diff_match_patch();
-        const diffs = dmp.diff_main(original, modified);
-        dmp.diff_cleanupSemantic(diffs);
+        if (typeof diff_match_patch !== 'undefined') {
+            try {
+                const dmp = new diff_match_patch();
+                const diffs = dmp.diff_main(original, modified);
+                dmp.diff_cleanupSemantic(diffs);
+                
+                let addedLines = 0;
+                let deletedLines = 0;
+                diffs.forEach(diff => {
+                    if (diff[0] === 1) addedLines++;
+                    if (diff[0] === -1) deletedLines++;
+                });
 
-        // 統計情報を計算
-        let addedLines = 0;
-        let deletedLines = 0;
-        let modifiedLines = 0;
+                return {
+                    diffs: diffs,
+                    addedLines: addedLines,
+                    deletedLines: deletedLines,
+                    modifiedLines: Math.max(addedLines, deletedLines)
+                };
+            } catch (e) {
+                console.error('Diff calculation failed:', e);
+            }
+        }
 
-        diffs.forEach(diff => {
-            const [operation, text] = diff;
-            if (operation === 1) addedLines++; // INSERT
-            if (operation === -1) deletedLines++; // DELETE
+        // フォールバック（簡易行単位Diff）
+        return this.calculateSimpleDiff(original, modified);
+    }
+
+    async loadDiffLibrary() {
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js';
+            script.onload = resolve;
+            script.onerror = () => {
+                console.warn('Failed to load diff_match_patch from CDN');
+                resolve(); // 失敗してもresolveしてフォールバックさせる
+            };
+            document.head.appendChild(script);
         });
+    }
 
-        // 変更行数は概算（操作数ベース）
-        modifiedLines = Math.max(addedLines, deletedLines);
+    calculateSimpleDiff(original, modified) {
+        // 行単位の簡易Diff
+        const originalLines = original.split('\n');
+        const modifiedLines = modified.split('\n');
+        const diffs = [];
+        
+        // 非常に単純な比較（本来はLCSなどを使うべきだがコード量削減のため）
+        // 変更前と変更後を単純に比較
+        if (original === modified) {
+            diffs.push([0, original]);
+        } else {
+            // 全削除＆全追加として扱う
+            if (original) diffs.push([-1, original]);
+            if (modified) diffs.push([1, modified]);
+        }
 
         return {
-            diffs: diffs, // 生のdiffデータ [operation, text]
-            changes: [], // 互換性のため残すが使用しない
-            addedLines: addedLines,
-            deletedLines: deletedLines,
-            modifiedLines: modifiedLines
+            diffs: diffs,
+            addedLines: modifiedLines.length,
+            deletedLines: originalLines.length,
+            modifiedLines: Math.max(modifiedLines.length, originalLines.length)
         };
     }
 
@@ -66,84 +94,9 @@ class EditHistoryManager {
      * 変更を記録（提案として保存）
      */
     async saveSuggestion(articleId, newContent, userId, userName, userEmail) {
-        if (!window.firebaseDb) {
-            console.warn('Firestoreが利用できません。localStorageに保存します。');
-            return this.saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail);
-        }
-
-        try {
-            const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            
-            // 変更差分を計算
-            const diff = await this.calculateDiff(this.currentEdit.originalContent, newContent);
-            
-            if (diff.diffs.length <= 1 && diff.diffs[0][0] === 0) {
-                console.log('変更がありません');
-                return null;
-            }
-
-            const suggestionData = {
-                articleId: articleId,
-                userId: userId,
-                userName: userName,
-                userEmail: userEmail,
-                userAvatar: authManager?.currentUser?.photoURL || null,
-                originalContent: this.currentEdit.originalContent,
-                newContent: newContent,
-                diff: diff,
-                status: 'pending', // pending, approved, rejected
-                comments: [], // コメント配列を追加
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            };
-
-            const docRef = await addDoc(collection(window.firebaseDb, 'articleSuggestions'), suggestionData);
-            console.log('提案を保存しました:', docRef.id);
-            
-            // 通知メールを送信（非同期で実行し、待機しない）
-            this.sendNotificationEmail({
-                articleId: articleId,
-                userName: userName,
-                userEmail: userEmail,
-                diffSummary: `追加: ${diff.addedLines}行, 削除: ${diff.deletedLines}行`
-            }).catch(e => console.error('メール通知エラー:', e));
-
-            return docRef.id;
-        } catch (error) {
-            console.error('提案の保存エラー:', error);
-            // エラー時はlocalStorageにフォールバック
-            return this.saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail);
-        }
-    }
-
-    /**
-     * 通知メールを送信
-     */
-    async sendNotificationEmail(data) {
-        try {
-            const response = await fetch('/api/notify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.warn('通知メール送信失敗:', errorData);
-            }
-        } catch (error) {
-            console.warn('通知メール送信エラー:', error);
-        }
-    }
-
-    /**
-     * localStorageにフォールバック保存
-     */
-    async saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail) {
         const diff = await this.calculateDiff(this.currentEdit.originalContent, newContent);
         
+        // 変更がない場合はnullを返す
         if (diff.diffs.length <= 1 && diff.diffs[0][0] === 0) {
             return null;
         }
@@ -153,208 +106,165 @@ class EditHistoryManager {
             userId: userId,
             userName: userName,
             userEmail: userEmail,
+            userAvatar: authManager?.currentUser?.photoURL || null,
             originalContent: this.currentEdit.originalContent,
             newContent: newContent,
             diff: diff,
             status: 'pending',
             comments: [],
-            createdAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(), // Firestore/LocalStorage両対応のためISO文字列
             updatedAt: new Date().toISOString()
         };
 
+        if (window.firebaseDb) {
+            try {
+                const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                suggestionData.createdAt = serverTimestamp();
+                suggestionData.updatedAt = serverTimestamp();
+                
+                const docRef = await addDoc(collection(window.firebaseDb, 'articleSuggestions'), suggestionData);
+                console.log('提案を保存しました:', docRef.id);
+                
+                // メール通知（非同期）
+                this.sendNotificationEmail({
+                    articleId: articleId,
+                    userName: userName,
+                    userEmail: userEmail,
+                    diffSummary: `追加: ${diff.addedLines}箇所, 削除: ${diff.deletedLines}箇所`
+                }).catch(e => console.error('メール通知エラー:', e));
+
+                return docRef.id;
+            } catch (error) {
+                console.error('Firestoreへの保存失敗:', error);
+                // フォールバックへ続く
+            }
+        }
+
+        // LocalStorageへの保存
+        return this.saveSuggestionToLocalStorage(articleId, suggestionData);
+    }
+
+    saveSuggestionToLocalStorage(articleId, data) {
         const key = `suggestion_${articleId}_${Date.now()}`;
         const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
-        suggestions.push({ id: key, ...suggestionData });
+        suggestions.push({ id: key, ...data });
         localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
-        
         return key;
     }
 
-    /**
-     * 記事の提案一覧を取得
-     */
     async getSuggestions(articleId) {
-        if (!window.firebaseDb) {
-            return this.getSuggestionsFromLocalStorage(articleId);
+        if (window.firebaseDb) {
+            try {
+                const { collection, query, where, getDocs, orderBy } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const q = query(
+                    collection(window.firebaseDb, 'articleSuggestions'),
+                    where('articleId', '==', articleId),
+                    orderBy('createdAt', 'desc')
+                );
+                const snapshot = await getDocs(q);
+                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            } catch (e) {
+                console.error('Firestoreからの取得失敗:', e);
+            }
         }
-
-        try {
-            const { collection, query, where, getDocs, orderBy } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            
-            const q = query(
-                collection(window.firebaseDb, 'articleSuggestions'),
-                where('articleId', '==', articleId),
-                orderBy('createdAt', 'desc')
-            );
-            
-            const querySnapshot = await getDocs(q);
-            const suggestions = [];
-            
-            querySnapshot.forEach((doc) => {
-                suggestions.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
-            });
-            
-            return suggestions;
-        } catch (error) {
-            console.error('提案の取得エラー:', error);
-            return this.getSuggestionsFromLocalStorage(articleId);
-        }
+        return this.getSuggestionsFromLocalStorage(articleId);
     }
 
-    /**
-     * localStorageから提案を取得
-     */
     getSuggestionsFromLocalStorage(articleId) {
         const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
-        return suggestions.filter(s => s.articleId === articleId);
+        return suggestions.filter(s => s.articleId === articleId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
 
-    /**
-     * 提案を承認
-     */
     async approveSuggestion(suggestionId) {
-        if (!window.firebaseDb) {
-            return this.approveSuggestionInLocalStorage(suggestionId);
+        if (window.firebaseDb) {
+            try {
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
+                    status: 'approved',
+                    approvedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                return true;
+            } catch (e) { console.error(e); }
         }
-
-        try {
-            const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            
-            await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
-                status: 'approved',
-                approvedAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-            
-            return true;
-        } catch (error) {
-            console.error('提案の承認エラー:', error);
-            return this.approveSuggestionInLocalStorage(suggestionId);
-        }
+        return this.updateLocalStorageStatus(suggestionId, 'approved');
     }
 
-    /**
-     * localStorageで提案を承認
-     */
-    approveSuggestionInLocalStorage(suggestionId) {
-        const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
-        const index = suggestions.findIndex(s => s.id === suggestionId);
-        
-        if (index !== -1) {
-            suggestions[index].status = 'approved';
-            suggestions[index].approvedAt = new Date().toISOString();
-            localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * 提案を却下
-     */
     async rejectSuggestion(suggestionId) {
-        if (!window.firebaseDb) {
-            return this.rejectSuggestionInLocalStorage(suggestionId);
+        if (window.firebaseDb) {
+            try {
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
+                    status: 'rejected',
+                    rejectedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                return true;
+            } catch (e) { console.error(e); }
         }
-
-        try {
-            const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            
-            await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
-                status: 'rejected',
-                rejectedAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-            
-            return true;
-        } catch (error) {
-            console.error('提案の却下エラー:', error);
-            return this.rejectSuggestionInLocalStorage(suggestionId);
-        }
+        return this.updateLocalStorageStatus(suggestionId, 'rejected');
     }
 
-    /**
-     * localStorageで提案を却下
-     */
-    rejectSuggestionInLocalStorage(suggestionId) {
+    updateLocalStorageStatus(suggestionId, status) {
         const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
         const index = suggestions.findIndex(s => s.id === suggestionId);
-        
         if (index !== -1) {
-            suggestions[index].status = 'rejected';
-            suggestions[index].rejectedAt = new Date().toISOString();
+            suggestions[index].status = status;
+            suggestions[index][status + 'At'] = new Date().toISOString();
             localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
             return true;
         }
-        
         return false;
     }
 
-    /**
-     * コメントを追加
-     */
     async addComment(suggestionId, text, user) {
-        if (!window.firebaseDb) {
-            return this.addCommentToLocalStorage(suggestionId, text, user);
-        }
+        const comment = {
+            id: 'comment_' + Date.now(),
+            text: text,
+            userId: user.uid,
+            userName: user.displayName || user.email,
+            userAvatar: user.photoURL || null,
+            createdAt: new Date().toISOString()
+        };
 
-        try {
-            const { doc, updateDoc, arrayUnion, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            
-            const comment = {
-                id: 'comment_' + Date.now(),
-                text: text,
-                userId: user.uid,
-                userName: user.displayName || user.email,
-                userAvatar: user.photoURL || null,
-                createdAt: new Date().toISOString() // serverTimestamp()だと配列内で扱いにくいためISO文字
-            };
-
-            await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
-                comments: arrayUnion(comment),
-                updatedAt: serverTimestamp()
-            });
-            
-            return true;
-        } catch (error) {
-            console.error('コメント追加エラー:', error);
-            return this.addCommentToLocalStorage(suggestionId, text, user);
+        if (window.firebaseDb) {
+            try {
+                const { doc, updateDoc, arrayUnion, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
+                    comments: arrayUnion(comment),
+                    updatedAt: serverTimestamp()
+                });
+                return true;
+            } catch (e) { console.error(e); }
         }
+        return this.addCommentToLocalStorage(suggestionId, comment);
     }
 
-    /**
-     * localStorageにコメントを追加
-     */
-    addCommentToLocalStorage(suggestionId, text, user) {
+    addCommentToLocalStorage(suggestionId, comment) {
         const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
         const index = suggestions.findIndex(s => s.id === suggestionId);
-        
         if (index !== -1) {
-            if (!suggestions[index].comments) {
-                suggestions[index].comments = [];
-            }
-            suggestions[index].comments.push({
-                id: 'comment_' + Date.now(),
-                text: text,
-                userId: user.uid,
-                userName: user.displayName || user.email,
-                createdAt: new Date().toISOString()
-            });
+            if (!suggestions[index].comments) suggestions[index].comments = [];
+            suggestions[index].comments.push(comment);
             localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
             return true;
         }
         return false;
+    }
+
+    async sendNotificationEmail(data) {
+        try {
+            const response = await fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) console.warn('通知送信失敗');
+        } catch (e) { console.warn('通知送信エラー', e); }
     }
 }
 
-// グローバルインスタンス
 let editHistoryManager;
-
-// DOMContentLoaded時に初期化
 document.addEventListener('DOMContentLoaded', () => {
     editHistoryManager = new EditHistoryManager();
 });
