@@ -722,22 +722,50 @@ tr:last-child td {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 0.8rem;
     border-radius: var(--radius-md);
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: var(--transition);
-    border: 1px solid var(--border-color);
-    background: white;
-    color: var(--text-primary);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
 }
 
 .toolbar-btn:hover {
-    background: #f8fafc;
-    border-color: var(--text-light);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
+    background: #f3f4f6;
+    color: var(--text-primary);
+}
+
+.toolbar-btn.active {
+    background: #e0e7ff;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.toolbar-btn.primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.toolbar-btn.primary:hover {
+    background: var(--primary-dark);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: #e5e7eb;
+    margin: 0 8px;
 }
 
 .toolbar-btn[data-action="save"] {
