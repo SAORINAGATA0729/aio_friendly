@@ -1185,47 +1185,61 @@ tr:last-child td {
     padding: 0 2px;
     position: relative;
     cursor: pointer;
+    border-radius: 2px;
 }
 
 .suggestion-deletion:hover {
     background-color: #fecaca;
+    box-shadow: 0 0 0 2px #fecaca;
 }
 
 .suggestion-deletion::after {
     content: '💬';
-    font-size: 12px;
-    margin-left: 4px;
-    vertical-align: middle;
-    cursor: pointer;
-    opacity: 0.7;
+    font-size: 10px;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    opacity: 0.8;
 }
 
 .suggestion-deletion:hover::after {
     opacity: 1;
+    transform: scale(1.1);
 }
 
 /* 提案モードの追加マーカー（赤背景） */
 .suggestion-addition {
-    background-color: #fee2e2;
-    color: #b91c1c;
+    background-color: #dbeafe; /* 青系に変更して視認性向上 */
+    color: #1e40af;
     font-weight: 500;
     padding: 0 2px;
     position: relative;
     cursor: pointer;
     text-decoration: none;
+    border-bottom: 2px solid #3b82f6;
+    border-radius: 2px;
 }
 
 .suggestion-addition:hover {
-    background-color: #fecaca;
+    background-color: #bfdbfe;
+    box-shadow: 0 0 0 2px #bfdbfe;
 }
 
 .suggestion-addition::after {
     content: '💬';
-    font-size: 12px;
-    margin-left: 4px;
-    vertical-align: middle;
-    cursor: pointer;
-    opacity: 0.7;
+    font-size: 10px;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    opacity: 0.8;
 }
 
 .suggestion-addition:hover::after {

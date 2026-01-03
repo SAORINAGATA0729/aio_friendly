@@ -164,7 +164,7 @@ class RewriteSystem {
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
             newCloseBtn.addEventListener('click', () => {
-                modal.classList.remove('active');
+                this.closeModal();
             });
         }
 
@@ -180,7 +180,7 @@ class RewriteSystem {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    modal.classList.remove('active');
+                    this.closeModal();
                 }
             });
         }
