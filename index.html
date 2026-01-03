@@ -423,14 +423,6 @@
                             placeholder="プランの概要を記入してください"></textarea>
                     </div>
                     
-                    <!-- 次のステップ -->
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">次のステップ</label>
-                        <textarea id="planNextSteps" rows="3"
-                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem;"
-                            placeholder="次のステップを記入してください"></textarea>
-                    </div>
-                    
                     <!-- 数値入力セクション -->
                     <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -533,34 +525,6 @@
                             <span class="material-icons-round" style="margin-right: 4px;">link</span>
                             Ahrefs API連携（今後実装予定）
                         </button>
-                    </div>
-                    
-                    <!-- 記事URL一覧 -->
-                    <div style="margin-bottom: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label style="display: block; font-weight: 600;">記事URL一覧</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <!-- CSVインポートボタン -->
-                                <button type="button" id="importUrlsCsvBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">upload_file</span>
-                                    CSVからインポート
-                                </button>
-                                <!-- MDインポートボタン -->
-                                <button type="button" id="importUrlsMdBtn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-                                    <span class="material-icons-round" style="font-size: 18px; margin-right: 4px;">description</span>
-                                    MDからインポート
-                                </button>
-                            </div>
-                        </div>
-                        <textarea id="articleUrlsTextarea" rows="8" 
-                            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-family: monospace; font-size: 0.9rem; resize: vertical;"
-                            placeholder="記事URLを1行に1つずつ入力してください&#10;例：&#10;https://example.com/article1&#10;https://example.com/article2&#10;https://example.com/article3"></textarea>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #6b7280;">
-                            <span class="material-icons-round" style="font-size: 14px; vertical-align: middle;">info</span>
-                            1行に1つのURLを入力してください。空行は無視されます。<strong>CSV/MDファイルからもインポート可能です。</strong>
-                        </div>
-                        <input type="file" id="urlsCsvFileInput" accept=".csv" style="display: none;">
-                        <input type="file" id="urlsMdFileInput" accept=".md,.txt" style="display: none;">
                     </div>
                     
                     <div style="display: flex; gap: 1rem; justify-content: flex-end;">

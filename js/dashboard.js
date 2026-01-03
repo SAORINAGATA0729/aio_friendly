@@ -291,10 +291,6 @@ class Dashboard {
         const exportCsvTemplateBtn = document.getElementById('exportCsvTemplateBtn');
         const csvFileInput = document.getElementById('csvFileInput');
         const mdMetricsFileInput = document.getElementById('mdMetricsFileInput');
-        const importUrlsCsvBtn = document.getElementById('importUrlsCsvBtn');
-        const importUrlsMdBtn = document.getElementById('importUrlsMdBtn');
-        const urlsCsvFileInput = document.getElementById('urlsCsvFileInput');
-        const urlsMdFileInput = document.getElementById('urlsMdFileInput');
 
         if (createPlanBtn) {
             createPlanBtn.addEventListener('click', () => {
@@ -343,32 +339,6 @@ class Dashboard {
             mdMetricsFileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
                     this.importMdMetricsFile(e.target.files[0]);
-                }
-            });
-        }
-        
-        // 記事URL一覧のCSVインポート
-        if (importUrlsCsvBtn && urlsCsvFileInput) {
-            importUrlsCsvBtn.addEventListener('click', () => {
-                urlsCsvFileInput.click();
-            });
-            
-            urlsCsvFileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    this.importUrlsCsvFile(e.target.files[0]);
-                }
-            });
-        }
-        
-        // 記事URL一覧のMDインポート
-        if (importUrlsMdBtn && urlsMdFileInput) {
-            importUrlsMdBtn.addEventListener('click', () => {
-                urlsMdFileInput.click();
-            });
-            
-            urlsMdFileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    this.importUrlsMdFile(e.target.files[0]);
                 }
             });
         }
@@ -476,20 +446,12 @@ class Dashboard {
         document.getElementById('planName').value = plan.name || '';
         document.getElementById('planObjective').value = plan.objective || '';
         document.getElementById('planOverview').value = plan.overview || '';
-        document.getElementById('planNextSteps').value = plan.nextSteps || '';
         document.getElementById('planAioCitations').value = plan.metrics?.aioCitations || '';
         document.getElementById('planAvgRanking').value = plan.metrics?.avgRanking || '';
         document.getElementById('planTraffic').value = plan.metrics?.traffic || '';
         document.getElementById('planBrandClicks').value = plan.metrics?.brandClicks || '';
         
-        const urlTextarea = document.getElementById('articleUrlsTextarea');
-        if (urlTextarea && plan.articleUrls && plan.articleUrls.length > 0) {
-            urlTextarea.value = plan.articleUrls.join('\n');
-        } else if (urlTextarea) {
-            urlTextarea.value = '';
-        }
-        
-        // 記事ごとの数値データを表示
+        // 記事ごとの数値データを表示（URLも含まれる）
         if (plan.articleMetrics && plan.articleMetrics.length > 0) {
             this.renderArticleMetricsTable(plan.articleMetrics);
         } else {
@@ -503,21 +465,20 @@ class Dashboard {
         
         const planId = form.dataset.planId;
         
-        // テキストエリアからURLを取得（改行区切り）
-        const urlTextarea = document.getElementById('articleUrlsTextarea');
-        const articleUrls = urlTextarea && urlTextarea.value
-            ? urlTextarea.value
-                .split('\n')
-                .map(url => url.trim())
-                .filter(url => url !== '' && url.length > 0)
-            : [];
+        // 記事ごとの数値入力テーブルからURLを取得
+        const articleMetrics = this.getArticleMetricsFromTable();
+        const articleUrls = articleMetrics
+            .map(metric => metric.name)
+            .filter(name => {
+                // URL形式かどうかをチェック
+                return name && (name.match(/^https?:\/\//) || name.match(/^[a-zA-Z0-9][a-zA-Z0-9-]*\.[a-zA-Z]{2,}/));
+            });
         
         const planData = {
             id: planId || `plan-${Date.now()}`,
             name: document.getElementById('planName').value,
             objective: document.getElementById('planObjective').value,
             overview: document.getElementById('planOverview').value,
-            nextSteps: document.getElementById('planNextSteps').value,
             metrics: {
                 aioCitations: parseInt(document.getElementById('planAioCitations').value) || 0,
                 avgRanking: parseFloat(document.getElementById('planAvgRanking').value) || 0,
@@ -525,7 +486,7 @@ class Dashboard {
                 brandClicks: parseInt(document.getElementById('planBrandClicks').value) || 0
             },
             articleUrls: articleUrls,
-            articleMetrics: this.getArticleMetricsFromTable(),
+            articleMetrics: articleMetrics,
             updatedAt: new Date().toISOString()
         };
         
@@ -1250,39 +1211,71 @@ class Dashboard {
     }
     
     parseCsv(csvText) {
-        // 簡易的なCSVパーサー
+        // CSVパーサー（複数の形式に対応）
         const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
         if (lines.length < 2) return null;
         
         // ヘッダー行を解析
-        const headers = lines[0].split(',').map(h => h.trim());
-        const values = lines[1].split(',').map(v => v.trim());
-        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
         const data = {};
         
-        // ヘッダーのマッピング
-        const headerMap = {
+        // 指標名と数値のマッピング
+        const metricMap = {
             'AIO引用数': 'aioCitations',
             '引用数': 'aioCitations',
+            'AIO': 'aioCitations',
             '検索順位': 'avgRanking',
             '平均順位': 'avgRanking',
+            '順位': 'avgRanking',
             'トラフィック': 'traffic',
             'クリック数': 'traffic',
             'ブランド認知度': 'brandClicks',
-            '指名検索': 'brandClicks'
+            '指名検索': 'brandClicks',
+            'ブランド': 'brandClicks'
         };
         
-        headers.forEach((header, i) => {
-            // "を削除
-            const cleanHeader = header.replace(/^"|"$/g, '');
-            const key = Object.keys(headerMap).find(k => cleanHeader.includes(k));
-            if (key && values[i]) {
-                const cleanValue = values[i].replace(/^"|"$/g, '');
-                data[headerMap[key]] = parseFloat(cleanValue) || 0;
-            }
-        });
+        // ヘッダーが「指標名」「数値」の形式かどうかをチェック
+        const indicatorNameIndex = headers.findIndex(h => h.includes('指標') || h.includes('名前') || h.includes('項目'));
+        const valueIndex = headers.findIndex(h => h.includes('数値') || h.includes('値') || h.includes('データ'));
         
-        return data;
+        if (indicatorNameIndex !== -1 && valueIndex !== -1) {
+            // 「指標名」「数値」形式のCSV（複数行対応）
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                if (values.length <= Math.max(indicatorNameIndex, valueIndex)) continue;
+                
+                const indicatorName = values[indicatorNameIndex] || '';
+                const value = values[valueIndex] || '';
+                
+                // 指標名からキーワードを探す
+                const matchedKey = Object.keys(metricMap).find(k => indicatorName.includes(k));
+                if (matchedKey && value) {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        data[metricMap[matchedKey]] = numValue;
+                    }
+                }
+            }
+        } else {
+            // 従来の形式（ヘッダーが指標名、値が1行目）
+            if (lines.length >= 2) {
+                const values = lines[1].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                
+                headers.forEach((header, i) => {
+                    const cleanHeader = header.replace(/^"|"$/g, '');
+                    const matchedKey = Object.keys(metricMap).find(k => cleanHeader.includes(k));
+                    if (matchedKey && values[i]) {
+                        const cleanValue = values[i].replace(/^"|"$/g, '');
+                        const numValue = parseFloat(cleanValue);
+                        if (!isNaN(numValue)) {
+                            data[metricMap[matchedKey]] = numValue;
+                        }
+                    }
+                });
+            }
+        }
+        
+        return Object.keys(data).length > 0 ? data : null;
     }
     
     fillMetricsFromCsv(data) {
@@ -1342,91 +1335,6 @@ class Dashboard {
         });
         
         return Object.keys(data).length > 0 ? data : null;
-    }
-    
-    importUrlsCsvFile(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const csvText = e.target.result;
-            const urls = this.parseUrlsCsv(csvText);
-            if (urls && urls.length > 0) {
-                const textarea = document.getElementById('articleUrlsTextarea');
-                if (textarea) {
-                    textarea.value = urls.join('\n');
-                    alert(`${urls.length}件のURLをインポートしました`);
-                }
-            } else {
-                alert('CSVファイルからURLを読み込めませんでした');
-            }
-        };
-        reader.readAsText(file);
-    }
-    
-    parseUrlsCsv(csvText) {
-        const lines = csvText.split('\n').map(line => line.trim()).filter(line => line);
-        const urls = [];
-        
-        lines.forEach((line, index) => {
-            // ヘッダー行をスキップ
-            if (index === 0 && (line.toLowerCase().includes('url') || line.toLowerCase().includes('link'))) {
-                return;
-            }
-            
-            // CSVの各行からURLを抽出
-            const columns = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
-            columns.forEach(col => {
-                // URL形式かチェック
-                if (col.match(/^https?:\/\//)) {
-                    urls.push(col);
-                }
-            });
-        });
-        
-        return urls;
-    }
-    
-    importUrlsMdFile(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const mdText = e.target.result;
-            const urls = this.parseUrlsMd(mdText);
-            if (urls && urls.length > 0) {
-                const textarea = document.getElementById('articleUrlsTextarea');
-                if (textarea) {
-                    textarea.value = urls.join('\n');
-                    alert(`${urls.length}件のURLをインポートしました`);
-                }
-            } else {
-                alert('MDファイルからURLを読み込めませんでした');
-            }
-        };
-        reader.readAsText(file);
-    }
-    
-    parseUrlsMd(mdText) {
-        const urls = [];
-        const lines = mdText.split('\n').map(line => line.trim()).filter(line => line);
-        
-        lines.forEach(line => {
-            // Markdownリンク形式 [text](url) からURLを抽出
-            const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
-            if (linkMatch && linkMatch[2].match(/^https?:\/\//)) {
-                urls.push(linkMatch[2]);
-            }
-            // 直接URLが書かれている場合
-            else if (line.match(/^https?:\/\//)) {
-                urls.push(line);
-            }
-            // リスト形式 - URL や * URL
-            else if (line.match(/^[-*]\s*(https?:\/\/.+)/)) {
-                const urlMatch = line.match(/^[-*]\s*(https?:\/\/.+)/);
-                if (urlMatch) {
-                    urls.push(urlMatch[1].trim());
-                }
-            }
-        });
-        
-        return urls;
     }
     
     exportCsvTemplate() {

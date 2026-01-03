@@ -71,9 +71,7 @@ class DataManager {
             // ローカルストレージに保存
             localStorage.setItem(storageKey, jsonString);
 
-            // File System Access APIは実装されていないため、スキップ
-            // 直接ダウンロード方式を使用
-            this.downloadFile(filename, jsonString);
+            // ローカルストレージに保存済みなので、ダウンロードは行わない
             return true;
         } catch (error) {
             console.error(`ファイル保存エラー (${filename}):`, error);
@@ -128,10 +126,7 @@ class DataManager {
             localStorage.setItem(storageKey, content);
             console.log('[DEBUG] saveMarkdown: Saved to localStorage:', storageKey);
 
-            // File System Access APIは実装されていないため、スキップ
-            // 直接ダウンロード方式を使用
-            this.downloadFile(filename, content, 'text/markdown');
-            console.log('[DEBUG] saveMarkdown: Saved via download');
+            // ローカルストレージに保存済みなので、ダウンロードは行わない
             return true;
         } catch (error) {
             console.error(`Markdown保存エラー (${filename}):`, error);
