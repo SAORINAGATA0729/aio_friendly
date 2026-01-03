@@ -790,6 +790,22 @@ class Dashboard {
         console.log('プランの記事ステータス:', planArticles.map(a => ({ title: a.title, status: a.status })));
         
         // プランの記事を一時的に保存して表示
+        // progressDataから最新のaioRankをマージ
+        if (this.progressData && this.progressData.articles) {
+            planArticles.forEach(planArticle => {
+                const progressArticle = this.progressData.articles.find(a => 
+                    a.id === planArticle.id || a.url === planArticle.url
+                );
+                if (progressArticle && progressArticle.aioRank) {
+                    planArticle.aioRank = progressArticle.aioRank;
+                    // scoresも最新のものを反映
+                    if (progressArticle.scores) {
+                        planArticle.scores = progressArticle.scores;
+                    }
+                }
+            });
+        }
+        
         this.currentPlanArticles = planArticles;
         await this.renderPlanArticleList(planArticles);
         
@@ -2410,11 +2426,18 @@ class Dashboard {
             });
         }
         
-        // ステータスセレクトボックスのクリックイベントを停止
+        // ステータスセレクトボックスのイベントリスナー
         const statusSelect = item.querySelector('.article-status-select');
         if (statusSelect) {
             statusSelect.addEventListener('click', (e) => {
                 e.stopPropagation();
+            });
+            statusSelect.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                const newStatus = e.target.value;
+                await this.updateArticleStatus(article.id, newStatus);
+                // 進捗状況を更新
+                this.updateProgressFromArticles(this.progressData.articles);
             });
         }
         return item;
@@ -2427,6 +2450,9 @@ class Dashboard {
 
         const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
         const scoreLevel = score.level.toLowerCase();
+        
+        // AIOランクを取得（優先順位: aioRank > scores.after.level > scores.before.level > 'C'）
+        const aioRank = article.aioRank || score.level || 'C';
         
         // H1タイトルを優先的に使用、なければ既存のタイトルを使用
         const displayTitle = h1Title || article.h1Title || article.title || '';
@@ -2552,14 +2578,7 @@ class Dashboard {
                         text-align: center;
                         min-width: 70px;
                     ">
-                    ${(() => {
-                        // AIOランクの決定ロジック:
-                        // 1. 記事オブジェクトにaioRankプロパティがあればそれを使用
-                        // 2. なければ、scores.after.level（リライト後のスコア）を使用
-                        // 3. それもなければ、scores.before.level（リライト前のスコア）を使用
-                        // 4. すべてなければデフォルトで'C'を使用
-                        return article.aioRank || score.level || 'C';
-                    })()}
+                    ${aioRank}
                 </span>
             </div>
         `;

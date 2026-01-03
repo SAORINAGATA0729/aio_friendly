@@ -3477,8 +3477,15 @@ ${article.keyword}について、重要なポイントをまとめました。
         }
         
         // ダッシュボードの記事一覧を更新
-        if (typeof window.dashboard !== 'undefined' && window.dashboard.renderArticleList) {
-            window.dashboard.renderArticleList();
+        if (typeof window.dashboard !== 'undefined') {
+            // Doタブの記事一覧を更新
+            if (window.dashboard.renderArticleList) {
+                window.dashboard.renderArticleList();
+            }
+            // Planタブの記事一覧も更新（プランが選択されている場合）
+            if (window.dashboard.selectedPlanId && window.dashboard.renderPlanArticles) {
+                window.dashboard.renderPlanArticles();
+            }
         }
     }
 
