@@ -761,15 +761,8 @@
             <div class="modal-body">
                 <div class="rewrite-container">
                     <div class="rewrite-sidebar">
-                        <div class="improvement-section">
-                            <h4 class="improvement-title">改善項目</h4>
-                            <div id="checklistItems" class="checklist-items">
-                                <!-- チェックリスト項目が動的に生成される -->
-                            </div>
-                        </div>
-                        
-                        <!-- 編集履歴・提案セクション -->
-                        <div class="suggestion-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                        <!-- 編集履歴・提案セクション（上部に移動） -->
+                        <div class="suggestion-section" style="margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <h4 class="improvement-title" style="margin: 0;">編集履歴</h4>
                                 <button id="refreshSuggestionsBtn" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
@@ -778,6 +771,13 @@
                             </div>
                             <div id="suggestionsList" class="suggestions-list">
                                 <!-- 提案が動的に生成される -->
+                            </div>
+                        </div>
+
+                        <div class="improvement-section">
+                            <h4 class="improvement-title">改善項目</h4>
+                            <div id="checklistItems" class="checklist-items">
+                                <!-- チェックリスト項目が動的に生成される -->
                             </div>
                         </div>
                     </div>
