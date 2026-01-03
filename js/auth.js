@@ -22,18 +22,29 @@ class AuthManager {
 
     async waitForFirebase() {
         let attempts = 0;
+        const maxAttempts = 100; // 10秒待機
+        
         // Firebase設定が未完了の場合、nullが設定されるまで待つ
-        while (window.firebaseAuth === undefined && attempts < 50) {
+        while (window.firebaseAuth === undefined && attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
         
-        if (!window.firebaseAuth) {
+        // nullが設定された場合（エラー時）も待機を終了
+        if (window.firebaseAuth === null || window.firebaseAuth === undefined) {
             console.log('ℹ️ Firebase Authが設定されていません。ログイン機能は無効です。');
             // Firebase未設定でもUIは表示する（ログインボタンは非表示）
             this.updateAuthUI(null);
             return false;
         }
+        
+        // googleProviderも確認
+        if (!window.googleProvider) {
+            console.warn('⚠️ GoogleProviderが設定されていません');
+            return false;
+        }
+        
+        console.log('✅ Firebase Authの準備が完了しました');
         return true;
     }
 
@@ -75,34 +86,52 @@ class AuthManager {
 
     async signInWithGoogle() {
         try {
+            // Firebase Authの準備を確認
             if (!window.firebaseAuth || !window.googleProvider) {
+                console.error('Firebase Auth未初期化:', {
+                    firebaseAuth: !!window.firebaseAuth,
+                    googleProvider: !!window.googleProvider
+                });
                 alert('Firebaseが正しく読み込まれていません。ページをリロードしてください。');
                 return;
             }
             
-            const { signInWithPopup } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            // Firebase Authモジュールを動的にインポート
+            const firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const { signInWithPopup } = firebaseAuthModule;
+            
+            console.log('Googleログインを開始...');
             const result = await signInWithPopup(window.firebaseAuth, window.googleProvider);
-            console.log('ログイン成功:', result.user);
+            console.log('✅ ログイン成功:', result.user.email);
+            
+            // ログイン成功時はupdateAuthUIが自動的に呼ばれる（onAuthStateChanged経由）
         } catch (error) {
-            console.error('ログインエラー:', error);
+            console.error('❌ ログインエラー:', error);
             if (error.code === 'auth/popup-closed-by-user') {
-                alert('ログインがキャンセルされました');
+                console.log('ログインがキャンセルされました');
+                // キャンセル時はアラートを出さない
+            } else if (error.code === 'auth/unauthorized-domain') {
+                alert('このドメインは認証されていません。Firebase Consoleでドメインを追加してください。\nエラー: ' + error.message);
             } else {
-                alert('ログインに失敗しました: ' + error.message);
+                alert('ログインに失敗しました: ' + (error.message || error.code || '不明なエラー'));
             }
         }
     }
 
     async signOut() {
         try {
-            if (!window.firebaseAuth) return;
+            if (!window.firebaseAuth) {
+                console.warn('Firebase Authが初期化されていません');
+                return;
+            }
             
-            const { signOut } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const firebaseAuthModule = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const { signOut } = firebaseAuthModule;
             await signOut(window.firebaseAuth);
-            console.log('ログアウト成功');
+            console.log('✅ ログアウト成功');
         } catch (error) {
-            console.error('ログアウトエラー:', error);
-            alert('ログアウトに失敗しました: ' + error.message);
+            console.error('❌ ログアウトエラー:', error);
+            alert('ログアウトに失敗しました: ' + (error.message || '不明なエラー'));
         }
     }
 
@@ -153,8 +182,18 @@ class AuthManager {
 let authManager;
 
 // DOMContentLoaded時に初期化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     authManager = new AuthManager();
-    authManager.init();
+    
+    // グローバルに公開（他のスクリプトからアクセス可能に）
+    window.authManager = authManager;
+    
+    // 初期化を実行
+    try {
+        await authManager.init();
+        console.log('✅ AuthManagerの初期化が完了しました');
+    } catch (error) {
+        console.error('❌ AuthManagerの初期化エラー:', error);
+    }
 });
 

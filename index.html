@@ -56,17 +56,20 @@
                     console.warn('⚠️ Firebase初期化エラー（設定が未完了の可能性があります）:', error);
                     window.firebaseAuth = null;
                     window.firebaseDb = null;
+                    window.googleProvider = null;
                 });
             } catch (error) {
                 console.warn('⚠️ Firebase SDK読み込みエラー:', error);
                 window.firebaseAuth = null;
                 window.firebaseDb = null;
+                window.googleProvider = null;
             }
         } else {
             console.log('ℹ️ Firebase設定が未完了です。ログイン機能は無効です。');
             console.log('ℹ️ Firebase設定を完了すると、Googleログインと編集履歴機能が利用できます。');
             window.firebaseAuth = null;
             window.firebaseDb = null;
+            window.googleProvider = null;
         }
     </script>
     <!-- docx.js for Word export - 動的インポートを使用 -->
