@@ -3609,6 +3609,13 @@ class Dashboard {
         // データ統合 (URLまたは名前でマッチング)
         const articlesMap = {};
         
+        // Before (Planから)
+        (plan.articleMetrics || []).forEach(a => {
+            const key = a.url || a.name;
+            if (!articlesMap[key]) articlesMap[key] = { name: a.name, url: a.url };
+            articlesMap[key].before = a;
+        });
+        
         // 2週間後
         (data?.articleMetrics2weeks || []).forEach(a => {
             const key = a.url || a.name;
@@ -3634,7 +3641,7 @@ class Dashboard {
         // 1. 集計 (SC風サマリー用)
         // ==========================================
         const totals = {
-            w2: { clicks: 0, imp: 0, posSum: 0, posCount: 0 },
+            before: { clicks: 0, imp: 0, posSum: 0, posCount: 0 },
             w3: { clicks: 0, imp: 0, posSum: 0, posCount: 0 }
         };
 
@@ -3646,49 +3653,59 @@ class Dashboard {
         let rowsHtml = '';
         
         articles.forEach(a => {
+            const before = a.before || {};
             const w2 = a.w2 || {};
             const w3 = a.w3 || {};
             
             // 数値取得
+            const clkBefore = parseInt(before.clicks) || 0;
             const clk2 = parseInt(w2.clicks) || 0;
             const clk3 = parseInt(w3.clicks) || 0;
+            
+            const impBefore = parseInt(before.impressions) || 0;
             const imp2 = parseInt(w2.impressions) || 0;
             const imp3 = parseInt(w3.impressions) || 0;
+            
+            const posBefore = parseFloat(before.position) || 0;
             const pos2 = parseFloat(w2.position) || 0;
             const pos3 = parseFloat(w3.position) || 0;
+            
+            const ctrBefore = parseFloat(before.ctr) || 0;
             const ctr2 = parseFloat(w2.ctr) || 0;
             const ctr3 = parseFloat(w3.ctr) || 0;
 
-            // 集計加算
-            if (w2.clicks) totals.w2.clicks += clk2;
-            if (w2.impressions) totals.w2.imp += imp2;
-            if (w2.position) { totals.w2.posSum += pos2; totals.w2.posCount++; }
+            // 集計加算 (Before, 3w)
+            if (before.clicks) totals.before.clicks += clkBefore;
+            if (before.impressions) totals.before.imp += impBefore;
+            if (before.position) { totals.before.posSum += posBefore; totals.before.posCount++; }
 
             if (w3.clicks) totals.w3.clicks += clk3;
             if (w3.impressions) totals.w3.imp += imp3;
             if (w3.position) { totals.w3.posSum += pos3; totals.w3.posCount++; }
 
-            // 評価ロジック
+            // 評価ロジック (3w vs 2w or Before if available?)
+            // トレンドを見るなら直近の動きも大事だが、成果としては Before -> 3w が重要
+            // ここでは Before -> 3w の比較を優先したいが、Beforeがない場合は 2w -> 3w
+            
+            const baseClk = before.clicks ? clkBefore : clk2;
+            const basePos = before.position ? posBefore : pos2;
+            const baseCtr = before.ctr ? ctrBefore : ctr2;
+            
             let score = 0;
-            if (clk3 > clk2) score++;
-            else if (clk3 < clk2) score--;
-            
-            if (pos3 < pos2 && pos3 > 0) score++;
-            else if (pos3 > pos2) score--;
-            
-            if (ctr3 > ctr2) score++;
-            else if (ctr3 < ctr2) score--;
+            if (clk3 > baseClk) score++; else if (clk3 < baseClk) score--;
+            if (pos3 < basePos && pos3 > 0) score++; else if (pos3 > basePos) score--;
+            if (ctr3 > baseCtr) score++; else if (ctr3 < baseCtr) score--;
 
             let evalSymbol = '△';
             let evalClass = 'text-gray-500';
             
             if (score > 0) {
                 evalSymbol = '◯';
-                evalClass = 'text-red-600'; // 良い
+                evalClass = 'text-red-600';
                 improvedCount++;
             } else if (score < 0) {
                 evalSymbol = '✕';
-                evalClass = 'text-blue-600'; // 悪い
+                evalClass = 'text-blue-600';
                 worsenedCount++;
             } else {
                 unchangedCount++;
@@ -3701,28 +3718,31 @@ class Dashboard {
                 return '';
             };
 
-            // テーブル行生成 (Before -> 2w -> 3w)
-            // Beforeはデータがないので「-」
+            // Before表示用ヘルパー
+            const formatBefore = (val) => val ? this.formatNumber(val) : '<span style="color:#9ca3af;">-</span>';
+            const formatBeforePos = (val) => val ? val : '<span style="color:#9ca3af;">-</span>';
+            const formatBeforeCtr = (val, hasVal) => hasVal ? val + '%' : '<span style="color:#9ca3af;">-</span>';
+
             rowsHtml += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${formatBeforePos(posBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         ${pos2} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         <span style="${getColor(pos2, pos3)}">${pos3}</span>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${formatBefore(clkBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         ${this.formatNumber(clk2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         <span style="${getColor(clk2, clk3)}">${this.formatNumber(clk3)}</span>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${formatBefore(impBefore)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         ${this.formatNumber(imp2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         <span style="${getColor(imp2, imp3)}">${this.formatNumber(imp3)}</span>
                     </td>
                     <td style="padding: 0.75rem; text-align: center;">
-                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${formatBeforeCtr(ctrBefore, before.ctr)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         ${ctr2}% <span style="color: #9ca3af; margin: 0 4px;">→</span> 
                         <span style="${getColor(ctr2, ctr3)}">${ctr3}%</span>
                     </td>
@@ -3733,11 +3753,11 @@ class Dashboard {
 
         // 集計計算
         const stats = {
-            w2: {
-                clicks: totals.w2.clicks,
-                imp: totals.w2.imp,
-                pos: totals.w2.posCount ? (totals.w2.posSum / totals.w2.posCount).toFixed(1) : '-',
-                ctr: totals.w2.imp ? ((totals.w2.clicks / totals.w2.imp) * 100).toFixed(2) : '-'
+            before: {
+                clicks: totals.before.clicks,
+                imp: totals.before.imp,
+                pos: totals.before.posCount ? (totals.before.posSum / totals.before.posCount).toFixed(1) : '-',
+                ctr: totals.before.imp ? ((totals.before.clicks / totals.before.imp) * 100).toFixed(2) : '-'
             },
             w3: {
                 clicks: totals.w3.clicks,
@@ -3747,35 +3767,74 @@ class Dashboard {
             }
         };
 
-        // SC風サマリーカードHTML
+        // SC風サマリーカードHTML (Before -> After 対比)
+        // 変化率などを出すとさらに良いが、シンプルに Before -> After 表示にする
+        // Beforeが0の場合は '-' 表示
+        
+        const renderDiff = (before, after, unit = '') => {
+            if (before === '-' || before == 0) return ''; // Beforeなし
+            const diff = after - before;
+            const sign = diff > 0 ? '+' : '';
+            const color = diff > 0 ? '#16a34a' : (diff < 0 ? '#dc2626' : '#6b7280'); // Increase=Green, Decrease=Red (For Clicks/Imp/CTR)
+            // Wait, usually Red is Up in Japan? User said "Up=Red".
+            // So Diff > 0 -> Red.
+            const colorUp = '#dc2626'; 
+            const colorDown = '#2563eb';
+            const finalColor = diff > 0 ? colorUp : (diff < 0 ? colorDown : '#6b7280');
+            
+            return `<span style="color: ${finalColor}; font-size: 0.9rem; margin-left: 0.5rem;">${sign}${this.formatNumber(diff)}${unit}</span>`;
+        };
+        
+        // 順位用Diff (低い方が良い)
+        const renderPosDiff = (before, after) => {
+            if (before === '-' || before == 0) return '';
+            const diff = after - before;
+            const sign = diff > 0 ? '+' : ''; // + means rank increased (worsened)
+            // Worsened -> Blue, Improved (Negative diff) -> Red
+            const color = diff < 0 ? '#dc2626' : (diff > 0 ? '#2563eb' : '#6b7280');
+            return `<span style="color: ${color}; font-size: 0.9rem; margin-left: 0.5rem;">${sign}${diff.toFixed(1)}</span>`;
+        };
+
         const summaryCardsHtml = `
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; page-break-inside: avoid;">
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">合計クリック数</div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.clicks)}</div>
+                    <div style="display: flex; align-items: baseline;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.clicks)}</div>
+                        ${renderDiff(stats.before.clicks, stats.w3.clicks)}
+                    </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${this.formatNumber(stats.w2.clicks)}
+                        Before: ${this.formatNumber(stats.before.clicks)} <span style="margin: 0 4px;">→</span> After: ${this.formatNumber(stats.w3.clicks)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">合計表示回数</div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.imp)}</div>
+                    <div style="display: flex; align-items: baseline;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.imp)}</div>
+                        ${renderDiff(stats.before.imp, stats.w3.imp)}
+                    </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${this.formatNumber(stats.w2.imp)}
+                        Before: ${this.formatNumber(stats.before.imp)} <span style="margin: 0 4px;">→</span> After: ${this.formatNumber(stats.w3.imp)}
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">平均CTR</div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.ctr}%</div>
+                    <div style="display: flex; align-items: baseline;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.ctr}%</div>
+                        ${renderDiff(stats.before.ctr, stats.w3.ctr, '%')}
+                    </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${stats.w2.ctr}%
+                        Before: ${stats.before.ctr}% <span style="margin: 0 4px;">→</span> After: ${stats.w3.ctr}%
                     </div>
                 </div>
                 <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">平均掲載順位</div>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.pos}位</div>
+                    <div style="display: flex; align-items: baseline;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.pos}位</div>
+                        ${renderPosDiff(stats.before.pos, stats.w3.pos)}
+                    </div>
                     <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
-                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${stats.w2.pos}位
+                        Before: ${stats.before.pos}位 <span style="margin: 0 4px;">→</span> After: ${stats.w3.pos}位
                     </div>
                 </div>
             </div>
@@ -3905,7 +3964,7 @@ class Dashboard {
                 table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
                 th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
                 th { background-color: #f9fafb; font-weight: 600; }
-                .chart-container { width: 45%; display: inline-block; margin-bottom: 20px; }
+                .chart-container { width: 100%; display: block; margin-bottom: 40px; }
                 .btn { display: none; }
             </style>
         `;
