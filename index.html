@@ -14,13 +14,11 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        
-        // Firebase設定（後で実際の設定値に置き換える）
+        // Firebase設定（MOLTSのGAアカウントで作成したFirebaseプロジェクトの設定値をここに入力）
+        // Firebase Console (https://console.firebase.google.com/) でプロジェクト設定から取得してください
         const firebaseConfig = {
             // TODO: Firebaseプロジェクト作成後に設定値を追加
+            // プロジェクト設定 → 一般 → アプリを追加（Web）から設定値をコピー
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
             projectId: "YOUR_PROJECT_ID",
@@ -29,17 +27,47 @@
             appId: "YOUR_APP_ID"
         };
         
-        // Firebase初期化
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const googleProvider = new GoogleAuthProvider();
+        // Firebase設定が未設定の場合でもエラーを出さないようにする
+        const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY";
         
-        // グローバルに公開
-        window.firebaseApp = app;
-        window.firebaseAuth = auth;
-        window.firebaseDb = db;
-        window.googleProvider = googleProvider;
+        if (isFirebaseConfigured) {
+            try {
+                import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js').then(({ initializeApp }) => {
+                    return Promise.all([
+                        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'),
+                        import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'),
+                        Promise.resolve(initializeApp)
+                    ]);
+                }).then(([{ getAuth, GoogleAuthProvider }, { getFirestore }, initializeApp]) => {
+                    // Firebase初期化
+                    const app = initializeApp(firebaseConfig);
+                    const auth = getAuth(app);
+                    const db = getFirestore(app);
+                    const googleProvider = new GoogleAuthProvider();
+                    
+                    // グローバルに公開
+                    window.firebaseApp = app;
+                    window.firebaseAuth = auth;
+                    window.firebaseDb = db;
+                    window.googleProvider = googleProvider;
+                    
+                    console.log('✅ Firebase初期化成功');
+                }).catch((error) => {
+                    console.warn('⚠️ Firebase初期化エラー（設定が未完了の可能性があります）:', error);
+                    window.firebaseAuth = null;
+                    window.firebaseDb = null;
+                });
+            } catch (error) {
+                console.warn('⚠️ Firebase SDK読み込みエラー:', error);
+                window.firebaseAuth = null;
+                window.firebaseDb = null;
+            }
+        } else {
+            console.log('ℹ️ Firebase設定が未完了です。ログイン機能は無効です。');
+            console.log('ℹ️ Firebase設定を完了すると、Googleログインと編集履歴機能が利用できます。');
+            window.firebaseAuth = null;
+            window.firebaseDb = null;
+        }
     </script>
     <!-- docx.js for Word export - 動的インポートを使用 -->
     <!-- 注意: docx.jsはES6モジュール形式のため、グローバル変数として利用できません -->

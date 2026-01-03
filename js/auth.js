@@ -22,20 +22,27 @@ class AuthManager {
 
     async waitForFirebase() {
         let attempts = 0;
-        while (!window.firebaseAuth && attempts < 50) {
+        // Firebase設定が未完了の場合、nullが設定されるまで待つ
+        while (window.firebaseAuth === undefined && attempts < 50) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
         
         if (!window.firebaseAuth) {
-            console.error('Firebase Authが読み込まれませんでした');
+            console.log('ℹ️ Firebase Authが設定されていません。ログイン機能は無効です。');
+            // Firebase未設定でもUIは表示する（ログインボタンは非表示）
+            this.updateAuthUI(null);
             return false;
         }
         return true;
     }
 
     setupAuthStateListener() {
-        if (!window.firebaseAuth) return;
+        if (!window.firebaseAuth) {
+            // Firebase未設定の場合はログインボタンを非表示
+            this.updateAuthUI(null);
+            return;
+        }
         
         this.authStateListener = window.firebaseAuth.onAuthStateChanged((user) => {
             this.currentUser = user;
@@ -106,6 +113,13 @@ class AuthManager {
         const userName = document.getElementById('userName');
         
         if (!googleLoginBtn || !userInfo) return;
+        
+        // Firebase未設定の場合はログインボタンを非表示
+        if (!window.firebaseAuth) {
+            googleLoginBtn.style.display = 'none';
+            userInfo.style.display = 'none';
+            return;
+        }
         
         if (user) {
             // ログイン中
