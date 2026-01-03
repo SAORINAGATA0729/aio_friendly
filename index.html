@@ -765,6 +765,19 @@
                                 <!-- チェックリスト項目が動的に生成される -->
                             </div>
                         </div>
+                        
+                        <!-- 編集履歴・提案セクション -->
+                        <div class="suggestion-section" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 class="improvement-title" style="margin: 0;">編集履歴</h4>
+                                <button id="refreshSuggestionsBtn" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
+                                    <span class="material-icons-round" style="font-size: 16px;">refresh</span>
+                                </button>
+                            </div>
+                            <div id="suggestionsList" class="suggestions-list">
+                                <!-- 提案が動的に生成される -->
+                            </div>
+                        </div>
                     </div>
                     <div class="rewrite-editor">
                         <div class="editor-toolbar">
@@ -905,6 +918,7 @@
     <script src="/js/data-manager.js?v=1.0.4"></script>
     <script src="/js/auth.js?v=1.0.0"></script>
     <script src="/js/edit-history.js?v=1.0.0"></script>
+    <script src="/js/suggestion-ui.js?v=1.0.0"></script>
     <script src="/js/dashboard.js?v=1.0.4"></script>
     <script src="/js/rewrite.js?v=1.0.4" onerror="window.rewriteJsLoadError = true; console.error('❌ rewrite.jsの読み込みに失敗しました');"></script>
     <script src="/js/monitoring.js?v=1.0.4"></script>

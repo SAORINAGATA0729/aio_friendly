@@ -1017,6 +1017,21 @@ class RewriteSystem {
             editHistoryManager.startEdit(article.id, content);
         }
         
+        // 提案履歴を表示
+        if (suggestionUIManager) {
+            await suggestionUIManager.renderSuggestions(article.id);
+        }
+        
+        // リフレッシュボタンのイベントリスナー
+        const refreshSuggestionsBtn = document.getElementById('refreshSuggestionsBtn');
+        if (refreshSuggestionsBtn) {
+            refreshSuggestionsBtn.addEventListener('click', async () => {
+                if (suggestionUIManager && article.id) {
+                    await suggestionUIManager.renderSuggestions(article.id);
+                }
+            });
+        }
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:531',message:'openRewriteModal: Content before markdownToHtml',data:{contentLength:content.length,contentPreview:content.substring(0,300),h1Count:(content.match(/^#\s+/gm)||[]).length,imgCount:(content.match(/!\[.*?\]\(.*?\)/g)||[]).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
@@ -1796,6 +1811,11 @@ ${article.keyword}について、重要なポイントをまとめました。
             }
 
             alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
+            
+            // 提案履歴を更新
+            if (suggestionUIManager && this.currentArticle) {
+                await suggestionUIManager.renderSuggestions(this.currentArticle.id);
+            }
             
             // ダッシュボードを更新
             if (typeof dashboard !== 'undefined') {

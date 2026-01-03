@@ -1066,6 +1066,86 @@ body {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 0.8rem;
+}
+
+/* 提案UIスタイル */
+.suggestion-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    transition: var(--transition);
+}
+
+.suggestion-item:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.suggestion-item.pending {
+    border-left: 3px solid #f59e0b;
+}
+
+.suggestion-item.approved {
+    border-left: 3px solid #10b981;
+    opacity: 0.8;
+}
+
+.suggestion-item.rejected {
+    border-left: 3px solid #ef4444;
+    opacity: 0.6;
+}
+
+.suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-status {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.suggestion-stats {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.suggestion-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.btn-approve:hover {
+    background: #059669 !important;
+}
+
+.btn-reject:hover {
+    background: #dc2626 !important;
+}
+
+.btn-view-diff:hover {
+    background: #e5e7eb !important;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 0.95rem;
