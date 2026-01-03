@@ -860,82 +860,160 @@ class RewriteSystem {
     }
     
     /**
-     * 提案モード時の変更追跡を設定（改良版）
+     * 提案モード時の変更追跡を設定（改良版：リアルタイム加筆検出）
      */
     setupSuggestionTracking() {
         if (!this.quill) return;
         
         let lastText = '';
-        let lastSelection = null;
+        let lastLength = 0;
         let isProcessing = false;
         let debounceTimer = null;
-        
-        // 選択範囲の変更を監視
-        this.quill.on('selection-change', (range, oldRange, source) => {
-            if (range) {
-                lastSelection = { index: range.index, length: range.length };
-            }
-        });
         
         // テキスト変更を監視
         this.quill.on('text-change', async (delta, oldDelta, source) => {
             if (this.currentEditMode !== 'suggestion' || isProcessing) return;
             
-            // デバウンス処理（500ms後に実行）
+            // deltaオブジェクトから追加されたテキストを検出
+            if (delta && delta.ops) {
+                let currentIndex = 0;
+                
+                for (const op of delta.ops) {
+                    // retainを処理（位置を進める）
+                    if (typeof op.retain === 'number') {
+                        currentIndex += op.retain;
+                        continue;
+                    }
+                    
+                    // テキストが挿入された場合
+                    if (op.insert && typeof op.insert === 'string' && op.insert.trim().length > 0) {
+                        const insertIndex = currentIndex;
+                        const insertLength = op.insert.length;
+                        
+                        // 既にマーカーが適用されていないかチェック（少し前後も確認）
+                        let hasMarker = false;
+                        for (let i = Math.max(0, insertIndex - 1); i < insertIndex + insertLength + 1; i++) {
+                            const format = this.quill.getFormat(i, 1);
+                            if (format && (format.addition || format.deletion || format.comment)) {
+                                hasMarker = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!hasMarker) {
+                            // 追加されたテキストに自動的に追加マーカーを適用
+                            setTimeout(() => {
+                                try {
+                                    const commentId = `auto_add_${Date.now()}_${insertIndex}`;
+                                    
+                                    // マーカーを適用
+                                    this.quill.formatText(insertIndex, insertLength, 'addition', {
+                                        commentId: commentId
+                                    });
+                                    
+                                    // 変更履歴に追加
+                                    const addedText = op.insert.substring(0, 50);
+                                    const changeData = {
+                                        id: commentId,
+                                        type: 'addition',
+                                        comment: '自動検出: 加筆',
+                                        userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                                        userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                                        timestamp: new Date().toISOString(),
+                                        selection: { index: insertIndex, length: insertLength },
+                                        selectedText: addedText,
+                                        replies: []
+                                    };
+                                    
+                                    if (!this.suggestionChanges) {
+                                        this.suggestionChanges = [];
+                                    }
+                                    this.suggestionChanges.push(changeData);
+                                    
+                                    if (typeof this.updateCommentHistory === 'function') {
+                                        this.updateCommentHistory();
+                                    }
+                                    
+                                    console.log('✅ 加筆を検出してマーカーを追加:', { insertIndex, insertLength, addedText });
+                                } catch (e) {
+                                    console.error('自動マーカー追加エラー:', e);
+                                }
+                            }, 100); // 少し遅延を増やして確実に適用
+                        }
+                        
+                        // 挿入位置を進める
+                        currentIndex += insertLength;
+                    }
+                    
+                    // 削除を処理（位置は進めない）
+                    if (typeof op.delete === 'number') {
+                        // 削除の場合は位置を進めない
+                    }
+                }
+            }
+            
+            // デバウンス処理（500ms後に実行）で全体の変更もチェック
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(async () => {
                 isProcessing = true;
                 
                 try {
                     const currentText = this.quill.getText();
+                    const currentLength = currentText.length;
                     const currentHtml = this.quill.root.innerHTML;
                     const currentMarkdown = this.htmlToMarkdown(currentHtml);
                     
-                    // 加筆されたテキストを検出して自動的にマーカー化
-                    if (lastText && currentText.length > lastText.length && delta && delta.ops) {
-                        // テキストが追加された場合、Delta操作から追加位置を特定
-                        let insertIndex = 0;
-                        let insertText = '';
+                    // テキストが追加された場合を検出（フォールバック）
+                    if (lastText && currentLength > lastLength) {
+                        // 追加された部分を特定
+                        const addedLength = currentLength - lastLength;
                         
-                        for (const op of delta.ops) {
-                            if (op.insert && typeof op.insert === 'string' && op.insert.trim().length > 0) {
-                                // テキストが追加された場合
-                                insertText = op.insert;
-                                // 既にマーカーが適用されていないかチェック
-                                const format = this.quill.getFormat(insertIndex, insertText.length);
-                                if (!format || (!format.addition && !format.deletion && !format.comment)) {
-                                    // 追加されたテキストに自動的に追加マーカーを適用
-                                    setTimeout(() => {
-                                        try {
-                                            const commentId = `auto_add_${Date.now()}_${insertIndex}`;
-                                            this.quill.formatText(insertIndex, insertText.length, 'addition', {
-                                                commentId: commentId
-                                            });
-                                            
-                                            // 変更履歴に追加
-                                            const changeData = {
-                                                id: commentId,
-                                                type: 'addition',
-                                                comment: '自動検出: 加筆',
-                                                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
-                                                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
-                                                timestamp: new Date().toISOString(),
-                                                selection: { index: insertIndex, length: insertText.length },
-                                                selectedText: insertText.substring(0, 50),
-                                                replies: []
-                                            };
-                                            this.suggestionChanges.push(changeData);
-                                            this.updateCommentHistory();
-                                        } catch (e) {
-                                            console.error('自動マーカー追加エラー:', e);
+                        // 現在のカーソル位置を取得
+                        const selection = this.quill.getSelection(true);
+                        if (selection) {
+                            // カーソル位置から逆算して追加位置を特定
+                            const insertIndex = Math.max(0, selection.index - addedLength);
+                            const insertLength = addedLength;
+                            
+                            // 追加されたテキストを取得
+                            const addedText = currentText.substring(insertIndex, insertIndex + insertLength);
+                            
+                            // 既にマーカーが適用されていないかチェック
+                            const format = this.quill.getFormat(insertIndex, insertLength);
+                            if (!format || (!format.addition && !format.deletion && !format.comment)) {
+                                // 追加されたテキストに自動的に追加マーカーを適用
+                                setTimeout(() => {
+                                    try {
+                                        const commentId = `auto_add_${Date.now()}_${insertIndex}`;
+                                        this.quill.formatText(insertIndex, insertLength, 'addition', {
+                                            commentId: commentId
+                                        });
+                                        
+                                        // 変更履歴に追加
+                                        const changeData = {
+                                            id: commentId,
+                                            type: 'addition',
+                                            comment: '自動検出: 加筆',
+                                            userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                                            userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                                            timestamp: new Date().toISOString(),
+                                            selection: { index: insertIndex, length: insertLength },
+                                            selectedText: addedText.substring(0, 50),
+                                            replies: []
+                                        };
+                                        
+                                        if (!this.suggestionChanges) {
+                                            this.suggestionChanges = [];
                                         }
-                                    }, 100);
-                                }
-                                insertIndex += insertText.length;
-                            } else if (op.retain && typeof op.retain === 'number') {
-                                insertIndex += op.retain;
-                            } else if (op.delete && typeof op.delete === 'number') {
-                                // 削除の場合はインデックスを変更しない（既に削除されているため）
+                                        this.suggestionChanges.push(changeData);
+                                        
+                                        if (typeof this.updateCommentHistory === 'function') {
+                                            this.updateCommentHistory();
+                                        }
+                                    } catch (e) {
+                                        console.error('自動マーカー追加エラー:', e);
+                                    }
+                                }, 100);
                             }
                         }
                     }
@@ -946,6 +1024,7 @@ class RewriteSystem {
                     }
                     
                     lastText = currentText;
+                    lastLength = currentLength;
                 } catch (e) {
                     console.error('変更追跡エラー:', e);
                 } finally {
@@ -957,6 +1036,7 @@ class RewriteSystem {
         // 初期テキストを保存
         setTimeout(() => {
             lastText = this.quill.getText();
+            lastLength = lastText.length;
         }, 500);
     }
     
@@ -3111,9 +3191,12 @@ ${article.keyword}について、重要なポイントをまとめました。
         const score = Math.round((checkedCount / totalItems) * 100);
         const rank = this.getRank(score);
         
-        // 現在の記事にスコアとランクを保存
+        // 現在の記事にスコアとランクを保存（非同期処理を待つ）
         if (this.currentArticle) {
-            this.saveArticleScore(score, rank);
+            // awaitを追加して確実に保存されるようにする
+            this.saveArticleScore(score, rank).catch(err => {
+                console.error('スコア保存エラー:', err);
+            });
         }
         
         // #region agent log
@@ -3157,15 +3240,21 @@ ${article.keyword}について、重要なポイントをまとめました。
             checklistScore.innerHTML = `
                 <div class="score-status">
                     <div class="score-main">
-                        <span class="score-label">現状</span>
-                        <span id="scoreNumber">0</span>
-                        <span class="score-unit">点</span>
-                        <span class="score-separator">/</span>
-                        <span class="score-total">100点</span>
+                        <div class="score-label">現状</div>
+                        <div class="score-value-container">
+                            <div class="score-current">
+                                <span id="scoreNumber">0</span>
+                                <span class="score-unit">点</span>
+                                <span class="score-separator">/</span>
+                            </div>
+                            <div class="score-total">100点</div>
+                        </div>
                     </div>
                     <div class="score-rank-display">
-                        <span class="rank-label">RANK</span>
-                        <span id="scoreRank" class="rank-value">-</span>
+                        <div class="rank-label">RANK</div>
+                        <div class="rank-value-container">
+                            <span id="scoreRank" class="rank-value">-</span>
+                        </div>
                     </div>
                 </div>
                 <div class="score-progress">
@@ -3225,15 +3314,21 @@ ${article.keyword}について、重要なポイントをまとめました。
             checklistScore.innerHTML = `
                 <div class="score-status">
                     <div class="score-main">
-                        <span class="score-label">現状</span>
-                        <span id="scoreNumber">${score}</span>
-                        <span class="score-unit">点</span>
-                        <span class="score-separator">/</span>
-                        <span class="score-total">100点</span>
+                        <div class="score-label">現状</div>
+                        <div class="score-value-container">
+                            <div class="score-current">
+                                <span id="scoreNumber">${score}</span>
+                                <span class="score-unit">点</span>
+                                <span class="score-separator">/</span>
+                            </div>
+                            <div class="score-total">100点</div>
+                        </div>
                     </div>
                     <div class="score-rank-display">
-                        <span class="rank-label">RANK</span>
-                        <span id="scoreRank" class="rank-value rank-${rank}">${rank}</span>
+                        <div class="rank-label">RANK</div>
+                        <div class="rank-value-container">
+                            <span id="scoreRank" class="rank-value rank-${rank}">${rank}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="score-progress">
@@ -3273,15 +3368,21 @@ ${article.keyword}について、重要なポイントをまとめました。
                 checklistScore.innerHTML = `
                     <div class="score-status">
                         <div class="score-main">
-                            <span class="score-label">現状</span>
-                            <span id="scoreNumber">${currentScore}</span>
-                            <span class="score-unit">点</span>
-                            <span class="score-separator">/</span>
-                            <span class="score-total">100点</span>
+                            <div class="score-label">現状</div>
+                            <div class="score-value-container">
+                                <div class="score-current">
+                                    <span id="scoreNumber">${currentScore}</span>
+                                    <span class="score-unit">点</span>
+                                    <span class="score-separator">/</span>
+                                </div>
+                                <div class="score-total">100点</div>
+                            </div>
                         </div>
                         <div class="score-rank-display">
-                            <span class="rank-label">RANK</span>
-                            <span id="scoreRank" class="rank-value rank-${currentRank}">${currentRank}</span>
+                            <div class="rank-label">RANK</div>
+                            <div class="rank-value-container">
+                                <span id="scoreRank" class="rank-value rank-${currentRank}">${currentRank}</span>
+                            </div>
                         </div>
                     </div>
                     <div class="score-progress">
@@ -3315,8 +3416,10 @@ ${article.keyword}について、重要なポイントをまとめました。
     /**
      * 記事のスコアとランクを保存
      */
-    saveArticleScore(score, rank) {
+    async saveArticleScore(score, rank) {
         if (!this.currentArticle) return;
+        
+        console.log('💾 スコアとランクを保存:', { articleId: this.currentArticle.id, score, rank });
         
         // プランデータから記事を取得
         const plans = JSON.parse(localStorage.getItem('plans') || '[]');
@@ -3335,13 +3438,53 @@ ${article.keyword}について、重要なポイントをまとめました。
                     level: rank
                 };
                 
+                // aioRankも更新
+                article.aioRank = rank;
+                
                 // プランデータを保存
                 localStorage.setItem('plans', JSON.stringify(plans));
-                
-                // ダッシュボードの記事一覧を更新
-                if (typeof window.dashboard !== 'undefined' && window.dashboard.renderArticleList) {
-                    window.dashboard.renderArticleList();
+                console.log('✅ プランデータを更新:', { articleId: article.id, aioRank: article.aioRank });
+            }
+        }
+        
+        // progress.jsonの記事データも更新（progressDataが読み込まれていない場合は読み込む）
+        if (!this.progressData) {
+            await this.loadProgressData();
+        }
+        
+        if (this.progressData && this.progressData.articles) {
+            const progressArticle = this.progressData.articles.find(a => a.id === this.currentArticle.id);
+            if (progressArticle) {
+                if (!progressArticle.scores) {
+                    progressArticle.scores = {};
                 }
+                progressArticle.scores.after = {
+                    total: score,
+                    level: rank
+                };
+                
+                // aioRankも更新
+                progressArticle.aioRank = rank;
+                
+                // progress.jsonを保存
+                await dataManager.saveProgress(this.progressData);
+                console.log('✅ progress.jsonを更新:', { articleId: progressArticle.id, aioRank: progressArticle.aioRank });
+            } else {
+                console.warn('⚠️ progress.jsonに記事が見つかりません:', this.currentArticle.id);
+            }
+        } else {
+            console.warn('⚠️ progressDataが読み込まれていません');
+        }
+        
+        // ダッシュボードの記事一覧を更新
+        if (typeof window.dashboard !== 'undefined') {
+            // Doタブの記事一覧を更新
+            if (window.dashboard.renderArticleList) {
+                window.dashboard.renderArticleList();
+            }
+            // Planタブの記事一覧も更新（プランが選択されている場合）
+            if (window.dashboard.selectedPlanId && window.dashboard.renderPlanArticles) {
+                window.dashboard.renderPlanArticles();
             }
         }
     }

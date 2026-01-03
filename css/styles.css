@@ -948,6 +948,142 @@ tr:last-child td {
     margin-top: 1rem;
 }
 
+/* スコアコンテナ全体 */
+.checklist-score {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+/* 上部のスコアとランク表示エリア */
+.score-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+/* スコア表示部分 */
+.score-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.score-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.score-value-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.score-current {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    line-height: 1;
+}
+
+#scoreNumber {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.score-unit {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.score-separator {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.score-total {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding-left: 0.25rem;
+}
+
+/* ランク表示部分 */
+.score-rank-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f9fafb;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    min-width: 80px;
+    gap: 0.5rem;
+}
+
+.rank-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.rank-value-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem;
+}
+
+.rank-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ランクごとの色 */
+.rank-S { color: #10b981; } /* Emerald-500 */
+.rank-A { color: #3b82f6; } /* Blue-500 */
+.rank-B { color: #f59e0b; } /* Amber-500 */
+.rank-C { color: #ef4444; } /* Red-500 */
+.rank-D { color: #6b7280; } /* Gray-500 */
+
+/* プログレスバーエリア */
+.score-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.score-bar {
+    height: 8px;
+    background: #e5e7eb; /* Gray-200 */
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 999px;
+    transition: width 0.5s ease-out;
+}
+
+.score-text {
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
 .checklist-items {
     display: flex;
     flex-direction: column;
@@ -1292,16 +1428,16 @@ tr:last-child td {
     transform: scale(1.1);
 }
 
-/* 提案モードの追加マーカー（赤背景） */
+/* 提案モードの追加マーカー（目立つ色に変更） */
 .suggestion-addition {
-    background-color: #dbeafe; /* 青系に変更して視認性向上 */
-    color: #1e40af;
-    font-weight: 500;
+    background-color: #fef3c7; /* 黄色背景で視認性向上 */
+    color: #92400e; /* 濃い茶色の文字 */
+    font-weight: 600;
     padding: 0 2px;
     position: relative;
     cursor: pointer;
     text-decoration: none;
-    border-bottom: 2px solid #3b82f6;
+    border-bottom: 2px solid #f59e0b; /* オレンジの下線 */
     border-radius: 2px;
 }
 
