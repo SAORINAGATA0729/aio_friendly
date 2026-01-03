@@ -903,6 +903,7 @@ body {
     min-height: 0;
     overflow: hidden;
     padding: 1rem 0;
+    height: calc(100vh - 200px);
 }
 
 .rewrite-sidebar {
@@ -910,11 +911,12 @@ body {
     padding: 0;
     border: none;
     overflow-y: auto;
-    height: 100%;
+    max-height: calc(100vh - 300px);
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     padding-right: 0.5rem;
+    min-height: 0;
 }
 
 .rewrite-sidebar::-webkit-scrollbar {

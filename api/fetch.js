@@ -134,8 +134,8 @@ module.exports = async function handler(req, res) {
         const hasArticleContent = /class="[^"]*article[^"]*content[^"]*"/i.test(htmlContent);
         console.log(`[DEBUG] HTML structure: hasArticle=${hasArticle}, hasMain=${hasMain}, hasArticleContent=${hasArticleContent}`);
 
-        // HTMLをMarkdownに変換
-        const markdownContent = htmlToMarkdown(htmlContent);
+        // HTMLをMarkdownに変換（画像URLを絶対URLに変換）
+        const markdownContent = htmlToMarkdown(htmlContent, targetUrl);
 
         // Markdown内のH1を確認（デバッグ用）
         const markdownH1Matches = markdownContent.match(/^#\s+.+$/gm);
@@ -171,8 +171,10 @@ module.exports = async function handler(req, res) {
 
 /**
  * HTMLをMarkdownに変換（簡易版）
+ * @param {string} html - HTMLコンテンツ
+ * @param {string} baseUrl - ベースURL（画像URLを絶対URLに変換するために使用）
  */
-function htmlToMarkdown(html) {
+function htmlToMarkdown(html, baseUrl = '') {
     // giftee.bizの記事ページ構造に合わせた抽出
     // 1. まず、記事のメインコンテンツエリアを探す（giftee.bizの構造に合わせる）
     // classに"content"や"article"を含むdivを探す
@@ -292,8 +294,29 @@ function htmlToMarkdown(html) {
     // リンク
     content = content.replace(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
 
-    // 画像
-    content = content.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
+    // 画像（URLを絶対URLに変換）
+    content = content.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, (match, src, alt) => {
+        let imageUrl = src;
+        
+        // 相対URLを絶対URLに変換
+        if (baseUrl && imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') && !imageUrl.startsWith('//')) {
+            try {
+                if (imageUrl.startsWith('/')) {
+                    // ルート相対URL
+                    const urlObj = new URL(baseUrl);
+                    imageUrl = `${urlObj.protocol}//${urlObj.host}${imageUrl}`;
+                } else {
+                    // 相対URL（ベースURLを基準に解決）
+                    imageUrl = new URL(imageUrl, baseUrl).href;
+                }
+            } catch (e) {
+                console.error('[ERROR] Failed to convert image URL to absolute:', e);
+                // 変換に失敗した場合は元のURLをそのまま使用
+            }
+        }
+        
+        return `![${alt}](${imageUrl})`;
+    });
 
     // その他のタグを削除
     content = content.replace(/<[^>]+>/g, '');

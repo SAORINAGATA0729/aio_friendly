@@ -24,57 +24,39 @@ class DataManager {
      * ファイルを読み込む（File System Access APIまたはローカルストレージ）
      */
     async loadFile(filename) {
-        try {
-            // まずローカルストレージから試行
-            const storageKey = this.getStorageKey(filename);
-            const stored = localStorage.getItem(storageKey);
-            if (stored) {
-                return JSON.parse(stored);
-            }
+        // まずローカルストレージから試行
+        const storageKey = this.getStorageKey(filename);
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+            return JSON.parse(stored);
+        }
 
-            // File System Access APIを試行（Chrome）
-            if ('showOpenFilePicker' in window) {
-                const fileHandle = await this.getFileHandle(filename);
-                const file = await fileHandle.getFile();
-                const text = await file.text();
-                const data = JSON.parse(text);
-                
-                // ローカルストレージにも保存
-                localStorage.setItem(storageKey, text);
+        // File System Access APIは実装されていないため、スキップ
+        // 直接fetchで読み込みを試行
+
+        // フォールバック: fetchで読み込み
+        try {
+            const response = await fetch(`${this.basePath}${filename}`);
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem(storageKey, JSON.stringify(data));
                 return data;
             }
-
-            // フォールバック: fetchで読み込み
+        } catch (fetchError) {
+            // 相対パスでも試行
             try {
-                const response = await fetch(`${this.basePath}${filename}`);
+                const response = await fetch(`./data/${filename}`);
                 if (response.ok) {
                     const data = await response.json();
                     localStorage.setItem(storageKey, JSON.stringify(data));
                     return data;
                 }
-            } catch (fetchError) {
-                console.warn(`Fetch failed for ${filename}, trying relative path`);
-                // 相対パスでも試行
-                try {
-                    const response = await fetch(`./data/${filename}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        localStorage.setItem(storageKey, JSON.stringify(data));
-                        return data;
-                    }
-                } catch (relError) {
-                    console.error(`Failed to load ${filename}:`, relError);
-                }
-            }
-        } catch (error) {
-            console.error(`ファイル読み込みエラー (${filename}):`, error);
-            // ローカルストレージから読み込みを試行
-            const storageKey = this.getStorageKey(filename);
-            const stored = localStorage.getItem(storageKey);
-            if (stored) {
-                return JSON.parse(stored);
+            } catch (relError) {
+                // すべての読み込み方法が失敗した場合のみエラーログを出力
+                console.warn(`[WARN] Failed to load ${filename} from all sources, using default values`);
             }
         }
+        
         return null;
     }
 
@@ -89,16 +71,8 @@ class DataManager {
             // ローカルストレージに保存
             localStorage.setItem(storageKey, jsonString);
 
-            // File System Access APIを試行（Chrome）
-            if ('showSaveFilePicker' in window) {
-                const fileHandle = await this.getFileHandleForSave(filename);
-                const writable = await fileHandle.createWritable();
-                await writable.write(jsonString);
-                await writable.close();
-                return true;
-            }
-
-            // フォールバック: ダウンロード
+            // File System Access APIは実装されていないため、スキップ
+            // 直接ダウンロード方式を使用
             this.downloadFile(filename, jsonString);
             return true;
         } catch (error) {
@@ -119,21 +93,8 @@ class DataManager {
                 return stored; // Markdown文字列を返す
             }
             
-            // File System Access APIを試行
-            if ('showOpenFilePicker' in window) {
-                try {
-                    const fileHandle = await this.getFileHandle(`${this.articlesPath}${filename}`);
-                    const file = await fileHandle.getFile();
-                    const text = await file.text();
-                    // ローカルストレージにも保存
-                    localStorage.setItem(storageKey, text);
-                    return text;
-                } catch (fsError) {
-                    console.warn('[WARN] loadMarkdown: File System Access API failed:', fsError);
-                }
-            }
-            
-            // フォールバック: fetchで読み込み
+            // File System Access APIは実装されていないため、スキップ
+            // 直接fetchで読み込みを試行
             try {
                 const response = await fetch(`${this.basePath}${this.articlesPath}${filename}`);
                 if (response.ok) {
@@ -167,23 +128,8 @@ class DataManager {
             localStorage.setItem(storageKey, content);
             console.log('[DEBUG] saveMarkdown: Saved to localStorage:', storageKey);
 
-            if ('showSaveFilePicker' in window) {
-                try {
-                    const fileHandle = await this.getFileHandleForSave(`${this.articlesPath}${filename}`);
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(content);
-                    await writable.close();
-                    console.log('[DEBUG] saveMarkdown: Saved via File System Access API');
-                    return true;
-                } catch (fsError) {
-                    console.warn('[WARN] saveMarkdown: File System Access API failed:', fsError);
-                    // フォールバック: ダウンロード
-                    this.downloadFile(filename, content, 'text/markdown');
-                    return true; // ローカルストレージには保存済みなのでtrueを返す
-                }
-            }
-
-            // フォールバック: ダウンロード
+            // File System Access APIは実装されていないため、スキップ
+            // 直接ダウンロード方式を使用
             this.downloadFile(filename, content, 'text/markdown');
             console.log('[DEBUG] saveMarkdown: Saved via download');
             return true;
@@ -212,19 +158,8 @@ class DataManager {
             // ローカルストレージに保存
             localStorage.setItem(storageKey, jsonString);
             
-            // File System Access APIを試行
-            if ('showSaveFilePicker' in window) {
-                try {
-                    const fileHandle = await this.getFileHandleForSave(this.baselineFile);
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(jsonString);
-                    await writable.close();
-                    return true;
-                } catch (fsError) {
-                    console.warn('[WARN] saveBaseline: File System Access API failed:', fsError);
-                }
-            }
-            
+            // File System Access APIは実装されていないため、スキップ
+            // localStorageに保存済みなのでtrueを返す
             return true;
         } catch (error) {
             console.error('ベースライン保存エラー:', error);
@@ -246,13 +181,6 @@ class DataManager {
      */
     async loadBaseline() {
         return await this.loadFile(this.baselineFile);
-    }
-
-    /**
-     * ベースラインデータを保存する
-     */
-    async saveBaseline(data) {
-        return await this.saveFile(this.baselineFile, data);
     }
 
     /**

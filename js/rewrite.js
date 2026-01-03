@@ -8,6 +8,7 @@ class RewriteSystem {
         this.currentArticle = null;
         this.progressData = null;
         this.quill = null; // Quillエディタインスタンス
+        this.checklistScoreObserver = null; // MutationObserver for checklistScore
         this.checklistItems = [
             {
                 id: 'h1',
@@ -1556,7 +1557,7 @@ ${article.keyword}について、重要なポイントをまとめました。
         // 最終チェック：HTML構造が失われている場合は再構築
         if (!finalCheck || !finalRankCheck || !finalHasScoreStatus) {
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1505',message:'updateScore: Final structure check failed, rebuilding',data:{finalCheckExists:!!finalCheck,finalRankCheckExists:!!finalRankCheck,finalHasScoreStatus:finalHasScoreStatus},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1557',message:'updateScore: Final structure check failed, rebuilding',data:{finalCheckExists:!!finalCheck,finalRankCheckExists:!!finalRankCheck,finalHasScoreStatus:finalHasScoreStatus},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'G'})}).catch(()=>{});
             // #endregion
             // HTML構造を再構築してから値を設定
             checklistScore.innerHTML = `
@@ -1583,6 +1584,62 @@ ${article.keyword}について、重要なポイントをまとめました。
                 </div>
             `;
         }
+        
+        // HTML構造が失われないように保護（MutationObserverを使用）
+        // 既存のobserverがあれば削除
+        if (this.checklistScoreObserver) {
+            this.checklistScoreObserver.disconnect();
+        }
+        
+        // 新しいobserverを作成
+        this.checklistScoreObserver = new MutationObserver((mutations) => {
+            const scoreStatus = checklistScore.querySelector('.score-status');
+            if (!scoreStatus) {
+                // HTML構造が失われている場合は再構築
+                const currentScoreEl = document.getElementById('scoreNumber');
+                const currentRankEl = document.getElementById('scoreRank');
+                const currentCheckedEl = document.getElementById('checkedCount');
+                const currentTotalEl = document.getElementById('totalCount');
+                const currentBarFillEl = document.getElementById('scoreBarFill');
+                
+                const currentScore = currentScoreEl?.textContent || score;
+                const currentRank = currentRankEl?.textContent || rank;
+                const currentChecked = currentCheckedEl?.textContent || checkedCount;
+                const currentTotal = currentTotalEl?.textContent || totalItems;
+                const currentBarWidth = currentBarFillEl?.style.width || `${score}%`;
+                
+                checklistScore.innerHTML = `
+                    <div class="score-status">
+                        <div class="score-main">
+                            <span class="score-label">現状</span>
+                            <span id="scoreNumber">${currentScore}</span>
+                            <span class="score-unit">点</span>
+                            <span class="score-separator">/</span>
+                            <span class="score-total">100点</span>
+                        </div>
+                        <div class="score-rank-display">
+                            <span class="rank-label">RANK</span>
+                            <span id="scoreRank" class="rank-value rank-${currentRank}">${currentRank}</span>
+                        </div>
+                    </div>
+                    <div class="score-progress">
+                        <div class="score-bar">
+                            <div class="score-bar-fill" id="scoreBarFill" style="width: ${currentBarWidth}"></div>
+                        </div>
+                        <div class="score-text">
+                            <span id="checkedCount">${currentChecked}</span> / <span id="totalCount">${currentTotal}</span> 項目
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        // observerを開始
+        this.checklistScoreObserver.observe(checklistScore, {
+            childList: true,
+            subtree: true,
+            characterData: false
+        });
     }
 
     getRank(score) {

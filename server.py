@@ -117,7 +117,7 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
 
             # HTMLをMarkdownに簡易変換
             try:
-                markdown_content = self.html_to_markdown(html_content)
+                markdown_content = self.html_to_markdown(html_content, target_url)
             except Exception as convert_error:
                 print(f"Conversion error: {convert_error}")
                 import traceback
@@ -156,7 +156,7 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
                 error_msg = error_msg[:500] + "..."
             self.wfile.write(json.dumps({"success": False, "error": error_msg}).encode('utf-8'))
 
-    def html_to_markdown(self, html):
+    def html_to_markdown(self, html, base_url=''):
         """
         HTML→Markdown変換（Vercel版と同じロジック）
         giftee.bizの記事ページ構造に合わせた抽出
@@ -261,8 +261,31 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
         # リンク
         content = re.sub(r'<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)</a>', r'[\2](\1)', content, flags=re.IGNORECASE)
 
-        # 画像
-        content = re.sub(r'<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>', r'![\2](\1)', content, flags=re.IGNORECASE)
+        # 画像（URLを絶対URLに変換）
+        def convert_image_url(match):
+            src = match.group(1)
+            alt = match.group(2)
+            image_url = src
+            
+            # 相対URLを絶対URLに変換
+            if base_url and image_url and not image_url.startswith('http://') and not image_url.startswith('https://') and not image_url.startswith('//'):
+                try:
+                    if image_url.startswith('/'):
+                        # ルート相対URL
+                        from urllib.parse import urlparse
+                        url_obj = urlparse(base_url)
+                        image_url = f"{url_obj.scheme}://{url_obj.netloc}{image_url}"
+                    else:
+                        # 相対URL（ベースURLを基準に解決）
+                        from urllib.parse import urljoin
+                        image_url = urljoin(base_url, image_url)
+                except Exception as e:
+                    print(f"[ERROR] Failed to convert image URL to absolute: {e}")
+                    # 変換に失敗した場合は元のURLをそのまま使用
+            
+            return f'![{alt}]({image_url})'
+        
+        content = re.sub(r'<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>', convert_image_url, content, flags=re.IGNORECASE)
 
         # その他のタグを削除
         content = re.sub(r'<[^>]+>', '', content)
