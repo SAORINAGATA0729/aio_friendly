@@ -99,13 +99,33 @@ class SuggestionUIManager {
             return;
         }
 
+        // 提案情報を取得
+        const suggestions = await editHistoryManager.getSuggestions(this.currentArticleId);
+        const suggestion = suggestions.find(s => s.id === suggestionId);
+        
+        if (!suggestion) {
+            alert('提案が見つかりません');
+            return;
+        }
+
         try {
+            // 変更を適用（rewriteManagerを使用）
+            if (window.rewriteManager || typeof rewriteManager !== 'undefined') {
+                const manager = window.rewriteManager || rewriteManager;
+                await manager.applyApprovedContent(suggestion.newContent);
+            } else {
+                console.error('rewriteManagerが見つかりません');
+                alert('変更の適用に失敗しました: エディタが見つかりません');
+                return;
+            }
+
+            // 提案ステータスを承認済みに更新
             const success = await editHistoryManager.approveSuggestion(suggestionId);
             if (success) {
-                alert('提案を承認しました');
+                alert('提案を承認し、変更を反映しました');
                 await this.renderSuggestions(this.currentArticleId);
             } else {
-                alert('提案の承認に失敗しました');
+                alert('提案の承認ステータス更新に失敗しました');
             }
         } catch (error) {
             console.error('提案の承認エラー:', error);
