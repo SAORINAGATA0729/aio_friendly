@@ -1614,29 +1614,57 @@ class RewriteSystem {
                 `;
             }).join('');
             
+            // 承認状態を取得
+            const approvalStatus = this.getApprovalStatus(comment.id);
+            const statusClass = approvalStatus === 'approved' ? 'approved' : approvalStatus === 'rejected' ? 'rejected' : '';
+            const statusText = approvalStatus === 'approved' ? '承認済み' : approvalStatus === 'rejected' ? '非承認' : '';
+            
             return `
-                <div class="comment-history-item" data-comment-id="${comment.id}" onclick="if(!event.target.closest('.reply-input-container')) window.rewriteSystem.scrollToComment('${comment.id}')">
-                    <div class="comment-history-user">
-                        ${comment.userAvatar ? 
-                            `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
-                            `<span class="material-icons-round">account_circle</span>`
-                        }
-                        <span class="comment-user-name">${comment.userName || '不明'}</span>
-                        <span class="comment-date">${dateStr}</span>
+                <div class="comment-history-item ${statusClass}" data-comment-id="${comment.id}">
+                    <div class="comment-history-item-header" onclick="window.rewriteSystem.toggleCommentHistoryItem('${comment.id}')">
+                        <span class="material-icons-round comment-history-expand-icon" style="font-size: 18px; transition: transform 0.2s;">expand_more</span>
+                        <div style="flex: 1; display: flex; align-items: center; gap: 0.5rem;">
+                            ${comment.userAvatar ? 
+                                `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
+                                `<span class="material-icons-round" style="font-size: 18px;">account_circle</span>`
+                            }
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <span style="font-weight: 600; font-size: 0.85rem;">${comment.userName || '不明'}</span>
+                                    ${comment.type === 'deletion' ? '<span style="color: #dc2626; font-size: 0.75rem;">🗑️ 削除</span>' : ''}
+                                    ${comment.type === 'addition' ? '<span style="color: #2563eb; font-size: 0.75rem;">➕ 追加</span>' : ''}
+                                    ${comment.type === 'comment' ? '<span style="color: #0ea5e9; font-size: 0.75rem;">💬 コメント</span>' : ''}
+                                </div>
+                                <span style="font-size: 0.7rem; color: #6b7280;">${dateStr}</span>
+                            </div>
+                            ${statusText ? `<span class="comment-history-status ${statusClass}">${statusText}</span>` : ''}
+                        </div>
                     </div>
-                    <div class="comment-history-text">
-                        ${comment.type === 'deletion' ? '<span style="color: #dc2626;">🗑️ 削除提案</span>' : ''}
-                        ${comment.type === 'addition' ? '<span style="color: #2563eb;">➕ 追加提案</span>' : ''}
-                        ${comment.type === 'comment' ? '<span style="color: #0ea5e9;">💬 コメント</span>' : ''}
-                        ${comment.comment && comment.comment !== '削除提案' && comment.comment !== '追加提案' ? this.escapeHtml(comment.comment) : ''}
-                    </div>
-                    ${comment.selectedText ? `<div class="comment-selected-text">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 30))}${comment.selectedText.length > 30 ? '...' : ''}"</div>` : ''}
-                    
-                    <div class="comment-reply-list">
-                        ${repliesHtml}
-                        <div class="reply-input-container">
-                            <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
-                            <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
+                    <div class="comment-history-item-content">
+                        <div class="comment-history-item-body">
+                            <div class="comment-history-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">
+                                ${comment.comment && comment.comment !== '削除提案' && comment.comment !== '追加提案' ? this.escapeHtml(comment.comment) : ''}
+                            </div>
+                            ${comment.selectedText ? `<div class="comment-selected-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 50))}${comment.selectedText.length > 50 ? '...' : ''}"</div>` : ''}
+                            
+                            <div class="comment-reply-list">
+                                ${repliesHtml}
+                                <div class="reply-input-container">
+                                    <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
+                                    <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
+                                </div>
+                            </div>
+                            
+                            <div class="comment-history-item-actions">
+                                <button class="approve-btn" onclick="event.stopPropagation(); window.rewriteSystem.approveChange('${comment.id}')" ${approvalStatus === 'approved' ? 'disabled' : ''}>
+                                    <span class="material-icons-round" style="font-size: 16px;">check</span>
+                                    承認
+                                </button>
+                                <button class="reject-btn" onclick="event.stopPropagation(); window.rewriteSystem.rejectChange('${comment.id}')" ${approvalStatus === 'rejected' ? 'disabled' : ''}>
+                                    <span class="material-icons-round" style="font-size: 16px;">close</span>
+                                    非承認
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1655,6 +1683,58 @@ class RewriteSystem {
         if (text) {
             this.saveReply(commentId, text);
             input.value = ''; // 入力をクリア
+        }
+    }
+
+    /**
+     * 変更履歴アイテムの展開/折りたたみ
+     */
+    toggleCommentHistoryItem(commentId) {
+        const item = document.querySelector(`[data-comment-id="${commentId}"]`);
+        if (item) {
+            item.classList.toggle('expanded');
+        }
+    }
+
+    /**
+     * 承認状態を取得
+     */
+    getApprovalStatus(commentId) {
+        if (!this.currentArticle) return null;
+        const storageKey = `approval_status_${this.currentArticle.id}_${commentId}`;
+        return localStorage.getItem(storageKey);
+    }
+
+    /**
+     * 承認状態を保存
+     */
+    saveApprovalStatus(commentId, status) {
+        if (!this.currentArticle) return;
+        const storageKey = `approval_status_${this.currentArticle.id}_${commentId}`;
+        localStorage.setItem(storageKey, status);
+    }
+
+    /**
+     * 変更を承認
+     */
+    approveChange(commentId) {
+        this.saveApprovalStatus(commentId, 'approved');
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('承認しました', 'success');
+        }
+    }
+
+    /**
+     * 変更を非承認
+     */
+    rejectChange(commentId) {
+        this.saveApprovalStatus(commentId, 'rejected');
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('非承認しました', 'success');
         }
     }
 
