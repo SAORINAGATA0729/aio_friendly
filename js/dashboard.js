@@ -657,14 +657,17 @@ class Dashboard {
                 
                 const planId = e.target.value;
                 if (planId) {
-                    this.loadPlanArticles(planId);
+                    await this.loadPlanArticles(planId);
                 } else {
                     // プランが選択されていない場合は、通常の記事一覧を表示する
                     this.selectedPlanId = null;
                     this.currentPlanArticles = [];
                     
-                    // 通常の記事一覧を表示
-                    this.renderArticleList('all');
+                    // 記事一覧セクションを非表示にする
+                    const articleListSection = document.querySelector('.article-list-section');
+                    if (articleListSection) {
+                        articleListSection.style.display = 'none';
+                    }
                 }
                 });
             }
@@ -706,7 +709,7 @@ class Dashboard {
         // #endregion
     }
     
-    loadPlanArticles(planId) {
+    async loadPlanArticles(planId) {
         console.log('loadPlanArticles called with planId:', planId);
         const plan = this.plans.find(p => p.id === planId);
         if (!plan) {
@@ -779,7 +782,7 @@ class Dashboard {
         
         // プランの記事を一時的に保存して表示
         this.currentPlanArticles = planArticles;
-        this.renderPlanArticleList(planArticles);
+        await this.renderPlanArticleList(planArticles);
         
         // 進捗状況を更新（選択したプランの記事に基づいて）
         console.log('進捗状況を更新します。記事数:', planArticles.length);
@@ -876,7 +879,54 @@ class Dashboard {
         }
     }
     
-    renderPlanArticleList(articles) {
+    /**
+     * 記事のH1タイトルを取得（Markdownファイルから）
+     */
+    async getArticleH1Title(article) {
+        // 既にH1タイトルが保存されている場合はそれを使用
+        if (article.h1Title) {
+            return article.h1Title;
+        }
+        
+        // URLからスラッグを取得
+        const slug = this.getSlugFromUrl(article.url);
+        if (!slug) {
+            return article.title || '';
+        }
+        
+        // MarkdownファイルからH1を取得
+        try {
+            const markdown = await dataManager.loadMarkdown(`${slug}.md`);
+            if (markdown) {
+                const h1Match = markdown.match(/^#\s+(.+)$/m);
+                if (h1Match && h1Match[1]) {
+                    // HTMLタグを削除
+                    const h1Title = h1Match[1].trim().replace(/<[^>]*>/g, '');
+                    return h1Title;
+                }
+            }
+        } catch (error) {
+            console.warn('H1タイトルの取得に失敗:', error);
+        }
+        
+        // H1が取得できない場合は、既存のタイトルを返す
+        return article.title || '';
+    }
+    
+    /**
+     * URLからスラッグを取得
+     */
+    getSlugFromUrl(url) {
+        try {
+            const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+            const pathParts = urlObj.pathname.split('/').filter(p => p);
+            return pathParts[pathParts.length - 1] || '';
+        } catch {
+            return '';
+        }
+    }
+    
+    async renderPlanArticleList(articles) {
         const articleList = document.getElementById('articleList');
         if (!articleList) return;
         
@@ -920,11 +970,16 @@ class Dashboard {
         
         articleList.innerHTML = '';
         
-        // フィルタリング済みの記事を表示
-        articles.forEach(article => {
-            const item = this.createPlanArticleItem(article);
+        // 各記事のH1タイトルを取得してから表示
+        for (const article of articles) {
+            const h1Title = await this.getArticleH1Title(article);
+            // H1タイトルを記事オブジェクトに保存（次回以降の表示を高速化）
+            if (!article.h1Title && h1Title) {
+                article.h1Title = h1Title;
+            }
+            const item = this.createPlanArticleItem(article, h1Title);
             articleList.appendChild(item);
-        });
+        }
         
         // フィルターボタンの動作も更新（イベント委譲で処理するため、ここでは何もしない）
         // this.updateFilterButtons(); // 削除
@@ -1449,7 +1504,7 @@ class Dashboard {
                 fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1434',message:'before renderPlanArticleList',data:{statusCountsBefore,currentPlanArticlesCount:this.currentPlanArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
                 // #endregion
                 
-                this.renderPlanArticleList(this.currentPlanArticles);
+                await this.renderPlanArticleList(this.currentPlanArticles);
                 
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1436',message:'calling updateProgressFromArticles',data:{currentPlanArticlesCount:this.currentPlanArticles.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
@@ -2088,11 +2143,12 @@ class Dashboard {
             return;
         }
 
-        // 記事一覧セクションを表示
+        // プランが選択されていない時は記事一覧セクションを非表示にする
         const articleListSection = document.querySelector('.article-list-section');
         if (articleListSection) {
-            articleListSection.style.display = 'block';
+            articleListSection.style.display = 'none';
         }
+        return; // プランが選択されていない時は記事一覧を表示しない
 
         const articleList = document.getElementById('articleList');
         if (!articleList) {
@@ -2269,7 +2325,7 @@ class Dashboard {
         return item;
     }
 
-    createPlanArticleItem(article) {
+    createPlanArticleItem(article, h1Title = null) {
         const item = document.createElement('div');
         item.className = 'article-item plan-mode';
         item.dataset.articleId = article.id;
@@ -2279,10 +2335,13 @@ class Dashboard {
 
         const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
         const scoreLevel = score.level.toLowerCase();
+        
+        // H1タイトルを優先的に使用、なければ既存のタイトルを使用
+        const displayTitle = h1Title || article.h1Title || article.title || '';
 
         item.innerHTML = `
             <div class="article-info">
-                <div class="article-title">${article.title}</div>
+                <div class="article-title">${displayTitle}</div>
                 <div class="article-meta">
                     <span class="material-icons-round" style="font-size: 14px;">vpn_key</span>
                     ${article.keyword || ''}
@@ -2452,35 +2511,38 @@ class Dashboard {
                 doTab.removeEventListener('click', this.handleFilterClick);
             }
             // アロー関数でthisをバインド
-            this.handleFilterClick = (e) => {
-                if (e.target.classList.contains('filter-btn')) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // アクティブクラスを更新
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    
-                    const filter = e.target.dataset.filter;
-                    
-                    // プランが選択されている場合は、プランの記事一覧をフィルタリング
-                    if (this.selectedPlanId && this.currentPlanArticles.length > 0) {
-                        // フィルタリング済みの記事を取得
-                        const filteredArticles = this.currentPlanArticles.filter(article => {
-                            if (filter === 'all') return true;
-                            if (filter === 'notStarted') return article.status === '未着手';
-                            if (filter === 'inProgress') return article.status === '進行中';
-                            if (filter === 'completed') return article.status === '完了';
-                            return true;
-                        });
-                        // フィルタリング済み記事で一覧を表示
-                        this.renderPlanArticleList(filteredArticles);
-                    } else {
-                        // プランが選択されていない場合は通常の記事一覧を表示
-                        this.renderArticleList(filter);
+                this.handleFilterClick = async (e) => {
+                    if (e.target.classList.contains('filter-btn')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // アクティブクラスを更新
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        
+                        const filter = e.target.dataset.filter;
+                        
+                        // プランが選択されている場合は、プランの記事一覧をフィルタリング
+                        if (this.selectedPlanId && this.currentPlanArticles.length > 0) {
+                            // フィルタリング済みの記事を取得
+                            const filteredArticles = this.currentPlanArticles.filter(article => {
+                                if (filter === 'all') return true;
+                                if (filter === 'notStarted') return article.status === '未着手';
+                                if (filter === 'inProgress') return article.status === '進行中';
+                                if (filter === 'completed') return article.status === '完了';
+                                return true;
+                            });
+                            // フィルタリング済み記事で一覧を表示
+                            await this.renderPlanArticleList(filteredArticles);
+                        } else {
+                            // プランが選択されていない場合は記事一覧を非表示
+                            const articleListSection = document.querySelector('.article-list-section');
+                            if (articleListSection) {
+                                articleListSection.style.display = 'none';
+                            }
+                        }
                     }
-                }
-            };
+                };
             doTab.addEventListener('click', this.handleFilterClick);
         }
 
