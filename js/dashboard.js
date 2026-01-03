@@ -3630,6 +3630,14 @@ class Dashboard {
             return;
         }
 
+        // ==========================================
+        // 1. 集計 (SC風サマリー用)
+        // ==========================================
+        const totals = {
+            w2: { clicks: 0, imp: 0, posSum: 0, posCount: 0 },
+            w3: { clicks: 0, imp: 0, posSum: 0, posCount: 0 }
+        };
+
         // 総評用のカウント
         let improvedCount = 0;
         let worsenedCount = 0;
@@ -3651,14 +3659,21 @@ class Dashboard {
             const ctr2 = parseFloat(w2.ctr) || 0;
             const ctr3 = parseFloat(w3.ctr) || 0;
 
+            // 集計加算
+            if (w2.clicks) totals.w2.clicks += clk2;
+            if (w2.impressions) totals.w2.imp += imp2;
+            if (w2.position) { totals.w2.posSum += pos2; totals.w2.posCount++; }
+
+            if (w3.clicks) totals.w3.clicks += clk3;
+            if (w3.impressions) totals.w3.imp += imp3;
+            if (w3.position) { totals.w3.posSum += pos3; totals.w3.posCount++; }
+
             // 評価ロジック
-            // クリック数増加 OR 順位改善（数値減少） OR CTR増加 を「良」とする
             let score = 0;
-            
             if (clk3 > clk2) score++;
             else if (clk3 < clk2) score--;
             
-            if (pos3 < pos2 && pos3 > 0) score++; // 順位は低い方が良い
+            if (pos3 < pos2 && pos3 > 0) score++;
             else if (pos3 > pos2) score--;
             
             if (ctr3 > ctr2) score++;
@@ -3679,27 +3694,92 @@ class Dashboard {
                 unchangedCount++;
             }
 
-            // 色付けロジック (上がったら赤、下がったら青)
+            // 色付けロジック
             const getColor = (v2, v3) => {
-                if (v3 > v2) return 'color: #dc2626; font-weight: bold;'; // 上昇(赤)
-                if (v3 < v2) return 'color: #2563eb; font-weight: bold;'; // 下降(青)
+                if (v3 > v2) return 'color: #dc2626; font-weight: bold;';
+                if (v3 < v2) return 'color: #2563eb; font-weight: bold;';
                 return '';
             };
 
-            // 順位は下がった(数値減少)方が良いが、リクエスト通り「数値の増減」で色分けする
-            // 数値が上がった(10->20) => 赤、数値が下がった(20->10) => 青
-            
+            // テーブル行生成 (Before -> 2w -> 3w)
+            // Beforeはデータがないので「-」
             rowsHtml += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
-                    <td style="padding: 0.75rem; text-align: center;">${pos2} → <span style="${getColor(pos2, pos3)}">${pos3}</span></td>
-                    <td style="padding: 0.75rem; text-align: center;">${this.formatNumber(clk2)} → <span style="${getColor(clk2, clk3)}">${this.formatNumber(clk3)}</span></td>
-                    <td style="padding: 0.75rem; text-align: center;">${this.formatNumber(imp2)} → <span style="${getColor(imp2, imp3)}">${this.formatNumber(imp3)}</span> (Imp)</td>
-                    <td style="padding: 0.75rem; text-align: center;">${ctr2}% → <span style="${getColor(ctr2, ctr3)}">${ctr3}%</span></td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${pos2} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        <span style="${getColor(pos2, pos3)}">${pos3}</span>
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${this.formatNumber(clk2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        <span style="${getColor(clk2, clk3)}">${this.formatNumber(clk3)}</span>
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${this.formatNumber(imp2)} <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        <span style="${getColor(imp2, imp3)}">${this.formatNumber(imp3)}</span>
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <span style="color: #9ca3af;">-</span> <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        ${ctr2}% <span style="color: #9ca3af; margin: 0 4px;">→</span> 
+                        <span style="${getColor(ctr2, ctr3)}">${ctr3}%</span>
+                    </td>
                     <td style="padding: 0.75rem; text-align: center; font-size: 1.2rem;" class="${evalClass}">${evalSymbol}</td>
                 </tr>
             `;
         });
+
+        // 集計計算
+        const stats = {
+            w2: {
+                clicks: totals.w2.clicks,
+                imp: totals.w2.imp,
+                pos: totals.w2.posCount ? (totals.w2.posSum / totals.w2.posCount).toFixed(1) : '-',
+                ctr: totals.w2.imp ? ((totals.w2.clicks / totals.w2.imp) * 100).toFixed(2) : '-'
+            },
+            w3: {
+                clicks: totals.w3.clicks,
+                imp: totals.w3.imp,
+                pos: totals.w3.posCount ? (totals.w3.posSum / totals.w3.posCount).toFixed(1) : '-',
+                ctr: totals.w3.imp ? ((totals.w3.clicks / totals.w3.imp) * 100).toFixed(2) : '-'
+            }
+        };
+
+        // SC風サマリーカードHTML
+        const summaryCardsHtml = `
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; page-break-inside: avoid;">
+                <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">合計クリック数</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.clicks)}</div>
+                    <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
+                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${this.formatNumber(stats.w2.clicks)}
+                    </div>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">合計表示回数</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${this.formatNumber(stats.w3.imp)}</div>
+                    <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
+                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${this.formatNumber(stats.w2.imp)}
+                    </div>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">平均CTR</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.ctr}%</div>
+                    <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
+                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${stats.w2.ctr}%
+                    </div>
+                </div>
+                <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <div style="font-size: 0.85rem; color: #6b7280; font-weight: 600; margin-bottom: 0.5rem;">平均掲載順位</div>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #111;">${stats.w3.pos}位</div>
+                    <div style="font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem;">
+                        Before: - <span style="margin: 0 4px;">→</span> 2w: ${stats.w2.pos}位
+                    </div>
+                </div>
+            </div>
+        `;
 
         // 総評エリア
         const total = articles.length;
@@ -3720,7 +3800,7 @@ class Dashboard {
         }
 
         const summaryHtml = `
-            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6; page-break-inside: avoid;">
                 <h4 style="font-weight: bold; margin-bottom: 0.5rem; color: #1e40af;">📊 記事パフォーマンス総評</h4>
                 <p>分析対象 <strong>${total}</strong> 記事中、<strong>${improvedCount}</strong> 記事で改善が見られました。</p>
                 <div style="margin-top: 0.5rem; font-size: 1.1rem; font-weight: bold;">
@@ -3740,10 +3820,10 @@ class Dashboard {
                 <thead>
                     <tr style="background: #f3f4f6;">
                         <th style="padding: 0.75rem; text-align: left;">記事名</th>
-                        <th style="padding: 0.75rem; text-align: center;">順位 (2w → 3w)</th>
-                        <th style="padding: 0.75rem; text-align: center;">クリック (2w → 3w)</th>
-                        <th style="padding: 0.75rem; text-align: center;">AIO (2w → 3w)</th>
-                        <th style="padding: 0.75rem; text-align: center;">CTR (2w → 3w)</th>
+                        <th style="padding: 0.75rem; text-align: center;">順位<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
+                        <th style="padding: 0.75rem; text-align: center;">クリック<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
+                        <th style="padding: 0.75rem; text-align: center;">Imp<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
+                        <th style="padding: 0.75rem; text-align: center;">CTR<br><span style="font-size:0.8rem;font-weight:normal;">B → 2w → 3w</span></th>
                         <th style="padding: 0.75rem; text-align: center;">評価</th>
                     </tr>
                 </thead>
@@ -3754,7 +3834,7 @@ class Dashboard {
             </div>
         `;
 
-        container.innerHTML = summaryHtml + tableHtml;
+        container.innerHTML = summaryHtml + summaryCardsHtml + tableHtml;
     }
 
     exportReportPdf() {
