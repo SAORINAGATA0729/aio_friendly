@@ -1874,7 +1874,9 @@ ${article.keyword}について、重要なポイントをまとめました。
             alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
             
             // 提案履歴を更新
-            if (suggestionUIManager && this.currentArticle) {
+            if (window.suggestionUIManager && this.currentArticle) {
+                await window.suggestionUIManager.renderSuggestions(this.currentArticle.id);
+            } else if (typeof suggestionUIManager !== 'undefined' && this.currentArticle) {
                 await suggestionUIManager.renderSuggestions(this.currentArticle.id);
             }
             
