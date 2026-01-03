@@ -673,6 +673,50 @@ tr:last-child td {
     color: var(--text-primary);
 }
 
+/* 編集モードタブ（通常編集｜提案モード） */
+.edit-mode-tabs {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: var(--radius-md);
+    gap: 0;
+    width: fit-content;
+}
+
+.edit-mode-tab {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.edit-mode-tab.active {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.edit-mode-tab:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+.edit-mode-tab.suggestion-mode {
+    color: #f59e0b;
+}
+
+.edit-mode-tab.suggestion-mode.active {
+    background: #fef3c7;
+    color: #d97706;
+}
+
 /* ツールバーボタン */
 .toolbar-btn {
     display: flex;

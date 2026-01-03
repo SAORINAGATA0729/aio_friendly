@@ -40,6 +40,7 @@ class RewriteSystem {
         this.progressData = null;
         this.quill = null; // Quillエディタインスタンス
         this.checklistScoreObserver = null; // MutationObserver for checklistScore
+        this.currentEditMode = 'normal'; // 'normal' or 'suggestion'
         this.checklistItems = [
             {
                 id: 'h1',
@@ -472,6 +473,20 @@ class RewriteSystem {
                 this.switchEditorMode('html');
             });
         }
+        
+        // 編集モード切り替えタブ（通常編集｜提案モード）
+        const normalEditTab = document.getElementById('normalEditTab');
+        const suggestionEditTab = document.getElementById('suggestionEditTab');
+        
+        if (normalEditTab && suggestionEditTab) {
+            normalEditTab.addEventListener('click', () => {
+                this.switchEditMode('normal');
+            });
+            
+            suggestionEditTab.addEventListener('click', () => {
+                this.switchEditMode('suggestion');
+            });
+        }
 
         // HTMLエディタの変更を監視
         if (htmlEditor) {
@@ -585,6 +600,12 @@ class RewriteSystem {
             // インラインスタイルを削除してCSSクラスで制御
             htmlContainer?.style.removeProperty('display');
             
+            // 編集モードタブを表示
+            const editModeTabs = document.getElementById('editModeTabs');
+            if (editModeTabs) {
+                editModeTabs.style.display = 'flex';
+            }
+            
             // コンテンツの同期をスキップしない場合のみ、HTMLエディタの内容をQuillに反映
             if (!skipContentSync && this.quill && htmlEditor && htmlEditor.value) {
                 const htmlContent = htmlEditor.value.trim();
@@ -615,6 +636,12 @@ class RewriteSystem {
             // インラインスタイルを削除してCSSクラスで制御
             htmlContainer?.style.removeProperty('display');
             
+            // 編集モードタブを非表示（HTMLモードでは使用しない）
+            const editModeTabs = document.getElementById('editModeTabs');
+            if (editModeTabs) {
+                editModeTabs.style.display = 'none';
+            }
+            
             // コンテンツの同期をスキップしない場合のみ、Quillの内容をHTMLエディタに反映
             if (!skipContentSync && this.quill && htmlEditor) {
                 // Quillの内容を取得（.ql-editorの内容を直接取得）
@@ -630,6 +657,35 @@ class RewriteSystem {
                 // HTMLエディタをクリアしてから設定（重複を防ぐ）
                 htmlEditor.value = '';
                 htmlEditor.value = cleanedHtml || '';
+            }
+        }
+    }
+
+    /**
+     * 編集モードを切り替え（通常編集｜提案モード）
+     */
+    switchEditMode(mode) {
+        this.currentEditMode = mode;
+        
+        const normalEditTab = document.getElementById('normalEditTab');
+        const suggestionEditTab = document.getElementById('suggestionEditTab');
+        
+        if (mode === 'normal') {
+            normalEditTab?.classList.add('active');
+            suggestionEditTab?.classList.remove('active');
+            normalEditTab?.classList.remove('suggestion-mode');
+            suggestionEditTab?.classList.remove('suggestion-mode');
+        } else if (mode === 'suggestion') {
+            suggestionEditTab?.classList.add('active');
+            normalEditTab?.classList.remove('active');
+            suggestionEditTab?.classList.add('suggestion-mode');
+            
+            // 提案モードに切り替えた時、編集履歴を開始
+            if (this.currentArticle && window.editHistoryManager) {
+                const content = this.quill ? this.quill.root.innerHTML : '';
+                const markdownContent = this.htmlToMarkdown(content);
+                window.editHistoryManager.startEdit(this.currentArticle.id, markdownContent);
+                console.log('提案モード: 編集履歴を開始しました');
             }
         }
     }
@@ -1043,14 +1099,9 @@ class RewriteSystem {
         // 重複するH1とアイキャッチ画像を削除（最初の1つだけを保持）
         content = this.removeDuplicateH1AndEyeCatch(content);
         
-        // 編集履歴の開始（元のコンテンツを保存）
-        const historyManager = window.editHistoryManager || editHistoryManager;
-        if (historyManager) {
-            console.log('編集履歴を開始します:', article.id, content.substring(0, 100) + '...');
-            historyManager.startEdit(article.id, content);
-        } else {
-            console.warn('editHistoryManagerが見つかりません');
-        }
+        // 編集履歴の開始（提案モードの場合のみ、元のコンテンツを保存）
+        // 通常編集モードの場合は、編集履歴を開始しない
+        // 提案モードに切り替えた時に編集履歴を開始する
         
         // 提案履歴を表示
         if (suggestionUIManager) {
@@ -1908,11 +1959,11 @@ ${article.keyword}について、重要なポイントをまとめました。
                 return;
             }
             
-            // 編集履歴を記録（ログインしている場合）
+            // 編集履歴を記録（提案モードかつログインしている場合のみ）
             const historyManager = window.editHistoryManager || editHistoryManager;
             const authMgr = window.authManager || authManager;
             
-            if (authMgr && authMgr.isAuthenticated() && historyManager) {
+            if (this.currentEditMode === 'suggestion' && authMgr && authMgr.isAuthenticated() && historyManager) {
                 const user = authMgr.getCurrentUser();
                 try {
                     console.log('編集履歴を保存します...', {

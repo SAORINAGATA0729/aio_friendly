@@ -832,6 +832,17 @@
                         </div>
                         <!-- ビジュアルモード（Quill Rich Text Editor） -->
                         <div id="visualEditorContainer" class="editor-mode-container active">
+                            <!-- 編集モード切り替え（通常編集｜提案モード） -->
+                            <div class="edit-mode-tabs" id="editModeTabs" style="display: none; margin-bottom: 0.75rem;">
+                                <button class="edit-mode-tab active" data-edit-mode="normal" id="normalEditTab">
+                                    <span class="material-icons-round">edit</span>
+                                    通常編集
+                                </button>
+                                <button class="edit-mode-tab" data-edit-mode="suggestion" id="suggestionEditTab">
+                                    <span class="material-icons-round">rate_review</span>
+                                    提案モード
+                                </button>
+                            </div>
                             <div id="quillEditor" style="background: white; border-radius: 8px;"></div>
                         </div>
                         <!-- HTMLモード（テキストエディタ） -->
