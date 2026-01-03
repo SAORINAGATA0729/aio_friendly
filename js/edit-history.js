@@ -50,6 +50,7 @@ class EditHistoryManager {
                 newContent: newContent,
                 diff: diff,
                 status: 'pending', // pending, approved, rejected
+                comments: [], // コメント配列を追加
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
             };
@@ -84,6 +85,7 @@ class EditHistoryManager {
             newContent: newContent,
             diff: diff,
             status: 'pending',
+            comments: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -269,6 +271,57 @@ class EditHistoryManager {
         
         return false;
     }
+
+    /**
+     * コメントを追加
+     */
+    async addComment(suggestionId, commentText, user) {
+        if (!commentText || !commentText.trim()) return false;
+
+        const comment = {
+            id: `comment_${Date.now()}`,
+            text: commentText,
+            userId: user.uid,
+            userName: user.displayName || user.email,
+            userAvatar: user.photoURL || null,
+            createdAt: new Date().toISOString()
+        };
+
+        if (!window.firebaseDb) {
+            return this.addCommentToLocalStorage(suggestionId, comment);
+        }
+
+        try {
+            const { doc, updateDoc, arrayUnion } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            
+            await updateDoc(doc(window.firebaseDb, 'articleSuggestions', suggestionId), {
+                comments: arrayUnion(comment)
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('コメントの追加エラー:', error);
+            return this.addCommentToLocalStorage(suggestionId, comment);
+        }
+    }
+
+    /**
+     * localStorageにコメントを追加
+     */
+    addCommentToLocalStorage(suggestionId, comment) {
+        const suggestions = JSON.parse(localStorage.getItem('articleSuggestions') || '[]');
+        const index = suggestions.findIndex(s => s.id === suggestionId);
+        
+        if (index !== -1) {
+            if (!suggestions[index].comments) {
+                suggestions[index].comments = [];
+            }
+            suggestions[index].comments.push(comment);
+            localStorage.setItem('articleSuggestions', JSON.stringify(suggestions));
+            return true;
+        }
+        return false;
+    }
 }
 
 // グローバルインスタンス
@@ -278,4 +331,3 @@ let editHistoryManager;
 document.addEventListener('DOMContentLoaded', () => {
     editHistoryManager = new EditHistoryManager();
 });
-

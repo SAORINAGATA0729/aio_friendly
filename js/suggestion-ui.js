@@ -122,7 +122,8 @@ class SuggestionUIManager {
             // 提案ステータスを承認済みに更新
             const success = await editHistoryManager.approveSuggestion(suggestionId);
             if (success) {
-                alert('提案を承認し、変更を反映しました');
+                if (typeof showToast === 'function') showToast('提案を承認し、変更を反映しました', 'success');
+                else alert('提案を承認し、変更を反映しました');
                 await this.renderSuggestions(this.currentArticleId);
             } else {
                 alert('提案の承認ステータス更新に失敗しました');
@@ -144,7 +145,8 @@ class SuggestionUIManager {
         try {
             const success = await editHistoryManager.rejectSuggestion(suggestionId);
             if (success) {
-                alert('提案を却下しました');
+                if (typeof showToast === 'function') showToast('提案を却下しました', 'success');
+                else alert('提案を却下しました');
                 await this.renderSuggestions(this.currentArticleId);
             } else {
                 alert('提案の却下に失敗しました');
@@ -184,6 +186,9 @@ class SuggestionUIManager {
         const modal = document.createElement('div');
         modal.id = 'diffModal';
         modal.className = 'modal active';
+        
+        const commentsHtml = this.renderComments(suggestion);
+
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
                 <div class="modal-header">
@@ -192,7 +197,7 @@ class SuggestionUIManager {
                         <span class="material-icons-round">close</span>
                     </button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column;">
                     <div style="margin-bottom: 1rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                             ${suggestion.userAvatar ? 
@@ -210,8 +215,23 @@ class SuggestionUIManager {
                             </div>
                         </div>
                     </div>
-                    <div id="diffContent" style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;">
-                        ${this.renderDiff(suggestion.diff)}
+                    
+                    <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1rem;">変更内容（赤：削除、緑：追加）</h4>
+                    <div id="diffContent" class="diff-content" style="background: white; padding: 1.5rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; font-size: 1rem; line-height: 1.8; white-space: pre-wrap; overflow-y: auto; max-height: 400px; margin-bottom: 1.5rem;">
+                        ${this.renderVisualDiff(suggestion.originalContent, suggestion.newContent)}
+                    </div>
+
+                    <div class="suggestion-comments">
+                        <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem;">コメント・やり取り</h4>
+                        <div id="commentList_${suggestion.id}" class="comment-list">
+                            ${commentsHtml}
+                        </div>
+                        <div class="comment-input-area">
+                            <input type="text" id="commentInput_${suggestion.id}" class="comment-input" placeholder="コメントを入力...">
+                            <button onclick="suggestionUIManager.submitComment('${suggestion.id}')" class="comment-submit-btn">
+                                <span class="material-icons-round">send</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -221,40 +241,86 @@ class SuggestionUIManager {
     }
 
     /**
-     * 差分をレンダリング
+     * 視覚的な差分レンダリング（赤字・取り消し線 / 緑字・太字）
      */
-    renderDiff(diff) {
-        if (!diff || !diff.changes || diff.changes.length === 0) {
-            return '<div style="color: #6b7280;">変更はありません</div>';
-        }
-
+    renderVisualDiff(original, modified) {
+        // 簡易的な差分アルゴリズム（本来はdiff-match-patchなどのライブラリ推奨）
+        // ここでは行単位ではなく、より詳細な比較を行いたいが、実装コストとの兼ね合いで
+        // 行単位のロジックをベースに、表示だけカスタマイズする
+        
+        // 注: 本当の文字単位Diffは複雑なので、簡易的に行単位で処理し、
+        // 変更箇所（modified）の場合は、古い行を赤で、新しい行を緑で表示する
+        
+        const diff = editHistoryManager.calculateDiff(original, modified);
+        
         return diff.changes.map(change => {
             if (change.type === 'added') {
-                return `<div style="background: #d1fae5; padding: 0.25rem 0.5rem; margin: 0.25rem 0; border-left: 3px solid #10b981;">
-                    <span style="color: #10b981; font-weight: 600;">+</span> ${this.escapeHtml(change.modifiedLine)}
-                </div>`;
+                return `<ins>${this.escapeHtml(change.modifiedLine)}</ins>\n`;
             } else if (change.type === 'deleted') {
-                return `<div style="background: #fee2e2; padding: 0.25rem 0.5rem; margin: 0.25rem 0; border-left: 3px solid #ef4444;">
-                    <span style="color: #ef4444; font-weight: 600;">-</span> ${this.escapeHtml(change.originalLine)}
-                </div>`;
+                return `<del>${this.escapeHtml(change.originalLine)}</del>\n`;
             } else if (change.type === 'modified') {
-                return `
-                    <div style="background: #fee2e2; padding: 0.25rem 0.5rem; margin: 0.25rem 0; border-left: 3px solid #ef4444;">
-                        <span style="color: #ef4444; font-weight: 600;">-</span> ${this.escapeHtml(change.originalLine)}
-                    </div>
-                    <div style="background: #d1fae5; padding: 0.25rem 0.5rem; margin: 0.25rem 0; border-left: 3px solid #10b981;">
-                        <span style="color: #10b981; font-weight: 600;">+</span> ${this.escapeHtml(change.modifiedLine)}
-                    </div>
-                `;
+                // 変更があった行は、削除された行と追加された行を並べて表示
+                return `<del>${this.escapeHtml(change.originalLine)}</del>\n<ins>${this.escapeHtml(change.modifiedLine)}</ins>\n`;
+            } else {
+                // 変更なし
+                return `<span>${this.escapeHtml(change.originalLine)}</span>\n`;
             }
-            return '';
         }).join('');
+    }
+
+    /**
+     * コメントリストをレンダリング
+     */
+    renderComments(suggestion) {
+        if (!suggestion.comments || suggestion.comments.length === 0) {
+            return '<div style="font-size: 0.85rem; color: #9ca3af; text-align: center; padding: 0.5rem;">コメントはまだありません</div>';
+        }
+
+        return suggestion.comments.map(comment => `
+            <div class="comment-item">
+                <div class="comment-user">${comment.userName} <span style="font-weight:normal; color:#9ca3af; font-size:0.7rem; margin-left:0.5rem;">${new Date(comment.createdAt).toLocaleString('ja-JP')}</span></div>
+                <div class="comment-text">${this.escapeHtml(comment.text)}</div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * コメントを送信
+     */
+    async submitComment(suggestionId) {
+        const input = document.getElementById(`commentInput_${suggestionId}`);
+        const text = input.value;
+        
+        if (!text.trim()) return;
+        
+        if (!authManager.isAuthenticated()) {
+            alert('コメントするにはログインが必要です');
+            return;
+        }
+
+        const user = authManager.getCurrentUser();
+        const success = await editHistoryManager.addComment(suggestionId, text, user);
+        
+        if (success) {
+            input.value = '';
+            // コメントリストを再描画するために現在の提案データを再取得
+            const suggestions = await editHistoryManager.getSuggestions(this.currentArticleId);
+            const suggestion = suggestions.find(s => s.id === suggestionId);
+            
+            const commentList = document.getElementById(`commentList_${suggestionId}`);
+            if (commentList && suggestion) {
+                commentList.innerHTML = this.renderComments(suggestion);
+            }
+        } else {
+            alert('コメントの送信に失敗しました');
+        }
     }
 
     /**
      * HTMLエスケープ
      */
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -268,4 +334,3 @@ let suggestionUIManager;
 document.addEventListener('DOMContentLoaded', () => {
     suggestionUIManager = new SuggestionUIManager();
 });
-
