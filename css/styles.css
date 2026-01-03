@@ -637,6 +637,59 @@ tr:last-child td {
     gap: 1rem;
     flex-wrap: wrap;
     z-index: 10;
+    position: relative; /* 検索バーの基準位置 */
+}
+
+/* 検索バー */
+.search-bar {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.search-nav-btn,
+.search-close-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    min-width: 32px;
+    height: 32px;
+}
+
+.search-nav-btn:hover,
+.search-close-btn:hover {
+    background: #f3f4f6;
+    color: var(--text-primary);
+}
+
+.search-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: center;
 }
 
 /* エディタモードタブ */
