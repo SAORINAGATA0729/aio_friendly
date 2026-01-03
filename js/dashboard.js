@@ -1502,9 +1502,12 @@ class Dashboard {
             return;
         }
 
-        const article = this.progressData.articles.find(a => a.id === articleId);
+        // IDの型を統一してマッチング（文字列と数値の両方に対応）
+        const article = this.progressData.articles.find(a => 
+            String(a.id) === String(articleId) || a.id === articleId
+        );
         if (!article) {
-            console.error('記事が見つかりません:', articleId);
+            console.error('記事が見つかりません:', articleId, '利用可能なID:', this.progressData.articles.map(a => a.id));
             // #region agent log
             fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:1396',message:'article not found',data:{articleId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
             // #endregion
@@ -2435,9 +2438,12 @@ class Dashboard {
             statusSelect.addEventListener('change', async (e) => {
                 e.stopPropagation();
                 const newStatus = e.target.value;
+                console.log('📝 ステータス変更イベント（個別）:', { articleId: article.id, newStatus });
                 await this.updateArticleStatus(article.id, newStatus);
                 // 進捗状況を更新
-                this.updateProgressFromArticles(this.progressData.articles);
+                if (this.progressData && this.progressData.articles) {
+                    this.updateProgressFromArticles(this.progressData.articles);
+                }
             });
         }
         return item;
@@ -2876,14 +2882,17 @@ class Dashboard {
             articleList.addEventListener('change', async (e) => {
                 if (e.target.classList.contains('article-status-select')) {
                     e.stopPropagation();
-                    const articleId = parseInt(e.target.dataset.articleId);
+                    // parseIntを削除して、文字列のまま比較（IDが文字列の場合もあるため）
+                    const articleId = e.target.dataset.articleId;
                     const newStatus = e.target.value;
+                    console.log('📝 ステータス変更イベント（委譲）:', { articleId, newStatus });
                     await this.updateArticleStatus(articleId, newStatus);
                 }
                 // ブランド変更
                 if (e.target.classList.contains('article-brand-select')) {
                     e.stopPropagation();
-                    const articleId = parseInt(e.target.dataset.articleId);
+                    // parseIntを削除して、文字列のまま比較
+                    const articleId = e.target.dataset.articleId;
                     const newBrand = e.target.value;
                     await this.updateArticleBrand(articleId, newBrand);
                 }
