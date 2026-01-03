@@ -2225,6 +2225,11 @@ class Dashboard {
 
         const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
         const scoreLevel = score.level.toLowerCase();
+        const scoreValue = score.total || 0;
+        const rankColor = scoreLevel === 's' ? '#10b981' : 
+                         scoreLevel === 'a' ? '#3b82f6' : 
+                         scoreLevel === 'b' ? '#f59e0b' : 
+                         scoreLevel === 'c' ? '#ef4444' : '#6b7280';
 
         item.innerHTML = `
             <div class="article-info">
@@ -2259,20 +2264,34 @@ class Dashboard {
                     ${article.citationCount || 0}
                 </span>
             </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
                 <span class="article-score-display" data-article-id="${article.id}" 
                     style="
                         padding: 0.3rem 0.5rem;
                         border-radius: 0.4rem;
-                        border: 1px solid var(--border-color);
-                        background: #f3f4f6;
-                        color: var(--text-primary);
+                        border: 2px solid ${rankColor};
+                        background: ${rankColor}15;
+                        color: ${rankColor};
                         font-size: 0.85rem;
-                        font-weight: 600;
+                        font-weight: 700;
                         text-align: center;
-                        min-width: 50px;
+                        min-width: 60px;
                     ">
-                    ランク ${score.level || 'C'}
+                    ${scoreValue}点
+                </span>
+                <span class="article-rank-display" data-article-id="${article.id}" 
+                    style="
+                        padding: 0.3rem 0.5rem;
+                        border-radius: 0.4rem;
+                        border: 2px solid ${rankColor};
+                        background: ${rankColor};
+                        color: white;
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        text-align: center;
+                        min-width: 40px;
+                    ">
+                    ${score.level || 'C'}
                 </span>
             </div>
         `;

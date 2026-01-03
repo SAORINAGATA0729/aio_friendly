@@ -3111,6 +3111,11 @@ ${article.keyword}について、重要なポイントをまとめました。
         const score = Math.round((checkedCount / totalItems) * 100);
         const rank = this.getRank(score);
         
+        // 現在の記事にスコアとランクを保存
+        if (this.currentArticle) {
+            this.saveArticleScore(score, rank);
+        }
+        
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1097',message:'updateScore: Calculated score',data:{score:score,rank:rank,checkedCount:checkedCount,totalItems:totalItems},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
@@ -3305,6 +3310,40 @@ ${article.keyword}について、重要なポイントをまとめました。
         if (score >= 70) return 'B';
         if (score >= 60) return 'C';
         return 'D';
+    }
+    
+    /**
+     * 記事のスコアとランクを保存
+     */
+    saveArticleScore(score, rank) {
+        if (!this.currentArticle) return;
+        
+        // プランデータから記事を取得
+        const plans = JSON.parse(localStorage.getItem('plans') || '[]');
+        const currentPlan = plans.find(p => {
+            return p.articles && p.articles.some(a => a.id === this.currentArticle.id);
+        });
+        
+        if (currentPlan && currentPlan.articles) {
+            const article = currentPlan.articles.find(a => a.id === this.currentArticle.id);
+            if (article) {
+                if (!article.scores) {
+                    article.scores = {};
+                }
+                article.scores.after = {
+                    total: score,
+                    level: rank
+                };
+                
+                // プランデータを保存
+                localStorage.setItem('plans', JSON.stringify(plans));
+                
+                // ダッシュボードの記事一覧を更新
+                if (typeof window.dashboard !== 'undefined' && window.dashboard.renderArticleList) {
+                    window.dashboard.renderArticleList();
+                }
+            }
+        }
     }
 
     getCurrentContent() {
