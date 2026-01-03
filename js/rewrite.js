@@ -2906,6 +2906,22 @@ ${article.keyword}について、重要なポイントをまとめました。
         return html;
     }
 
+    /**
+     * モーダルを閉じる
+     */
+    closeModal() {
+        const modal = document.getElementById('rewriteModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        
+        // フロートボタンを非表示
+        const floatButtons = document.getElementById('suggestionFloatButtons');
+        if (floatButtons) {
+            floatButtons.style.display = 'none';
+        }
+    }
+
     async saveArticle() {
         if (!this.currentArticle) {
             alert('記事が選択されていません');
