@@ -3284,10 +3284,6 @@ class Dashboard {
         });
     }
 
-    renderCheckChart(current, metrics2weeks, metrics3weeks) {
-        // Recordタブではチャートを表示しないため空実装（Reportタブへ移動）
-    }
-
     formatDateTimeLocal(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -3297,12 +3293,19 @@ class Dashboard {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
+    formatDateShort(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
     // ========== Report機能 ==========
 
     setupReportTab() {
         const reportPlanSelect = document.getElementById('reportPlanSelect');
-        const generateReportBtn = document.getElementById('generateReportBtn');
         const exportReportPdfBtn = document.getElementById('exportReportPdfBtn');
+        const exportReportHtmlBtn = document.getElementById('exportReportHtmlBtn');
 
         this.updateReportPlanSelect();
 
@@ -3324,15 +3327,15 @@ class Dashboard {
             });
         }
 
-        if (generateReportBtn) {
-            generateReportBtn.addEventListener('click', () => {
-                this.generateReport();
-            });
-        }
-
         if (exportReportPdfBtn) {
             exportReportPdfBtn.addEventListener('click', () => {
                 this.exportReportPdf();
+            });
+        }
+
+        if (exportReportHtmlBtn) {
+            exportReportHtmlBtn.addEventListener('click', () => {
+                this.exportReportHtml();
             });
         }
     }
@@ -3355,7 +3358,7 @@ class Dashboard {
         const planSelect = document.getElementById('reportPlanSelect');
         const planId = planSelect?.value;
         if (!planId) {
-            alert('プランを選択してください');
+            // アラートは出さない（初期表示時など）
             return;
         }
 
@@ -3421,6 +3424,10 @@ class Dashboard {
 
         const w2 = data?.metrics2weeks || {};
         const w3 = data?.metrics3weeks || {};
+        
+        // 日付フォーマット
+        const date2w = this.formatDateShort(data?.measurement2weeks);
+        const date3w = this.formatDateShort(data?.measurement3weeks);
 
         const metrics = [
             { key: 'aioCitations', label: 'AIO引用数' },
@@ -3435,8 +3442,14 @@ class Dashboard {
                     <tr style="background: #f3f4f6;">
                         <th style="padding: 1rem; text-align: left;">指標</th>
                         <th style="padding: 1rem; text-align: right;">Before (現状)</th>
-                        <th style="padding: 1rem; text-align: right;">After (2週間後)</th>
-                        <th style="padding: 1rem; text-align: right;">After (3週間後)</th>
+                        <th style="padding: 1rem; text-align: right;">
+                            After (2週間後)<br>
+                            <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">${date2w}</span>
+                        </th>
+                        <th style="padding: 1rem; text-align: right;">
+                            After (3週間後)<br>
+                            <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">${date3w}</span>
+                        </th>
                         <th style="padding: 1rem; text-align: right;">変化率</th>
                     </tr>
                 </thead>
@@ -3532,7 +3545,27 @@ class Dashboard {
         const container = document.getElementById('articlePerformanceTable');
         if (!container) return;
 
-        const articles = data?.articleMetrics3weeks?.length > 0 ? data.articleMetrics3weeks : (data?.articleMetrics2weeks || []);
+        // データ統合 (URLまたは名前でマッチング)
+        const articlesMap = {};
+        
+        // Before (Planから) - 今回は簡易的にURLのみの場合が多いが、metricsがあれば使う
+        // ※記事ごとのBefore数値は現状保存されていないケースが多いので、その場合は空
+        
+        // 2週間後
+        (data?.articleMetrics2weeks || []).forEach(a => {
+            const key = a.url || a.name;
+            if (!articlesMap[key]) articlesMap[key] = { name: a.name, url: a.url };
+            articlesMap[key].w2 = a;
+        });
+        
+        // 3週間後
+        (data?.articleMetrics3weeks || []).forEach(a => {
+            const key = a.url || a.name;
+            if (!articlesMap[key]) articlesMap[key] = { name: a.name, url: a.url };
+            articlesMap[key].w3 = a;
+        });
+        
+        const articles = Object.values(articlesMap);
         
         if (articles.length === 0) {
             container.innerHTML = '<p style="padding: 1rem; color: #6b7280;">記事ごとの詳細データがありません。</p>';
@@ -3540,27 +3573,46 @@ class Dashboard {
         }
 
         let html = `
-            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
                 <thead>
                     <tr style="background: #f3f4f6;">
-                        <th style="padding: 0.75rem; text-align: left;">記事名/URL</th>
-                        <th style="padding: 0.75rem; text-align: right;">クリック数</th>
-                        <th style="padding: 0.75rem; text-align: right;">表示回数</th>
-                        <th style="padding: 0.75rem; text-align: right;">CTR</th>
-                        <th style="padding: 0.75rem; text-align: right;">順位</th>
+                        <th style="padding: 0.75rem; text-align: left;">記事名</th>
+                        <th style="padding: 0.75rem; text-align: center;">順位 (2w → 3w)</th>
+                        <th style="padding: 0.75rem; text-align: center;">クリック (2w → 3w)</th>
+                        <th style="padding: 0.75rem; text-align: center;">AIO (2w → 3w)</th>
+                        <th style="padding: 0.75rem; text-align: center;">CTR (2w → 3w)</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
         articles.forEach(a => {
+            const w2 = a.w2 || {};
+            const w3 = a.w3 || {};
+            
+            // 順位
+            const pos2 = w2.position || '-';
+            const pos3 = w3.position || '-';
+            // クリック
+            const clk2 = w2.clicks || '-';
+            const clk3 = w3.clicks || '-';
+            // AIO (記事ごとのAIOカウントがあれば) - 現状のカラムにはない？
+            // カラム: name, clicks, impressions, ctr, position. AIOはない。
+            // なのでクリックや順位を表示。
+            // インプレッション
+            const imp2 = w2.impressions || '-';
+            const imp3 = w3.impressions || '-';
+            // CTR
+            const ctr2 = w2.ctr ? w2.ctr + '%' : '-';
+            const ctr3 = w3.ctr ? w3.ctr + '%' : '-';
+
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
-                    <td style="padding: 0.75rem; text-align: right;">${a.clicks || 0}</td>
-                    <td style="padding: 0.75rem; text-align: right;">${a.impressions || 0}</td>
-                    <td style="padding: 0.75rem; text-align: right;">${a.ctr || 0}%</td>
-                    <td style="padding: 0.75rem; text-align: right;">${a.position || 0}</td>
+                    <td style="padding: 0.75rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
+                    <td style="padding: 0.75rem; text-align: center;">${pos2} → <strong>${pos3}</strong></td>
+                    <td style="padding: 0.75rem; text-align: center;">${clk2} → <strong>${clk3}</strong></td>
+                    <td style="padding: 0.75rem; text-align: center;">${imp2} → <strong>${imp3}</strong> (Imp)</td>
+                    <td style="padding: 0.75rem; text-align: center;">${ctr2} → <strong>${ctr3}</strong></td>
                 </tr>
             `;
         });
@@ -3576,12 +3628,13 @@ class Dashboard {
         }
 
         const element = document.getElementById('reportTab');
-        const generateBtn = document.getElementById('generateReportBtn');
-        const exportBtn = document.getElementById('exportReportPdfBtn');
+        const exportHtmlBtn = document.getElementById('exportReportHtmlBtn');
+        const exportPdfBtn = document.getElementById('exportReportPdfBtn');
         const planSelect = document.querySelector('.form-group');
 
-        if (generateBtn) generateBtn.style.display = 'none';
-        if (exportBtn) exportBtn.style.display = 'none';
+        // 一時的に不要な要素を隠す
+        if (exportHtmlBtn) exportHtmlBtn.style.display = 'none';
+        if (exportPdfBtn) exportPdfBtn.style.display = 'none';
         if (planSelect) planSelect.style.display = 'none';
 
         const opt = {
@@ -3593,16 +3646,65 @@ class Dashboard {
         };
 
         html2pdf().set(opt).from(element).save().then(() => {
-            if (generateBtn) generateBtn.style.display = 'block';
-            if (exportBtn) exportBtn.style.display = 'inline-block';
+            // 元に戻す
+            if (exportHtmlBtn) exportHtmlBtn.style.display = 'inline-block';
+            if (exportPdfBtn) exportPdfBtn.style.display = 'inline-block';
             if (planSelect) planSelect.style.display = 'block';
         }).catch(err => {
             console.error('PDF出力エラー:', err);
             alert('PDFの出力に失敗しました。');
-            if (generateBtn) generateBtn.style.display = 'block';
-            if (exportBtn) exportBtn.style.display = 'inline-block';
+            if (exportHtmlBtn) exportHtmlBtn.style.display = 'inline-block';
+            if (exportPdfBtn) exportPdfBtn.style.display = 'inline-block';
             if (planSelect) planSelect.style.display = 'block';
         });
+    }
+
+    exportReportHtml() {
+        const reportContent = document.getElementById('reportContent');
+        if (!reportContent) {
+            alert('レポートが表示されていません');
+            return;
+        }
+        
+        // 現在のHTMLを取得（グラフはcanvasなのでimgタグに変換する必要があるが、簡易版としてテキスト/表のみ）
+        // 完全な再現は難しいので、最低限のスタイルを含めたHTMLを作成
+        
+        const contentHtml = reportContent.innerHTML;
+        const style = `
+            <style>
+                body { font-family: "Helvetica Neue", Arial, sans-serif; padding: 2rem; color: #333; }
+                h1, h2, h3 { color: #111; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+                table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+                th, td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+                th { background-color: #f9fafb; font-weight: 600; }
+                .chart-container { display: none; } /* グラフはHTMLエクスポートでは非表示（画像化困難なため） */
+                .btn { display: none; } /* ボタンは隠す */
+            </style>
+        `;
+        
+        const fullHtml = `
+            <!DOCTYPE html>
+            <html lang="ja">
+            <head>
+                <meta charset="UTF-8">
+                <title>AIO Report</title>
+                ${style}
+            </head>
+            <body>
+                <h1>AIO改善レポート</h1>
+                ${contentHtml}
+                <p style="margin-top: 2rem; font-size: 0.8rem; color: #666;">※グラフはPDF版でのみ表示されます。</p>
+            </body>
+            </html>
+        `;
+        
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `aio_report_${new Date().toISOString().split('T')[0]}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 }
 

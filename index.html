@@ -404,14 +404,6 @@
                     </select>
                 </div>
 
-                <!-- レポート生成ボタン -->
-                <div style="margin-bottom: 2rem;">
-                    <button id="generateReportBtn" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
-                        <span class="material-icons-round">description</span>
-                        レポートを生成
-                    </button>
-                </div>
-
                 <!-- レポート表示エリア -->
                 <div id="reportContent" style="display: none;">
                     <!-- エグゼクティブサマリー -->
@@ -456,8 +448,12 @@
                         </div>
                     </section>
 
-                    <!-- PDFエクスポートボタン -->
-                    <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e5e7eb;">
+                    <!-- エクスポートボタン -->
+                    <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e5e7eb; display: flex; justify-content: center; gap: 1rem;">
+                        <button id="exportReportHtmlBtn" class="btn btn-secondary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
+                            <span class="material-icons-round">code</span>
+                            HTMLでダウンロード
+                        </button>
                         <button id="exportReportPdfBtn" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
                             <span class="material-icons-round">picture_as_pdf</span>
                             PDFでダウンロード
