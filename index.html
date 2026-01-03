@@ -113,9 +113,13 @@
                     <span class="material-icons-round">edit</span>
                     Do
                 </button>
-                <button class="pdca-tab" data-tab="check">
+                <button class="pdca-tab" data-tab="record">
                     <span class="material-icons-round">assessment</span>
-                    Check
+                    Record
+                </button>
+                <button class="pdca-tab" data-tab="report">
+                    <span class="material-icons-round">description</span>
+                    Report
                 </button>
             </div>
 
@@ -193,14 +197,14 @@
                 </div>
             </div>
 
-            <!-- Checkタブコンテンツ -->
-            <div id="checkTab" class="tab-content">
-                <h2>Check <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">検証 & モニタリング</span></h2>
+            <!-- Recordタブコンテンツ -->
+            <div id="recordTab" class="tab-content">
+                <h2>Record <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">検証 & モニタリング</span></h2>
                 
                 <!-- プラン選択 -->
                 <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid var(--border-color);">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">プランニングシートを選択</label>
-                    <select id="checkPlanSelect" style="width: 100%; max-width: 500px; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.9rem; background: white;">
+                    <select id="recordPlanSelect" style="width: 100%; max-width: 500px; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.9rem; background: white;">
                         <option value="">プランを選択してください</option>
                     </select>
                 </div>
@@ -208,7 +212,7 @@
                 <!-- 計測日設定 -->
                 <div class="monitoring-section" style="margin-bottom: 2rem;">
                     <h3>計測日設定</h3>
-                    <form id="checkDateForm">
+                    <form id="recordDateForm">
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="publishDate">公開完了日 *</label>
@@ -227,7 +231,7 @@
                 </div>
 
                 <!-- 数値入力セクション -->
-                <div class="monitoring-section" id="checkMetricsSection" style="display: none;">
+                <div class="monitoring-section" id="recordMetricsSection" style="display: none;">
                     <h3>数値入力</h3>
                     
                     <!-- 現状数値（プランから引き継ぎ） -->
@@ -372,57 +376,92 @@
                     </div>
 
                     <div style="text-align: right; margin-bottom: 2rem;">
-                        <button type="button" id="saveCheckDataBtn" class="btn btn-primary">
+                        <button type="button" id="saveRecordDataBtn" class="btn btn-primary">
                             <span class="material-icons-round">save</span>
                             データを保存
                         </button>
                     </div>
                 </div>
 
-                <!-- 結果表示セクション -->
-                <div id="checkResultsSection" style="display: none;">
-                    <!-- 数値比較表 -->
-                    <div class="comparison-section" style="margin-bottom: 2rem;">
-                        <h3>数値比較表</h3>
-                        <div style="overflow-x: auto;">
-                            <table id="metricsComparisonTable" style="width: 100%; border-collapse: collapse; background: white; border-radius: 0.5rem; overflow: hidden;">
-                                <thead>
-                                    <tr style="background: #f9fafb; border-bottom: 2px solid var(--border-color);">
-                                        <th style="padding: 1rem; text-align: left; font-weight: 600;">指標</th>
-                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">現状</th>
-                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">2週間後</th>
-                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">3週間後</th>
-                                        <th style="padding: 1rem; text-align: right; font-weight: 600;">変化率（3週間後）</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="metricsComparisonBody">
-                                    <!-- 動的に生成される -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <!-- 結果表示セクション（Recordタブでは簡易表示のみ、詳細はReportタブへ） -->
+                <div id="recordResultsSection" style="display: none; padding: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.5rem; color: #166534;">
+                    <p style="margin: 0; display: flex; align-items: center;">
+                        <span class="material-icons-round" style="margin-right: 0.5rem;">check_circle</span>
+                        データが保存されました。「Report」タブで詳細な分析結果を確認できます。
+                    </p>
+                </div>
+            </div>
 
-                    <!-- グラフ表示 -->
-                    <div class="comparison-section" style="margin-bottom: 2rem;">
-                        <h3>数値変化グラフ</h3>
-                        <div class="chart-container">
-                            <canvas id="checkComparisonChart"></canvas>
-                        </div>
-                    </div>
+            <!-- Reportタブコンテンツ -->
+            <div id="reportTab" class="tab-content">
+                <h2>Report <span style="font-size: 1rem; color: #6b7280; font-weight: 500; margin-left: 10px;">レポート生成 & 分析</span></h2>
+                
+                <!-- プラン選択 -->
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="reportPlanSelect">対象プランを選択</label>
+                    <select id="reportPlanSelect" class="form-input" style="max-width: 500px;">
+                        <option value="">プランを選択してください</option>
+                    </select>
+                </div>
 
-                    <!-- レポート生成 -->
-                    <div class="report-section">
-                        <h3>レポート生成</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="generateCheckReportHtmlBtn" class="btn btn-primary">
-                                <span class="material-icons-round">description</span>
-                                HTMLレポートをダウンロード
-                            </button>
-                            <button id="generateCheckReportPdfBtn" class="btn btn-secondary" style="color: var(--text-primary);">
-                                <span class="material-icons-round">picture_as_pdf</span>
-                                PDFレポートをダウンロード
-                            </button>
+                <!-- レポート生成ボタン -->
+                <div style="margin-bottom: 2rem;">
+                    <button id="generateReportBtn" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
+                        <span class="material-icons-round">description</span>
+                        レポートを生成
+                    </button>
+                </div>
+
+                <!-- レポート表示エリア -->
+                <div id="reportContent" style="display: none;">
+                    <!-- エグゼクティブサマリー -->
+                    <section id="executiveSummary" style="margin-bottom: 3rem;">
+                        <h3>エグゼクティブサマリー</h3>
+                        <div id="executiveSummaryContent" style="background: #f8f9fa; padding: 2rem; border-radius: 12px; border-left: 5px solid #3498db;">
+                            <!-- AI推察が表示される -->
                         </div>
+                    </section>
+
+                    <!-- 数値結果 -->
+                    <section id="metricsResults" style="margin-bottom: 3rem;">
+                        <h3>数値結果</h3>
+                        
+                        <!-- 数値比較表 -->
+                        <div id="metricsComparisonTable" style="margin-bottom: 2rem;">
+                            <!-- 表が動的に生成される -->
+                        </div>
+
+                        <!-- 数値変化グラフ（2x2） -->
+                        <div id="metricsCharts" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                            <div class="chart-container">
+                                <canvas id="aioChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="rankingChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="trafficChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="brandChart"></canvas>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 記事ごとのパフォーマンス -->
+                    <section id="articlePerformance" style="margin-bottom: 3rem;">
+                        <h3>記事ごとのパフォーマンス</h3>
+                        <div id="articlePerformanceTable">
+                            <!-- 記事ごとのパフォーマンス表が動的に生成される -->
+                        </div>
+                    </section>
+
+                    <!-- PDFエクスポートボタン -->
+                    <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 2px solid #e5e7eb;">
+                        <button id="exportReportPdfBtn" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 2rem;">
+                            <span class="material-icons-round">picture_as_pdf</span>
+                            PDFでダウンロード
+                        </button>
                     </div>
                 </div>
             </div>

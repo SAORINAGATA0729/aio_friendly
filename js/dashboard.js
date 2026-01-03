@@ -32,7 +32,8 @@ class Dashboard {
         this.setupEvidenceManagement();
         this.setupPlanManagement();
         this.setupPlanSelection();
-        this.setupCheckTab();
+        this.setupRecordTab();
+        this.setupReportTab();
         
         this.updateDashboard();
         this.renderBaseline();
@@ -1591,8 +1592,10 @@ class Dashboard {
             } else if (tabName === 'plan') {
                 // Planタブが選択されたらプラン一覧を表示
                 this.renderPlans();
-            } else if (tabName === 'check') {
-                // CheckタブはsetupCheckTabで処理される
+            } else if (tabName === 'record') {
+                // RecordタブはsetupRecordTabで処理される
+            } else if (tabName === 'report') {
+                // ReportタブはsetupReportTabで処理される
             }
         }, 200);
     }
@@ -2979,55 +2982,74 @@ class Dashboard {
         await this.loadCheckData(planId);
     }
 
-    async loadCheckData(planId) {
-        const checkData = localStorage.getItem(`checkData_${planId}`);
-        if (checkData) {
+    async loadRecordData(planId) {
+        // 互換性のため checkData_ を使用
+        const recordData = localStorage.getItem(`checkData_${planId}`);
+        if (recordData) {
             try {
-                const data = JSON.parse(checkData);
+                const data = JSON.parse(recordData);
                 
                 // 計測日を復元
                 if (data.publishDate) {
-                    document.getElementById('publishDate').value = data.publishDate;
-                    // 計測日の自動計算をトリガー
-                    const event = new Event('change');
-                    document.getElementById('publishDate').dispatchEvent(event);
+                    const el = document.getElementById('publishDate');
+                    if (el) {
+                        el.value = data.publishDate;
+                        // 計測日の自動計算をトリガー
+                        const event = new Event('change');
+                        el.dispatchEvent(event);
+                    }
                 }
                 
                 // 2週間後の数値を復元
                 if (data.metrics2weeks) {
-                    document.getElementById('metrics2weeksAioCitations').value = data.metrics2weeks.aioCitations ?? '';
-                    document.getElementById('metrics2weeksAvgRanking').value = data.metrics2weeks.avgRanking ?? '';
-                    document.getElementById('metrics2weeksTraffic').value = data.metrics2weeks.traffic ?? '';
-                    document.getElementById('metrics2weeksBrandClicks').value = data.metrics2weeks.brandClicks ?? '';
+                    const m2w = data.metrics2weeks;
+                    const elAio = document.getElementById('metrics2weeksAioCitations');
+                    const elRank = document.getElementById('metrics2weeksAvgRanking');
+                    const elTraffic = document.getElementById('metrics2weeksTraffic');
+                    const elBrand = document.getElementById('metrics2weeksBrandClicks');
+                    
+                    if (elAio) elAio.value = m2w.aioCitations ?? '';
+                    if (elRank) elRank.value = m2w.avgRanking ?? '';
+                    if (elTraffic) elTraffic.value = m2w.traffic ?? '';
+                    if (elBrand) elBrand.value = m2w.brandClicks ?? '';
                     
                     // 2週間後の記事ごとの数値を復元
                     if (data.articleMetrics2weeks && data.articleMetrics2weeks.length > 0) {
-                        this.renderCheckArticleMetricsTable(data.articleMetrics2weeks, '2weeks');
+                        this.renderRecordArticleMetricsTable(data.articleMetrics2weeks, '2weeks');
                     }
                 }
                 
                 // 3週間後の数値を復元
                 if (data.metrics3weeks) {
-                    document.getElementById('metrics3weeksAioCitations').value = data.metrics3weeks.aioCitations ?? '';
-                    document.getElementById('metrics3weeksAvgRanking').value = data.metrics3weeks.avgRanking ?? '';
-                    document.getElementById('metrics3weeksTraffic').value = data.metrics3weeks.traffic ?? '';
-                    document.getElementById('metrics3weeksBrandClicks').value = data.metrics3weeks.brandClicks ?? '';
+                    const m3w = data.metrics3weeks;
+                    const elAio = document.getElementById('metrics3weeksAioCitations');
+                    const elRank = document.getElementById('metrics3weeksAvgRanking');
+                    const elTraffic = document.getElementById('metrics3weeksTraffic');
+                    const elBrand = document.getElementById('metrics3weeksBrandClicks');
+                    
+                    if (elAio) elAio.value = m3w.aioCitations ?? '';
+                    if (elRank) elRank.value = m3w.avgRanking ?? '';
+                    if (elTraffic) elTraffic.value = m3w.traffic ?? '';
+                    if (elBrand) elBrand.value = m3w.brandClicks ?? '';
                     
                     // 3週間後の記事ごとの数値を復元
                     if (data.articleMetrics3weeks && data.articleMetrics3weeks.length > 0) {
-                        this.renderCheckArticleMetricsTable(data.articleMetrics3weeks, '3weeks');
+                        this.renderRecordArticleMetricsTable(data.articleMetrics3weeks, '3weeks');
                     }
                 }
 
-                // 結果を表示
-                this.renderCheckResults(planId);
+                // 結果を表示（Recordタブでは簡易表示）
+                const recordResultsSection = document.getElementById('recordResultsSection');
+                if (recordResultsSection) {
+                    recordResultsSection.style.display = 'block';
+                }
             } catch (error) {
-                console.error('Checkデータの読み込みエラー:', error);
+                console.error('Recordデータの読み込みエラー:', error);
             }
         }
     }
 
-    importCheckCsvFile(file, period) {
+    importRecordCsvFile(file, period) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const csvText = e.target.result;
@@ -3256,55 +3278,7 @@ class Dashboard {
     }
 
     renderCheckChart(current, metrics2weeks, metrics3weeks) {
-        const canvas = document.getElementById('checkComparisonChart');
-        if (!canvas) return;
-
-        // Chart.jsが読み込まれているか確認
-        if (typeof Chart === 'undefined') {
-            console.warn('Chart.jsが読み込まれていません');
-            return;
-        }
-
-        const ctx = canvas.getContext('2d');
-        
-        // 既存のチャートを破棄
-        if (this.checkChart) {
-            this.checkChart.destroy();
-        }
-
-        const metrics = [
-            { key: 'aioCitations', label: 'AIO引用数' },
-            { key: 'avgRanking', label: '検索順位（平均）' },
-            { key: 'traffic', label: 'トラフィック（クリック数）' },
-            { key: 'brandClicks', label: 'ブランド認知度' }
-        ];
-
-        this.checkChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['現状', '2週間後', '3週間後'],
-                datasets: metrics.map((metric, index) => ({
-                    label: metric.label,
-                    data: [
-                        current[metric.key] || 0,
-                        metrics2weeks[metric.key] || 0,
-                        metrics3weeks[metric.key] || 0
-                    ],
-                    borderColor: `hsl(${index * 90}, 70%, 50%)`,
-                    backgroundColor: `hsla(${index * 90}, 70%, 50%, 0.1)`,
-                    tension: 0.4
-                }))
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
+        // Recordタブではチャートを表示しないため空実装（Reportタブへ移動）
     }
 
     formatDateTimeLocal(date) {
@@ -3316,22 +3290,121 @@ class Dashboard {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
 
-    generateCheckReportHtml() {
-        const checkPlanSelect = document.getElementById('checkPlanSelect');
-        const planId = checkPlanSelect.value;
+    // ========== Report機能 ==========
+
+    setupReportTab() {
+        const reportPlanSelect = document.getElementById('reportPlanSelect');
+        const generateReportBtn = document.getElementById('generateReportBtn');
+        const exportReportPdfBtn = document.getElementById('exportReportPdfBtn');
+
+        this.updateReportPlanSelect();
+
+        if (reportPlanSelect) {
+            reportPlanSelect.addEventListener('change', () => {
+                const planId = reportPlanSelect.value;
+                if (planId) {
+                    const checkData = localStorage.getItem(`checkData_${planId}`);
+                    if (checkData) {
+                        this.generateReport();
+                    } else {
+                        const reportContent = document.getElementById('reportContent');
+                        if (reportContent) reportContent.style.display = 'none';
+                    }
+                } else {
+                    const reportContent = document.getElementById('reportContent');
+                    if (reportContent) reportContent.style.display = 'none';
+                }
+            });
+        }
+
+        if (generateReportBtn) {
+            generateReportBtn.addEventListener('click', () => {
+                this.generateReport();
+            });
+        }
+
+        if (exportReportPdfBtn) {
+            exportReportPdfBtn.addEventListener('click', () => {
+                this.exportReportPdf();
+            });
+        }
+    }
+
+    updateReportPlanSelect() {
+        const reportPlanSelect = document.getElementById('reportPlanSelect');
+        if (!reportPlanSelect) return;
+
+        reportPlanSelect.innerHTML = '<option value="">プランを選択してください</option>';
+        
+        this.plans.forEach(plan => {
+            const option = document.createElement('option');
+            option.value = plan.id;
+            option.textContent = plan.name;
+            reportPlanSelect.appendChild(option);
+        });
+    }
+
+    async generateReport() {
+        const planSelect = document.getElementById('reportPlanSelect');
+        const planId = planSelect?.value;
         if (!planId) {
             alert('プランを選択してください');
             return;
         }
 
+        const reportContent = document.getElementById('reportContent');
+        if (reportContent) reportContent.style.display = 'block';
+
         const plan = this.plans.find(p => p.id === planId);
-        const checkData = localStorage.getItem(`checkData_${planId}`);
-        if (!checkData) {
-            alert('データが保存されていません');
-            return;
+        const savedData = localStorage.getItem(`checkData_${planId}`);
+        const data = savedData ? JSON.parse(savedData) : null;
+
+        await this.generateExecutiveSummary(plan, data);
+        this.generateMetricsComparisonTable(plan, data);
+        this.generateMetricsCharts(plan, data);
+        this.generateArticlePerformance(plan, data);
+    }
+
+    async generateExecutiveSummary(plan, data) {
+        const container = document.getElementById('executiveSummaryContent');
+        if (!container) return;
+
+        let summaryHtml = `
+            <p><strong>プラン名:</strong> ${plan.name}</p>
+            <p><strong>公開日:</strong> ${data?.publishDate ? new Date(data.publishDate).toLocaleDateString() : '未設定'}</p>
+        `;
+
+        if (data && data.metrics3weeks) {
+            const currentAio = parseFloat(plan.metrics?.aioCitations) || 0;
+            const week3Aio = parseFloat(data.metrics3weeks?.aioCitations) || 0;
+            const improvement = week3Aio - currentAio;
+            const isImproved = improvement > 0;
+            const sign = improvement > 0 ? '+' : '';
+
+            summaryHtml += `
+                <div style="margin-top: 1rem;">
+                    <h4 style="font-weight: bold; margin-bottom: 0.5rem;">📊 パフォーマンス概要</h4>
+                    <p>施策実行から3週間経過し、AIO引用数は <strong>${currentAio}</strong> から <strong>${week3Aio}</strong> へ推移しました (${sign}${improvement})。</p>
+                    <p>検索順位（平均）は <strong>${plan.metrics?.avgRanking || '-'}</strong> から <strong>${data.metrics3weeks?.avgRanking || '-'}</strong> となっています。</p>
+                    <div style="margin-top: 1rem; padding: 1rem; background: ${isImproved ? '#f0fdf4' : '#fff1f2'}; border-radius: 6px; border: 1px solid ${isImproved ? '#bbf7d0' : '#fecdd3'}; color: ${isImproved ? '#166534' : '#9f1239'};">
+                        <strong>🤖 AIインサイト:</strong><br>
+                        ${isImproved 
+                            ? '施策の効果が表れています。特にAIO引用数の増加は、コンテンツの信頼性が向上したことを示唆しています。今後はこの傾向を維持しつつ、トラフィックの質の向上に注力することをお勧めします。' 
+                            : '現時点では大きな改善が見られません。コンテンツの意図が検索クエリと完全に合致していない可能性があります。競合記事との差分分析を再度行い、リライト方針を見直すことを検討してください。'}
+                    </div>
+                </div>
+            `;
+        } else {
+            summaryHtml += '<p>十分なデータが記録されていません。Recordタブで3週間後の数値を入力してください。</p>';
         }
 
-        const data = JSON.parse(checkData);
+        container.innerHTML = summaryHtml;
+    }
+
+    generateMetricsComparisonTable(plan, data) {
+        const container = document.getElementById('metricsComparisonTable');
+        if (!container) return;
+
         const current = {
             aioCitations: parseFloat(plan.metrics?.aioCitations) || 0,
             avgRanking: parseFloat(plan.metrics?.avgRanking) || 0,
@@ -3339,90 +3412,190 @@ class Dashboard {
             brandClicks: parseFloat(plan.metrics?.brandClicks) || 0
         };
 
-        const html = `
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkレポート - ${plan.name}</title>
-    <style>
-        body { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; padding: 2rem; }
-        h1 { color: #1f2937; }
-        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-        th, td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; }
-        th { background: #f9fafb; font-weight: 600; }
-        .positive { color: #10b981; }
-        .negative { color: #ef4444; }
-    </style>
-</head>
-<body>
-    <h1>Checkレポート: ${plan.name}</h1>
-    <h2>計測日</h2>
-    <p>公開完了日: ${data.publishDate || '未設定'}</p>
-    <p>2週間後計測日: ${data.measurement2weeks || '未設定'}</p>
-    <p>3週間後計測日: ${data.measurement3weeks || '未設定'}</p>
-    
-    <h2>数値比較表</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>指標</th>
-                <th>現状</th>
-                <th>2週間後</th>
-                <th>3週間後</th>
-                <th>変化率（3週間後）</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${this.generateCheckReportTableRows(current, data.metrics2weeks || {}, data.metrics3weeks || {})}
-        </tbody>
-    </table>
-</body>
-</html>
-        `;
+        const w2 = data?.metrics2weeks || {};
+        const w3 = data?.metrics3weeks || {};
 
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `check_report_${plan.name}_${new Date().toISOString().split('T')[0]}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    generateCheckReportTableRows(current, metrics2weeks, metrics3weeks) {
         const metrics = [
             { key: 'aioCitations', label: 'AIO引用数' },
-            { key: 'avgRanking', label: '検索順位（平均）' },
-            { key: 'traffic', label: 'トラフィック（クリック数）' },
+            { key: 'avgRanking', label: '検索順位（平均）', reverse: true },
+            { key: 'traffic', label: 'トラフィック' },
             { key: 'brandClicks', label: 'ブランド認知度' }
         ];
 
-        return metrics.map(metric => {
-            const currentValue = current[metric.key] || 0;
-            const value2weeks = metrics2weeks[metric.key] || 0;
-            const value3weeks = metrics3weeks[metric.key] || 0;
-            const changeRate = currentValue !== 0 
-                ? ((value3weeks - currentValue) / currentValue * 100).toFixed(1)
-                : '0.0';
-            const changeClass = parseFloat(changeRate) >= 0 ? 'positive' : 'negative';
+        let html = `
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: #f3f4f6;">
+                        <th style="padding: 1rem; text-align: left;">指標</th>
+                        <th style="padding: 1rem; text-align: right;">Before (現状)</th>
+                        <th style="padding: 1rem; text-align: right;">After (2週間後)</th>
+                        <th style="padding: 1rem; text-align: right;">After (3週間後)</th>
+                        <th style="padding: 1rem; text-align: right;">変化率</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        metrics.forEach(m => {
+            const v1 = current[m.key];
+            const v2 = parseFloat(w2[m.key]) || 0;
+            const v3 = parseFloat(w3[m.key]) || 0;
             
-            return `
-                <tr>
-                    <td>${metric.label}</td>
-                    <td>${currentValue.toLocaleString()}</td>
-                    <td>${value2weeks.toLocaleString()}</td>
-                    <td>${value3weeks.toLocaleString()}</td>
-                    <td class="${changeClass}">${changeRate}%</td>
+            let changeRate = 0;
+            if (v1 !== 0 && v3 !== 0) {
+                changeRate = ((v3 - v1) / v1) * 100;
+            }
+            
+            const isPositive = m.reverse ? (v3 < v1 && v3 > 0) : (v3 > v1);
+            const isNeutral = v3 === 0 || v1 === 0;
+            
+            const colorStyle = isPositive ? 'color: #16a34a;' : (v3 === v1 ? 'color: #4b5563;' : 'color: #dc2626;');
+
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 1rem; font-weight: 500;">${m.label}</td>
+                    <td style="padding: 1rem; text-align: right;">${v1}</td>
+                    <td style="padding: 1rem; text-align: right;">${v2 || '-'}</td>
+                    <td style="padding: 1rem; text-align: right;">${v3 || '-'}</td>
+                    <td style="padding: 1rem; text-align: right; font-weight: bold; ${colorStyle}">
+                        ${isNeutral ? '-' : Math.abs(changeRate).toFixed(1) + '%'}
+                    </td>
                 </tr>
             `;
-        }).join('');
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     }
 
-    generateCheckReportPdf() {
-        alert('PDF生成機能は今後実装予定です');
-        // TODO: jsPDFやhtml2pdfなどのライブラリを使用してPDF生成
+    generateMetricsCharts(plan, data) {
+        if (typeof Chart === 'undefined') return;
+
+        const current = {
+            aioCitations: parseFloat(plan.metrics?.aioCitations) || 0,
+            avgRanking: parseFloat(plan.metrics?.avgRanking) || 0,
+            traffic: parseFloat(plan.metrics?.traffic) || 0,
+            brandClicks: parseFloat(plan.metrics?.brandClicks) || 0
+        };
+        const w2 = data?.metrics2weeks || {};
+        const w3 = data?.metrics3weeks || {};
+
+        const labels = ['Before', '2週間後', '3週間後'];
+        
+        const createChart = (canvasId, label, key, color) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: [current[key], parseFloat(w2[key]) || null, parseFloat(w3[key]) || null],
+                        borderColor: color,
+                        backgroundColor: color.replace('1)', '0.1)'),
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: label }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        };
+
+        createChart('aioChart', 'AIO引用数', 'aioCitations', 'rgba(59, 130, 246, 1)');
+        createChart('rankingChart', '検索順位 (低いほど良い)', 'avgRanking', 'rgba(16, 185, 129, 1)');
+        createChart('trafficChart', 'トラフィック', 'traffic', 'rgba(245, 158, 11, 1)');
+        createChart('brandChart', 'ブランド認知', 'brandClicks', 'rgba(139, 92, 246, 1)');
+    }
+
+    generateArticlePerformance(plan, data) {
+        const container = document.getElementById('articlePerformanceTable');
+        if (!container) return;
+
+        const articles = data?.articleMetrics3weeks?.length > 0 ? data.articleMetrics3weeks : (data?.articleMetrics2weeks || []);
+        
+        if (articles.length === 0) {
+            container.innerHTML = '<p style="padding: 1rem; color: #6b7280;">記事ごとの詳細データがありません。</p>';
+            return;
+        }
+
+        let html = `
+            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                <thead>
+                    <tr style="background: #f3f4f6;">
+                        <th style="padding: 0.75rem; text-align: left;">記事名/URL</th>
+                        <th style="padding: 0.75rem; text-align: right;">クリック数</th>
+                        <th style="padding: 0.75rem; text-align: right;">表示回数</th>
+                        <th style="padding: 0.75rem; text-align: right;">CTR</th>
+                        <th style="padding: 0.75rem; text-align: right;">順位</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        articles.forEach(a => {
+            html += `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${a.name}">${a.name || '-'}</td>
+                    <td style="padding: 0.75rem; text-align: right;">${a.clicks || 0}</td>
+                    <td style="padding: 0.75rem; text-align: right;">${a.impressions || 0}</td>
+                    <td style="padding: 0.75rem; text-align: right;">${a.ctr || 0}%</td>
+                    <td style="padding: 0.75rem; text-align: right;">${a.position || 0}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    exportReportPdf() {
+        if (typeof html2pdf === 'undefined') {
+            alert('PDF出力機能の読み込みに失敗しました。ページをリロードしてください。');
+            return;
+        }
+
+        const element = document.getElementById('reportTab');
+        const generateBtn = document.getElementById('generateReportBtn');
+        const exportBtn = document.getElementById('exportReportPdfBtn');
+        const planSelect = document.querySelector('.form-group');
+
+        if (generateBtn) generateBtn.style.display = 'none';
+        if (exportBtn) exportBtn.style.display = 'none';
+        if (planSelect) planSelect.style.display = 'none';
+
+        const opt = {
+            margin: 10,
+            filename: 'aio_report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            if (generateBtn) generateBtn.style.display = 'block';
+            if (exportBtn) exportBtn.style.display = 'inline-block';
+            if (planSelect) planSelect.style.display = 'block';
+        }).catch(err => {
+            console.error('PDF出力エラー:', err);
+            alert('PDFの出力に失敗しました。');
+            if (generateBtn) generateBtn.style.display = 'block';
+            if (exportBtn) exportBtn.style.display = 'inline-block';
+            if (planSelect) planSelect.style.display = 'block';
+        });
     }
 }
 
