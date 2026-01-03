@@ -790,14 +790,21 @@ class Dashboard {
         console.log('プランの記事ステータス:', planArticles.map(a => ({ title: a.title, status: a.status })));
         
         // プランの記事を一時的に保存して表示
-        // progressDataから最新のaioRankをマージ
+        // progressDataから最新のステータス、aioRank、scoresをマージ
         if (this.progressData && this.progressData.articles) {
             planArticles.forEach(planArticle => {
                 const progressArticle = this.progressData.articles.find(a => 
                     a.id === planArticle.id || a.url === planArticle.url
                 );
-                if (progressArticle && progressArticle.aioRank) {
-                    planArticle.aioRank = progressArticle.aioRank;
+                if (progressArticle) {
+                    // ステータスを最新のものに更新（重要：保存されたステータスを反映）
+                    if (progressArticle.status) {
+                        planArticle.status = progressArticle.status;
+                    }
+                    // aioRankを最新のものに更新
+                    if (progressArticle.aioRank) {
+                        planArticle.aioRank = progressArticle.aioRank;
+                    }
                     // scoresも最新のものを反映
                     if (progressArticle.scores) {
                         planArticle.scores = progressArticle.scores;
