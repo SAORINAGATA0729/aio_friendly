@@ -1726,6 +1726,89 @@ ${article.keyword}について、重要なポイントをまとめました。
         // #endregion
     }
 
+    /**
+     * コンテンツをストレージに保存（内部用）
+     */
+    async _saveContentToStorage(content) {
+        const slug = this.getSlugFromUrl(this.currentArticle.url);
+        
+        try {
+            const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
+            if (!saved) {
+                console.warn('ファイルの保存に失敗しましたが、ローカルストレージには保存されている可能性があります');
+            }
+        } catch (saveError) {
+            console.error('保存エラー:', saveError);
+            throw saveError;
+        }
+        
+        // 進捗を更新
+        if (this.progressData && this.progressData.articles) {
+            const article = this.progressData.articles.find(a => a.id === this.currentArticle.id);
+            if (article) {
+                article.status = '完了';
+                article.lastModified = new Date().toISOString();
+                await dataManager.saveProgress(this.progressData);
+            }
+        }
+    }
+
+    /**
+     * 承認されたコンテンツを適用
+     */
+    async applyApprovedContent(content) {
+        // エディタの内容を更新
+        if (this.quill) {
+            // MarkdownをHTMLに変換（簡易的）
+            const html = this.markdownToHtml(content);
+            this.quill.clipboard.dangerouslyPasteHTML(0, html);
+        }
+        const htmlEditor = document.getElementById('htmlEditor');
+        if (htmlEditor) {
+            // MarkdownからHTMLへの変換は簡易的なものなので、本来はオリジナルのHTMLがあればそれが望ましいが、
+            // ここではMarkdownから復元する形になる
+             const html = this.markdownToHtml(content);
+            htmlEditor.value = html;
+        }
+
+        // ストレージに保存
+        await this._saveContentToStorage(content);
+
+        // ダッシュボードを更新
+        if (typeof dashboard !== 'undefined') {
+            await dashboard.renderArticleList();
+        }
+    }
+
+    /**
+     * MarkdownをHTMLに変換（簡易版）
+     */
+    markdownToHtml(markdown) {
+        if (!markdown) return '';
+        
+        let html = markdown;
+        
+        // 見出し
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+        
+        // 太字
+        html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+        
+        // リスト
+        html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+        html = html.replace(/<\/ul><ul>/gim, '');
+        
+        // 段落（空行で区切る）
+        html = html.replace(/\n\n/gim, '</p><p>');
+        html = html.replace(/^((?!<h|<ul|<li|<p).+)$/gim, '<p>$1</p>');
+        
+        return html;
+    }
+
     async saveArticle() {
         if (!this.currentArticle) {
             alert('記事が選択されていません');
@@ -1768,8 +1851,6 @@ ${article.keyword}について、重要なポイントをまとめました。
                 return;
             }
             
-            const slug = this.getSlugFromUrl(this.currentArticle.url);
-            
             // 編集履歴を記録（ログインしている場合）
             if (authManager && authManager.isAuthenticated() && editHistoryManager) {
                 const user = authManager.getCurrentUser();
@@ -1788,27 +1869,7 @@ ${article.keyword}について、重要なポイントをまとめました。
                 }
             }
             
-            try {
-                const saved = await dataManager.saveMarkdown(`${slug}.md`, content);
-                if (!saved) {
-                    // ローカルストレージには保存されている可能性があるため、警告のみ
-                    console.warn('ファイルの保存に失敗しましたが、ローカルストレージには保存されている可能性があります');
-                }
-            } catch (saveError) {
-                console.error('保存エラー:', saveError);
-                alert('ファイルの保存中にエラーが発生しました: ' + saveError.message);
-                return;
-            }
-            
-            // 進捗を更新
-            if (this.progressData && this.progressData.articles) {
-                const article = this.progressData.articles.find(a => a.id === this.currentArticle.id);
-                if (article) {
-                    article.status = '完了';
-                    article.lastModified = new Date().toISOString();
-                    await dataManager.saveProgress(this.progressData);
-                }
-            }
+            await this._saveContentToStorage(content);
 
             alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
             
