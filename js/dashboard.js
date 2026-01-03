@@ -3497,6 +3497,7 @@ class Dashboard {
         ];
 
         let html = `
+            <div style="page-break-inside: avoid;">
             <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: #f3f4f6;">
@@ -3544,7 +3545,7 @@ class Dashboard {
             `;
         });
 
-        html += '</tbody></table>';
+        html += '</tbody></table></div>';
         container.innerHTML = html;
     }
 
@@ -3734,6 +3735,7 @@ class Dashboard {
         `;
 
         let tableHtml = `
+            <div style="page-break-inside: avoid;">
             <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 0.9rem;">
                 <thead>
                     <tr style="background: #f3f4f6;">
@@ -3749,6 +3751,7 @@ class Dashboard {
                     ${rowsHtml}
                 </tbody>
             </table>
+            </div>
         `;
 
         container.innerHTML = summaryHtml + tableHtml;
