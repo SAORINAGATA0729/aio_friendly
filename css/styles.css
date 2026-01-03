@@ -583,10 +583,11 @@ tr:last-child td {
 }
 
 .modal-body {
-    padding: 0;
+    padding: 1.5rem;
     display: flex;
+    flex-direction: column;
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto; /* スクロール可能に変更 */
     background: #f8fafc;
 }
 
