@@ -1886,14 +1886,18 @@ ${article.keyword}について、重要なポイントをまとめました。
             if (authManager && authManager.isAuthenticated() && editHistoryManager) {
                 const user = authManager.getCurrentUser();
                 try {
-                    await editHistoryManager.saveSuggestion(
+                    const suggestionId = await editHistoryManager.saveSuggestion(
                         this.currentArticle.id,
                         content,
                         user.uid,
                         user.displayName || user.email,
                         user.email
                     );
-                    console.log('編集履歴を記録しました');
+                    if (suggestionId) {
+                        console.log('編集履歴を記録しました');
+                    } else {
+                        console.log('変更がないため編集履歴は記録されませんでした');
+                    }
                 } catch (historyError) {
                     console.error('編集履歴の記録エラー:', historyError);
                     // エラーがあっても保存は続行
