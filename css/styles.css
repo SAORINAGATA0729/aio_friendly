@@ -637,6 +637,59 @@ tr:last-child td {
     gap: 1rem;
     flex-wrap: wrap;
     z-index: 10;
+    position: relative; /* 検索バーの基準位置 */
+}
+
+/* 検索バー */
+.search-bar {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 20;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.search-nav-btn,
+.search-close-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    min-width: 32px;
+    height: 32px;
+}
+
+.search-nav-btn:hover,
+.search-close-btn:hover {
+    background: #f3f4f6;
+    color: var(--text-primary);
+}
+
+.search-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: center;
 }
 
 /* エディタモードタブ */
@@ -722,22 +775,50 @@ tr:last-child td {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 0.8rem;
     border-radius: var(--radius-md);
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    transition: var(--transition);
-    border: 1px solid var(--border-color);
-    background: white;
-    color: var(--text-primary);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
 }
 
 .toolbar-btn:hover {
-    background: #f8fafc;
-    border-color: var(--text-light);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
+    background: #f3f4f6;
+    color: var(--text-primary);
+}
+
+.toolbar-btn.active {
+    background: #e0e7ff;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.toolbar-btn.primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.toolbar-btn.primary:hover {
+    background: var(--primary-dark);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: #e5e7eb;
+    margin: 0 8px;
 }
 
 .toolbar-btn[data-action="save"] {
@@ -1185,51 +1266,126 @@ tr:last-child td {
     padding: 0 2px;
     position: relative;
     cursor: pointer;
+    border-radius: 2px;
 }
 
 .suggestion-deletion:hover {
     background-color: #fecaca;
+    box-shadow: 0 0 0 2px #fecaca;
 }
 
 .suggestion-deletion::after {
     content: '💬';
-    font-size: 12px;
-    margin-left: 4px;
-    vertical-align: middle;
-    cursor: pointer;
-    opacity: 0.7;
+    font-size: 10px;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    opacity: 0.8;
 }
 
 .suggestion-deletion:hover::after {
     opacity: 1;
+    transform: scale(1.1);
 }
 
 /* 提案モードの追加マーカー（赤背景） */
 .suggestion-addition {
-    background-color: #fee2e2;
-    color: #b91c1c;
+    background-color: #dbeafe; /* 青系に変更して視認性向上 */
+    color: #1e40af;
     font-weight: 500;
     padding: 0 2px;
     position: relative;
     cursor: pointer;
     text-decoration: none;
+    border-bottom: 2px solid #3b82f6;
+    border-radius: 2px;
 }
 
 .suggestion-addition:hover {
-    background-color: #fecaca;
+    background-color: #bfdbfe;
+    box-shadow: 0 0 0 2px #bfdbfe;
 }
 
 .suggestion-addition::after {
     content: '💬';
-    font-size: 12px;
-    margin-left: 4px;
-    vertical-align: middle;
-    cursor: pointer;
-    opacity: 0.7;
+    font-size: 10px;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    opacity: 0.8;
 }
 
 .suggestion-addition:hover::after {
     opacity: 1;
+}
+
+/* 提案モードのコメントマーカー（青背景） */
+.suggestion-comment {
+    background-color: #e0f2fe; /* 薄い青 */
+    border-bottom: 2px solid #0ea5e9;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.suggestion-comment:hover {
+    background-color: #bae6fd;
+}
+
+.suggestion-comment.active {
+    background-color: #7dd3fc;
+    box-shadow: 0 0 0 2px #0ea5e9;
+}
+
+/* コメント履歴の返信 */
+.comment-reply-list {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.comment-reply-item {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    position: relative;
+    padding-left: 1rem;
+    border-left: 2px solid #e5e7eb;
+}
+
+.reply-input-container {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.reply-input {
+    flex: 1;
+    padding: 0.4rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.reply-btn {
+    padding: 0.4rem 0.8rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
 }
 
 /* コメントダイアログ */
@@ -1421,11 +1577,20 @@ tr:last-child td {
     background: white;
     border-radius: var(--radius-lg);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    max-height: 300px;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
     min-width: 280px;
+    overflow: hidden;
+}
+
+.suggestion-comment-history.collapsed .comment-history-list {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.suggestion-comment-history.collapsed .comment-history-expand-icon {
+    transform: rotate(-90deg);
 }
 
 .comment-history-header {
@@ -1439,9 +1604,13 @@ tr:last-child td {
     color: var(--text-primary);
     background: #f9fafb;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    position: sticky;
-    top: 0;
-    z-index: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.comment-history-header:hover {
+    background: #f3f4f6;
 }
 
 .comment-history-list {
@@ -1449,6 +1618,10 @@ tr:last-child td {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
 }
 
 .comment-history-empty {
@@ -1464,6 +1637,85 @@ tr:last-child td {
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
+}
+
+.comment-history-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.comment-history-status.approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.comment-history-status.rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.comment-history-item.approved {
+    border-left: 4px solid #10b981;
+}
+
+.comment-history-item.rejected {
+    border-left: 4px solid #ef4444;
+}
+
+.comment-history-item-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.approve-btn,
+.reject-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    transition: all 0.2s;
+}
+
+.approve-btn {
+    background: #10b981;
+    color: white;
+}
+
+.approve-btn:hover:not(:disabled) {
+    background: #059669;
+}
+
+.approve-btn:disabled {
+    background: #d1fae5;
+    color: #065f46;
+    cursor: not-allowed;
+}
+
+.reject-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.reject-btn:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.reject-btn:disabled {
+    background: #fee2e2;
+    color: #991b1b;
+    cursor: not-allowed;
 }
 
 .comment-history-item:hover {

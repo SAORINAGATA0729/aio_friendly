@@ -164,7 +164,7 @@ class RewriteSystem {
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
             newCloseBtn.addEventListener('click', () => {
-                modal.classList.remove('active');
+                this.closeModal();
             });
         }
 
@@ -180,7 +180,7 @@ class RewriteSystem {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
-                    modal.classList.remove('active');
+                    this.closeModal();
                 }
             });
         }
@@ -503,9 +503,30 @@ class RewriteSystem {
             AdditionMarker.blotName = 'addition';
             AdditionMarker.tagName = 'ins';
             AdditionMarker.className = 'suggestion-addition';
+
+            // コメントマーカー（青背景）のカスタムBlot
+            class CommentMarker extends Inline {
+                static create(value) {
+                    const node = super.create();
+                    node.setAttribute('class', 'suggestion-comment');
+                    const commentId = value?.commentId || (typeof value === 'string' ? value : `comment_${Date.now()}`);
+                    node.setAttribute('data-comment-id', commentId);
+                    node.setAttribute('data-change-type', 'comment');
+                    return node;
+                }
+                
+                static formats(node) {
+                    return node.getAttribute('data-comment-id') || true;
+                }
+            }
+            
+            CommentMarker.blotName = 'comment';
+            CommentMarker.tagName = 'span';
+            CommentMarker.className = 'suggestion-comment';
             
             Quill.register(DeletionMarker, true);
             Quill.register(AdditionMarker, true);
+            Quill.register(CommentMarker, true);
             
             this.quill = new Quill('#quillEditor', {
                 theme: 'snow',
@@ -528,7 +549,7 @@ class RewriteSystem {
                     }
                 },
                 placeholder: '記事を編集してください...',
-                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block', 'suggestion', 'deletion', 'addition']
+                formats: ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'bullet', 'color', 'background', 'link', 'image', 'blockquote', 'code-block', 'suggestion', 'deletion', 'addition', 'comment']
             });
             
             // 画像をクリックしたときにALTタグを編集できるように
@@ -603,6 +624,12 @@ class RewriteSystem {
         // HTMLエディタの変更を監視
         if (htmlEditor) {
             htmlEditor.addEventListener('input', () => {
+                // HTMLエディタの内容が変更されたときにチェックリストを更新
+                if (this.currentArticle) {
+                    const htmlContent = htmlEditor.value;
+                    const markdownContent = this.htmlToMarkdown(htmlContent);
+                    this.updateChecklist(this.currentArticle, markdownContent);
+                }
                 if (this.currentArticle) {
                     const htmlContent = htmlEditor.value;
                     const markdownContent = this.htmlToMarkdown(htmlContent);
@@ -826,6 +853,9 @@ class RewriteSystem {
             
             // 既存の提案をマーカーで表示
             this.markExistingSuggestions();
+            
+            // 変更履歴を表示（editHistoryManagerから取得）
+            this.updateChangeHistory();
         }
     }
     
@@ -835,12 +865,20 @@ class RewriteSystem {
     setupSuggestionTracking() {
         if (!this.quill) return;
         
-        let lastContent = '';
+        let lastText = '';
+        let lastSelection = null;
         let isProcessing = false;
         let debounceTimer = null;
         
+        // 選択範囲の変更を監視
+        this.quill.on('selection-change', (range, oldRange, source) => {
+            if (range) {
+                lastSelection = { index: range.index, length: range.length };
+            }
+        });
+        
         // テキスト変更を監視
-        this.quill.on('text-change', async () => {
+        this.quill.on('text-change', async (delta, oldDelta, source) => {
             if (this.currentEditMode !== 'suggestion' || isProcessing) return;
             
             // デバウンス処理（500ms後に実行）
@@ -849,15 +887,65 @@ class RewriteSystem {
                 isProcessing = true;
                 
                 try {
+                    const currentText = this.quill.getText();
                     const currentHtml = this.quill.root.innerHTML;
                     const currentMarkdown = this.htmlToMarkdown(currentHtml);
+                    
+                    // 加筆されたテキストを検出して自動的にマーカー化
+                    if (lastText && currentText.length > lastText.length && delta && delta.ops) {
+                        // テキストが追加された場合、Delta操作から追加位置を特定
+                        let insertIndex = 0;
+                        let insertText = '';
+                        
+                        for (const op of delta.ops) {
+                            if (op.insert && typeof op.insert === 'string' && op.insert.trim().length > 0) {
+                                // テキストが追加された場合
+                                insertText = op.insert;
+                                // 既にマーカーが適用されていないかチェック
+                                const format = this.quill.getFormat(insertIndex, insertText.length);
+                                if (!format || (!format.addition && !format.deletion && !format.comment)) {
+                                    // 追加されたテキストに自動的に追加マーカーを適用
+                                    setTimeout(() => {
+                                        try {
+                                            const commentId = `auto_add_${Date.now()}_${insertIndex}`;
+                                            this.quill.formatText(insertIndex, insertText.length, 'addition', {
+                                                commentId: commentId
+                                            });
+                                            
+                                            // 変更履歴に追加
+                                            const changeData = {
+                                                id: commentId,
+                                                type: 'addition',
+                                                comment: '自動検出: 加筆',
+                                                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                                                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                                                timestamp: new Date().toISOString(),
+                                                selection: { index: insertIndex, length: insertText.length },
+                                                selectedText: insertText.substring(0, 50),
+                                                replies: []
+                                            };
+                                            this.suggestionChanges.push(changeData);
+                                            this.updateCommentHistory();
+                                        } catch (e) {
+                                            console.error('自動マーカー追加エラー:', e);
+                                        }
+                                    }, 100);
+                                }
+                                insertIndex += insertText.length;
+                            } else if (op.retain && typeof op.retain === 'number') {
+                                insertIndex += op.retain;
+                            } else if (op.delete && typeof op.delete === 'number') {
+                                // 削除の場合はインデックスを変更しない（既に削除されているため）
+                            }
+                        }
+                    }
                     
                     if (this.suggestionBaseContent && currentMarkdown !== this.suggestionBaseContent) {
                         // 変更を検出してマーカーを追加
                         await this.markChanges(this.suggestionBaseContent, currentMarkdown);
                     }
                     
-                    lastContent = currentMarkdown;
+                    lastText = currentText;
                 } catch (e) {
                     console.error('変更追跡エラー:', e);
                 } finally {
@@ -865,6 +953,11 @@ class RewriteSystem {
                 }
             }, 500);
         });
+        
+        // 初期テキストを保存
+        setTimeout(() => {
+            lastText = this.quill.getText();
+        }, 500);
     }
     
     /**
@@ -968,6 +1061,21 @@ class RewriteSystem {
             
             console.log('削除マーカーを追加しました:', selection);
             
+            // 変更履歴に追加
+            const changeData = {
+                id: commentId,
+                type: 'deletion',
+                comment: '削除提案',
+                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                timestamp: new Date().toISOString(),
+                selection: { index: selection.index, length: selection.length },
+                selectedText: this.quill.getText(selection.index, selection.length),
+                replies: []
+            };
+            this.suggestionChanges.push(changeData);
+            this.updateCommentHistory();
+            
             if (typeof showToast === 'function') {
                 showToast('削除マーカーを追加しました', 'success');
             }
@@ -1019,6 +1127,21 @@ class RewriteSystem {
             }, 100);
             
             console.log('追加マーカーを追加しました:', selection);
+            
+            // 変更履歴に追加
+            const changeData = {
+                id: commentId,
+                type: 'addition',
+                comment: '追加提案',
+                userId: (window.authManager || authManager)?.getCurrentUser()?.uid || 'anonymous',
+                userName: (window.authManager || authManager)?.getCurrentUser()?.displayName || '匿名',
+                timestamp: new Date().toISOString(),
+                selection: { index: selection.index, length: selection.length },
+                selectedText: this.quill.getText(selection.index, selection.length),
+                replies: []
+            };
+            this.suggestionChanges.push(changeData);
+            this.updateCommentHistory();
             
             if (typeof showToast === 'function') {
                 showToast('追加マーカーを追加しました', 'success');
@@ -1362,6 +1485,17 @@ class RewriteSystem {
         
         const user = authMgr.getCurrentUser();
         
+        // 選択範囲がある場合はマーカー（青背景）を適用
+        if (selection && changeType === 'comment') {
+            try {
+                this.quill.formatText(selection.index, selection.length, 'comment', {
+                    commentId: commentId
+                });
+            } catch (e) {
+                console.error('コメントマーカーの適用に失敗:', e);
+            }
+        }
+        
         // コメントデータを作成
         const commentData = {
             id: commentId,
@@ -1372,7 +1506,8 @@ class RewriteSystem {
             userAvatar: user.photoURL || null,
             timestamp: new Date().toISOString(),
             selection: selection ? { index: selection.index, length: selection.length } : null,
-            selectedText: selectedText
+            selectedText: selectedText,
+            replies: [] // 返信リストを初期化
         };
         
         // コメントを変更履歴に保存
@@ -1381,29 +1516,146 @@ class RewriteSystem {
         // コメント履歴を更新
         this.updateCommentHistory();
         
+        // 変更履歴も更新（editHistoryManagerから取得）
+        await this.updateChangeHistory();
+        
         console.log('コメントを保存しました:', commentId, commentText);
         
         if (typeof showToast === 'function') {
             showToast('コメントを追加しました', 'success');
-        } else {
-            alert('コメントを追加しました');
         }
     }
     
     /**
+     * 返信を保存
+     */
+    async saveReply(commentId, replyText) {
+        if (!this.currentArticle) return;
+        
+        const authMgr = window.authManager || authManager;
+        if (!authMgr || !authMgr.isAuthenticated()) {
+            if (typeof showToast === 'function') {
+                showToast('返信するにはログインが必要です', 'error');
+            }
+            return;
+        }
+        
+        const user = authMgr.getCurrentUser();
+        
+        // コメントを検索
+        const commentIndex = this.suggestionChanges.findIndex(c => c.id === commentId);
+        if (commentIndex === -1) {
+            console.error('コメントが見つかりません:', commentId);
+            return;
+        }
+        
+        // 返信データを作成
+        const reply = {
+            id: `reply_${Date.now()}`,
+            text: replyText,
+            userId: user.uid,
+            userName: user.displayName || user.email,
+            userAvatar: user.photoURL || null,
+            timestamp: new Date().toISOString()
+        };
+        
+        // 返信を追加
+        if (!this.suggestionChanges[commentIndex].replies) {
+            this.suggestionChanges[commentIndex].replies = [];
+        }
+        this.suggestionChanges[commentIndex].replies.push(reply);
+        
+        // UI更新
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('返信を追加しました', 'success');
+        }
+    }
+
+    /**
+     * コメント箇所へスクロール
+     */
+    scrollToComment(commentId) {
+        if (!this.quill) return;
+        
+        // コメントIDを持つ要素を検索
+        // data-comment-id属性を持つ要素を探す（標準的な方法）
+        const selector = `[data-comment-id="${commentId}"]`;
+        const element = this.quill.root.querySelector(selector);
+        
+        if (element) {
+            // 要素が見つかった場合はスクロール
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // ハイライト表示（一時的にクラスを追加）
+            element.classList.add('active');
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 2000);
+        } else {
+            // 要素が見つからない場合、選択範囲情報から位置を特定してスクロール
+            const comment = this.suggestionChanges.find(c => c.id === commentId);
+            if (comment && comment.selection) {
+                this.quill.setSelection(comment.selection.index, comment.selection.length);
+                this.quill.scrollIntoView();
+            }
+        }
+    }
+    
+    /**
+     * 変更履歴を更新（editHistoryManagerから取得）
+     */
+    async updateChangeHistory() {
+        if (!this.currentArticle || !window.editHistoryManager) return;
+        
+        try {
+            const suggestions = await window.editHistoryManager.getSuggestions(this.currentArticle.id);
+            const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
+            
+            // 変更履歴をコメント履歴に統合して表示
+            this.updateCommentHistory(pendingSuggestions);
+        } catch (e) {
+            console.error('変更履歴の取得に失敗:', e);
+        }
+    }
+
+    /**
      * コメント履歴を更新
      */
-    updateCommentHistory() {
+    updateCommentHistory(externalSuggestions = []) {
         const historyList = document.getElementById('commentHistoryList');
         if (!historyList) return;
         
-        // コメントを時系列順にソート
-        const sortedComments = [...this.suggestionChanges].sort((a, b) => 
+        // 外部の変更履歴（editHistoryManagerから）を統合
+        const allChanges = [...this.suggestionChanges];
+        
+        // 外部の変更履歴を追加
+        externalSuggestions.forEach(suggestion => {
+            if (suggestion.changes) {
+                suggestion.changes.forEach(change => {
+                    allChanges.push({
+                        id: `external_${suggestion.id}_${change.id || Date.now()}`,
+                        type: change.type || 'comment',
+                        comment: change.comment || change.text || '変更',
+                        userId: suggestion.userId,
+                        userName: suggestion.userName,
+                        timestamp: suggestion.timestamp || new Date().toISOString(),
+                        selection: change.selection,
+                        selectedText: change.selectedText || change.text?.substring(0, 50),
+                        replies: []
+                    });
+                });
+            }
+        });
+        
+        // コメントを時系列順にソート（新しい順）
+        const sortedComments = allChanges.sort((a, b) => 
             new Date(b.timestamp) - new Date(a.timestamp)
         );
         
         if (sortedComments.length === 0) {
-            historyList.innerHTML = '<div class="comment-history-empty">コメントはまだありません</div>';
+            historyList.innerHTML = '<div class="comment-history-empty">変更履歴はまだありません</div>';
             return;
         }
         
@@ -1416,21 +1668,443 @@ class RewriteSystem {
                 minute: '2-digit' 
             });
             
+            // 返信のHTML生成
+            const repliesHtml = (comment.replies || []).map(reply => {
+                const rDate = new Date(reply.timestamp);
+                const rDateStr = rDate.toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                return `
+                    <div class="comment-reply-item">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #6b7280; margin-bottom: 2px;">
+                            <span>${reply.userName}</span>
+                            <span>${rDateStr}</span>
+                        </div>
+                        <div>${this.escapeHtml(reply.text)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            // 承認状態を取得
+            const approvalStatus = this.getApprovalStatus(comment.id);
+            const statusClass = approvalStatus === 'approved' ? 'approved' : approvalStatus === 'rejected' ? 'rejected' : '';
+            const statusText = approvalStatus === 'approved' ? '承認済み' : approvalStatus === 'rejected' ? '非承認' : '';
+            
             return `
-                <div class="comment-history-item">
+                <div class="comment-history-item ${statusClass}" data-comment-id="${comment.id}">
                     <div class="comment-history-user">
                         ${comment.userAvatar ? 
                             `<img src="${comment.userAvatar}" alt="" class="comment-user-avatar">` : 
                             `<span class="material-icons-round">account_circle</span>`
                         }
-                        <span class="comment-user-name">${comment.userName || '不明'}</span>
-                        <span class="comment-date">${dateStr}</span>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <span class="comment-user-name">${comment.userName || '不明'}</span>
+                                ${comment.type === 'deletion' ? '<span style="color: #dc2626; font-size: 0.75rem;">🗑️ 削除</span>' : ''}
+                                ${comment.type === 'addition' ? '<span style="color: #2563eb; font-size: 0.75rem;">➕ 追加</span>' : ''}
+                                ${comment.type === 'comment' ? '<span style="color: #0ea5e9; font-size: 0.75rem;">💬 コメント</span>' : ''}
+                                ${statusText ? `<span class="comment-history-status ${statusClass}">${statusText}</span>` : ''}
+                            </div>
+                            <span class="comment-date">${dateStr}</span>
+                        </div>
                     </div>
-                    <div class="comment-history-text">${this.escapeHtml(comment.comment)}</div>
-                    ${comment.selectedText ? `<div class="comment-selected-text">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 30))}${comment.selectedText.length > 30 ? '...' : ''}"</div>` : ''}
+                    <div class="comment-history-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">
+                        ${comment.comment && comment.comment !== '削除提案' && comment.comment !== '追加提案' ? this.escapeHtml(comment.comment) : ''}
+                    </div>
+                    ${comment.selectedText ? `<div class="comment-selected-text" onclick="window.rewriteSystem.scrollToComment('${comment.id}')" style="cursor: pointer;">選択範囲: "${this.escapeHtml(comment.selectedText.substring(0, 50))}${comment.selectedText.length > 50 ? '...' : ''}"</div>` : ''}
+                    
+                    <div class="comment-reply-list">
+                        ${repliesHtml}
+                        <div class="reply-input-container">
+                            <input type="text" class="reply-input" placeholder="返信を入力..." onclick="event.stopPropagation()">
+                            <button class="reply-btn" onclick="event.stopPropagation(); window.rewriteSystem.handleReply('${comment.id}', this)">返信</button>
+                        </div>
+                    </div>
+                    
+                    <div class="comment-history-item-actions">
+                        <button class="approve-btn" onclick="event.stopPropagation(); window.rewriteSystem.approveChange('${comment.id}')" ${approvalStatus === 'approved' ? 'disabled' : ''}>
+                            <span class="material-icons-round" style="font-size: 16px;">check</span>
+                            承認
+                        </button>
+                        <button class="reject-btn" onclick="event.stopPropagation(); window.rewriteSystem.rejectChange('${comment.id}')" ${approvalStatus === 'rejected' ? 'disabled' : ''}>
+                            <span class="material-icons-round" style="font-size: 16px;">close</span>
+                            非承認
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
+    }
+
+    /**
+     * 返信ボタンハンドラ
+     */
+    handleReply(commentId, btnElement) {
+        const container = btnElement.closest('.reply-input-container');
+        const input = container.querySelector('.reply-input');
+        const text = input.value.trim();
+        
+        if (text) {
+            this.saveReply(commentId, text);
+            input.value = ''; // 入力をクリア
+        }
+    }
+
+    /**
+     * 変更履歴エリアの展開/折りたたみ
+     */
+    toggleChangeHistory() {
+        const historyArea = document.getElementById('suggestionCommentHistory');
+        if (historyArea) {
+            historyArea.classList.toggle('collapsed');
+        }
+    }
+
+    /**
+     * 承認状態を取得
+     */
+    getApprovalStatus(commentId) {
+        if (!this.currentArticle) return null;
+        const storageKey = `approval_status_${this.currentArticle.id}_${commentId}`;
+        return localStorage.getItem(storageKey);
+    }
+
+    /**
+     * 承認状態を保存
+     */
+    saveApprovalStatus(commentId, status) {
+        if (!this.currentArticle) return;
+        const storageKey = `approval_status_${this.currentArticle.id}_${commentId}`;
+        localStorage.setItem(storageKey, status);
+    }
+
+    /**
+     * 変更を承認
+     */
+    approveChange(commentId) {
+        if (!this.quill) {
+            if (typeof showToast === 'function') {
+                showToast('エディタが初期化されていません', 'error');
+            }
+            return;
+        }
+        
+        // 変更履歴から該当する変更を取得
+        const change = this.suggestionChanges.find(c => c.id === commentId);
+        if (!change) {
+            if (typeof showToast === 'function') {
+                showToast('変更が見つかりません', 'error');
+            }
+            return;
+        }
+        
+        // 承認状態を保存
+        this.saveApprovalStatus(commentId, 'approved');
+        
+        // 変更タイプに応じて処理
+        if (change.type === 'deletion') {
+            // 削除提案を承認 → 実際にテキストを削除
+            this.applyDeletion(change);
+        } else if (change.type === 'addition') {
+            // 追加提案を承認 → マーカーを削除して通常テキストに
+            this.applyAddition(change);
+        } else if (change.type === 'comment') {
+            // コメントを承認 → コメントマーカーを削除（コメントは残す）
+            this.applyComment(change, true);
+        }
+        
+        // 変更履歴を更新
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('承認しました', 'success');
+        }
+    }
+
+    /**
+     * 変更を非承認
+     */
+    rejectChange(commentId) {
+        if (!this.quill) {
+            if (typeof showToast === 'function') {
+                showToast('エディタが初期化されていません', 'error');
+            }
+            return;
+        }
+        
+        // 変更履歴から該当する変更を取得
+        const change = this.suggestionChanges.find(c => c.id === commentId);
+        if (!change) {
+            if (typeof showToast === 'function') {
+                showToast('変更が見つかりません', 'error');
+            }
+            return;
+        }
+        
+        // 承認状態を保存
+        this.saveApprovalStatus(commentId, 'rejected');
+        
+        // 変更タイプに応じて処理
+        if (change.type === 'deletion') {
+            // 削除提案を非承認 → マーカーを削除して元のテキストに戻す
+            this.rejectDeletion(change);
+        } else if (change.type === 'addition') {
+            // 追加提案を非承認 → 追加されたテキストを削除
+            this.rejectAddition(change);
+        } else if (change.type === 'comment') {
+            // コメントを非承認 → コメントマーカーを削除
+            this.applyComment(change, false);
+        }
+        
+        // 変更履歴を更新
+        this.updateCommentHistory();
+        
+        if (typeof showToast === 'function') {
+            showToast('非承認しました', 'success');
+        }
+    }
+    
+    /**
+     * マーカーを検索して範囲を取得
+     */
+    findMarkerRange(commentId) {
+        if (!this.quill) return null;
+        
+        // data-comment-id属性を持つ要素を検索
+        const marker = this.quill.root.querySelector(`[data-comment-id="${commentId}"]`);
+        if (!marker) return null;
+        
+        try {
+            // QuillのgetBoundsを使用して範囲を取得
+            const range = this.quill.getBounds(marker);
+            if (range) {
+                return { index: range.index, length: range.length };
+            }
+        } catch (e) {
+            console.error('マーカー範囲取得エラー:', e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 削除提案を適用（実際にテキストを削除）
+     */
+    applyDeletion(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('削除範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除してテキストも削除
+            this.quill.deleteText(index, length);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('削除適用エラー:', e);
+        }
+    }
+    
+    /**
+     * 削除提案を非承認（マーカーを削除して元のテキストに戻す）
+     */
+    rejectDeletion(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('削除範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除（テキストは残す）
+            this.quill.formatText(index, length, 'deletion', false);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('削除非承認エラー:', e);
+        }
+    }
+    
+    /**
+     * 追加提案を適用（マーカーを削除して通常テキストに）
+     */
+    applyAddition(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('追加範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // マーカーを削除（テキストは残す）
+            this.quill.formatText(index, length, 'addition', false);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('追加適用エラー:', e);
+        }
+    }
+    
+    /**
+     * 追加提案を非承認（追加されたテキストを削除）
+     */
+    rejectAddition(change) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('追加範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // 追加されたテキストを削除
+            this.quill.deleteText(index, length);
+            
+            // suggestionChangesから削除
+            const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+            if (indexInArray !== -1) {
+                this.suggestionChanges.splice(indexInArray, 1);
+            }
+        } catch (e) {
+            console.error('追加非承認エラー:', e);
+        }
+    }
+    
+    /**
+     * コメントを適用/非承認（マーカーを削除）
+     */
+    applyComment(change, isApproved) {
+        if (!this.quill) return;
+        
+        try {
+            // マーカーから範囲を取得（優先）、なければchange.selectionを使用
+            let range = this.findMarkerRange(change.id);
+            if (!range && change.selection) {
+                range = change.selection;
+            }
+            
+            if (!range) {
+                console.warn('コメント範囲が見つかりません:', change.id);
+                return;
+            }
+            
+            const { index, length } = range;
+            // コメントマーカーを削除
+            this.quill.formatText(index, length, 'comment', false);
+            
+            // 承認の場合はコメントを残す、非承認の場合は削除
+            if (!isApproved) {
+                // suggestionChangesから削除
+                const indexInArray = this.suggestionChanges.findIndex(c => c.id === change.id);
+                if (indexInArray !== -1) {
+                    this.suggestionChanges.splice(indexInArray, 1);
+                }
+            }
+        } catch (e) {
+            console.error('コメント処理エラー:', e);
+        }
+    }
+
+    /**
+     * 保存された提案マーカーを復元
+     */
+    async restoreSuggestionMarkers() {
+        if (!this.quill || !this.currentArticle) return;
+        
+        // 少し待ってから復元（Quillの初期化を待つ）
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 保存された変更を復元
+        let restoredCount = 0;
+        for (const change of this.suggestionChanges) {
+            if (!change.selection) continue;
+            
+            try {
+                const { index, length } = change.selection;
+                
+                // 範囲が有効かチェック
+                const textLength = this.quill.getLength();
+                if (index < 0 || index >= textLength) {
+                    console.warn('無効な範囲です（開始位置）:', { index, length, textLength });
+                    continue;
+                }
+                
+                // 長さを調整（テキストの終わりを超えないように）
+                const adjustedLength = Math.min(length, textLength - index);
+                if (adjustedLength <= 0) {
+                    console.warn('無効な範囲です（長さ）:', { index, length, textLength });
+                    continue;
+                }
+                
+                // タイプに応じてマーカーを適用
+                if (change.type === 'comment') {
+                    this.quill.formatText(index, adjustedLength, 'comment', {
+                        commentId: change.id
+                    });
+                    restoredCount++;
+                } else if (change.type === 'deletion') {
+                    this.quill.formatText(index, adjustedLength, 'deletion', {
+                        commentId: change.id
+                    });
+                    restoredCount++;
+                } else if (change.type === 'addition') {
+                    this.quill.formatText(index, adjustedLength, 'addition', {
+                        commentId: change.id
+                    });
+                    restoredCount++;
+                }
+            } catch (e) {
+                console.error('マーカーの復元に失敗:', change.id, e);
+            }
+        }
+        
+        // コメント履歴を更新
+        this.updateCommentHistory();
+        
+        console.log('提案マーカーを復元しました:', restoredCount, '/', this.suggestionChanges.length, '件');
     }
     
     /**
@@ -1947,19 +2621,19 @@ class RewriteSystem {
             }
         }
         
-        // 提案履歴を表示
-        if (suggestionUIManager) {
-            await suggestionUIManager.renderSuggestions(article.id);
-        }
-        
-        // リフレッシュボタンのイベントリスナー
-        const refreshSuggestionsBtn = document.getElementById('refreshSuggestionsBtn');
-        if (refreshSuggestionsBtn) {
-            refreshSuggestionsBtn.addEventListener('click', async () => {
-                if (suggestionUIManager && article.id) {
-                    await suggestionUIManager.renderSuggestions(article.id);
-                }
-            });
+        // 保存された提案変更（コメント・マーカー）を読み込む
+        const storageKey = `suggestion_changes_${article.id}`;
+        const savedChanges = localStorage.getItem(storageKey);
+        if (savedChanges) {
+            try {
+                this.suggestionChanges = JSON.parse(savedChanges);
+                console.log('保存された提案変更を読み込みました:', this.suggestionChanges.length, '件');
+            } catch (e) {
+                console.error('提案変更の読み込みに失敗:', e);
+                this.suggestionChanges = [];
+            }
+        } else {
+            this.suggestionChanges = [];
         }
         
         // #region agent log
@@ -2033,6 +2707,9 @@ class RewriteSystem {
                 const markdownContent = this.htmlToMarkdown(htmlContent);
                 this.updateChecklist(article, markdownContent);
             });
+            
+            // 保存されたコメント・マーカーを復元
+            await this.restoreSuggestionMarkers();
         }
         
         // #region agent log
@@ -2337,15 +3014,26 @@ ${article.keyword}について、重要なポイントをまとめました。
             this.manualChecks = {};
         }
         
+        // contentがHTML形式の場合は、Markdown形式に変換してからチェック
+        let contentToCheck = content;
+        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(contentToCheck);
+        if (isHtml) {
+            contentToCheck = this.htmlToMarkdown(contentToCheck);
+        }
+        
         this.checklistItems.forEach(item => {
             const div = document.createElement('div');
             div.className = 'checklist-item';
             div.dataset.itemId = item.id;
             
-            // 自動チェック結果
-            const autoChecked = item.check(content);
+            // 自動チェック結果（デフォルトで適用）
+            const autoChecked = item.check(contentToCheck);
+            // 手動チェックが設定されていない場合は自動チェック結果をデフォルトで適用
+            if (this.manualChecks[item.id] === undefined) {
+                this.manualChecks[item.id] = autoChecked;
+            }
             // 手動チェック状態（優先）または自動チェック結果
-            const isChecked = this.manualChecks[item.id] !== undefined ? this.manualChecks[item.id] : autoChecked;
+            const isChecked = this.manualChecks[item.id];
             
             div.innerHTML = `
                 <div class="checklist-checkbox">
@@ -2422,6 +3110,11 @@ ${article.keyword}について、重要なポイントをまとめました。
         
         const score = Math.round((checkedCount / totalItems) * 100);
         const rank = this.getRank(score);
+        
+        // 現在の記事にスコアとランクを保存
+        if (this.currentArticle) {
+            this.saveArticleScore(score, rank);
+        }
         
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1097',message:'updateScore: Calculated score',data:{score:score,rank:rank,checkedCount:checkedCount,totalItems:totalItems},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
@@ -2618,6 +3311,40 @@ ${article.keyword}について、重要なポイントをまとめました。
         if (score >= 60) return 'C';
         return 'D';
     }
+    
+    /**
+     * 記事のスコアとランクを保存
+     */
+    saveArticleScore(score, rank) {
+        if (!this.currentArticle) return;
+        
+        // プランデータから記事を取得
+        const plans = JSON.parse(localStorage.getItem('plans') || '[]');
+        const currentPlan = plans.find(p => {
+            return p.articles && p.articles.some(a => a.id === this.currentArticle.id);
+        });
+        
+        if (currentPlan && currentPlan.articles) {
+            const article = currentPlan.articles.find(a => a.id === this.currentArticle.id);
+            if (article) {
+                if (!article.scores) {
+                    article.scores = {};
+                }
+                article.scores.after = {
+                    total: score,
+                    level: rank
+                };
+                
+                // プランデータを保存
+                localStorage.setItem('plans', JSON.stringify(plans));
+                
+                // ダッシュボードの記事一覧を更新
+                if (typeof window.dashboard !== 'undefined' && window.dashboard.renderArticleList) {
+                    window.dashboard.renderArticleList();
+                }
+            }
+        }
+    }
 
     getCurrentContent() {
         // 現在のエディタの内容を取得
@@ -2638,44 +3365,42 @@ ${article.keyword}について、重要なポイントをまとめました。
     }
 
     updateChecklist(article, content) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1183',message:'updateChecklist: Entry',data:{articleTitle:article.title,contentLength:content?.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'L'})}).catch(()=>{});
-        // #endregion
-        
-        // 手動チェックが設定されていない項目のみ自動チェックを更新
         // contentがHTML形式の場合は、Markdown形式に変換してからチェック
-        let contentToCheck = content;
+        let contentToCheck = content || this.getCurrentContent();
         
         // HTML形式かどうかを判定（<h1>タグや<img>タグが含まれている場合）
-        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(content);
+        const isHtml = /<h[1-6][^>]*>|<img[^>]*>|<p[^>]*>/i.test(contentToCheck);
         if (isHtml) {
             // HTML形式の場合はMarkdownに変換
-            contentToCheck = this.htmlToMarkdown(content);
+            contentToCheck = this.htmlToMarkdown(contentToCheck);
+        }
+        
+        // manualChecksが初期化されていない場合は初期化
+        if (!this.manualChecks) {
+            this.manualChecks = {};
         }
         
         this.checklistItems.forEach(item => {
             const div = document.querySelector(`[data-item-id="${item.id}"]`);
             if (!div) return;
             
-            // 手動チェックが設定されている場合はスキップ
-            if (this.manualChecks && this.manualChecks[item.id] !== undefined) {
-                return;
-            }
+            // 自動チェック結果を取得
+            const autoChecked = item.check(contentToCheck);
             
-            const checked = item.check(contentToCheck);
-            this.updateChecklistItem(div, item.id, checked);
+            // 手動チェックが設定されている場合は手動チェックを優先
+            // 手動チェックが設定されていない場合は自動チェック結果をデフォルトで適用
+            if (this.manualChecks[item.id] === undefined) {
+                // 手動チェックが設定されていない場合、自動チェック結果をデフォルトで適用
+                this.manualChecks[item.id] = autoChecked;
+            }
+            // 手動チェックが設定されている場合は、そのまま使用（ユーザーが変更した状態を保持）
+            
+            const isChecked = this.manualChecks[item.id];
+            this.updateChecklistItem(div, item.id, isChecked);
         });
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1275',message:'updateChecklist: Before calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
         
         // スコアを更新
         this.updateScore();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'rewrite.js:1280',message:'updateChecklist: After calling updateScore',data:{checklistScoreHTML:document.getElementById('checklistScore')?.innerHTML?.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
     }
 
     /**
@@ -2759,6 +3484,22 @@ ${article.keyword}について、重要なポイントをまとめました。
         html = html.replace(/^((?!<h|<ul|<li|<p).+)$/gim, '<p>$1</p>');
         
         return html;
+    }
+
+    /**
+     * モーダルを閉じる
+     */
+    closeModal() {
+        const modal = document.getElementById('rewriteModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        
+        // フロートボタンを非表示
+        const floatButtons = document.getElementById('suggestionFloatButtons');
+        if (floatButtons) {
+            floatButtons.style.display = 'none';
+        }
     }
 
     async saveArticle() {
@@ -2874,18 +3615,21 @@ ${article.keyword}について、重要なポイントをまとめました。
             
             await this._saveContentToStorage(content);
 
+            // 提案モードの場合は、コメントやマーカーも保存
+            if (this.currentEditMode === 'suggestion' && this.suggestionChanges.length > 0) {
+                const storageKey = `suggestion_changes_${this.currentArticle.id}`;
+                localStorage.setItem(storageKey, JSON.stringify(this.suggestionChanges));
+                console.log('提案変更を保存しました:', this.suggestionChanges.length, '件');
+                
+                // 変更履歴を更新
+                await this.updateChangeHistory();
+            }
+
             // トースト通知を表示
             if (typeof showToast === 'function') {
                 showToast(authManager && authManager.isAuthenticated() ? '保存・提案を記録しました' : '保存しました', 'success');
             } else {
                 alert('保存しました！' + (authManager && authManager.isAuthenticated() ? '\n編集履歴を記録しました。' : ''));
-            }
-            
-            // 提案履歴を更新
-            if (window.suggestionUIManager && this.currentArticle) {
-                await window.suggestionUIManager.renderSuggestions(this.currentArticle.id);
-            } else if (typeof suggestionUIManager !== 'undefined' && this.currentArticle) {
-                await suggestionUIManager.renderSuggestions(this.currentArticle.id);
             }
             
             // ダッシュボードを更新

@@ -799,22 +799,13 @@
             <div class="modal-body">
                 <div class="rewrite-container">
                     <div class="rewrite-sidebar">
-                        <!-- 編集履歴・提案セクション（上部に移動） -->
-                        <div class="suggestion-section" style="margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h4 class="improvement-title" style="margin: 0;">編集履歴</h4>
-                                <button id="refreshSuggestionsBtn" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">
-                                    <span class="material-icons-round" style="font-size: 16px;">refresh</span>
-                                </button>
-                            </div>
-                            <div id="suggestionsList" class="suggestions-list">
-                                <!-- 提案が動的に生成される -->
-                            </div>
+                        <!-- AIOスコア表示 -->
+                        <div id="checklistScore" class="checklist-score">
+                            <!-- スコアとランクが動的に生成される -->
                         </div>
-
                         <div class="improvement-section">
                             <h4 class="improvement-title accordion-header" id="improvementAccordionHeader">
-                                <span>改善項目</span>
+                                <span>AIO改善項目</span>
                                 <span class="material-icons-round accordion-icon">expand_more</span>
                             </h4>
                             <div id="checklistItems" class="checklist-items accordion-content">
@@ -850,23 +841,24 @@
                                     <span class="material-icons-round">close</span>
                                 </button>
                             </div>
-                            <button class="toolbar-btn" id="searchToggleBtn" title="検索 (⌘F)">
-                                <span class="material-icons-round">search</span>
-                                検索
-                            </button>
-                            <!-- プレビューボタンを追加 -->
-                            <button class="toolbar-btn" id="previewBtn" title="プレビュー">
-                                <span class="material-icons-round">preview</span>
-                                プレビュー
-                            </button>
-                            <button class="toolbar-btn" data-action="export" id="rewriteExportBtn">
-                                <span class="material-icons-round">download</span>
-                                エクスポート
-                            </button>
-                            <button class="toolbar-btn" data-action="save">
-                                <span class="material-icons-round">save</span>
-                                保存して完了
-                            </button>
+                            <div class="toolbar-group">
+                                <button class="toolbar-btn" id="searchToggleBtn" title="検索 (⌘F)">
+                                    <span class="material-icons-round">search</span>
+                                    検索
+                                </button>
+                                <button class="toolbar-btn" id="previewBtn" title="プレビュー">
+                                    <span class="material-icons-round">preview</span>
+                                    プレビュー
+                                </button>
+                                <button class="toolbar-btn" data-action="export" id="rewriteExportBtn">
+                                    <span class="material-icons-round">download</span>
+                                    ダウンロード
+                                </button>
+                                <button class="toolbar-btn primary" data-action="save">
+                                    <span class="material-icons-round">save</span>
+                                    保存
+                                </button>
+                            </div>
                         </div>
                         <!-- ビジュアルモード（Quill Rich Text Editor） -->
                         <div id="visualEditorContainer" class="editor-mode-container active">
@@ -897,14 +889,15 @@
 
     <!-- 提案モード用フロートボタン（下部固定） -->
     <div id="suggestionFloatButtons" class="suggestion-float-buttons" style="display: none;">
-        <!-- コメント履歴エリア -->
+        <!-- 変更履歴エリア（アコーディオン） -->
         <div id="suggestionCommentHistory" class="suggestion-comment-history">
-            <div class="comment-history-header">
-                <span class="material-icons-round">comment</span>
-                <span>コメント履歴</span>
+            <div class="comment-history-header" onclick="window.rewriteSystem.toggleChangeHistory()">
+                <span class="material-icons-round comment-history-expand-icon" style="font-size: 18px; transition: transform 0.2s;">expand_more</span>
+                <span class="material-icons-round">history</span>
+                <span>変更履歴</span>
             </div>
             <div id="commentHistoryList" class="comment-history-list">
-                <!-- コメントが動的に追加される -->
+                <!-- 変更履歴が動的に追加される -->
             </div>
         </div>
         

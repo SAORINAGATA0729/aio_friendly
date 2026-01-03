@@ -2225,6 +2225,11 @@ class Dashboard {
 
         const score = article.scores?.after || article.scores?.before || { total: 0, level: 'C' };
         const scoreLevel = score.level.toLowerCase();
+        const scoreValue = score.total || 0;
+        const rankColor = scoreLevel === 's' ? '#10b981' : 
+                         scoreLevel === 'a' ? '#3b82f6' : 
+                         scoreLevel === 'b' ? '#f59e0b' : 
+                         scoreLevel === 'c' ? '#ef4444' : '#6b7280';
 
         item.innerHTML = `
             <div class="article-info">
@@ -2259,20 +2264,34 @@ class Dashboard {
                     ${article.citationCount || 0}
                 </span>
             </div>
-            <div style="display: flex; justify-content: center; align-items: center;">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
                 <span class="article-score-display" data-article-id="${article.id}" 
                     style="
                         padding: 0.3rem 0.5rem;
                         border-radius: 0.4rem;
-                        border: 1px solid var(--border-color);
-                        background: #f3f4f6;
-                        color: var(--text-primary);
+                        border: 2px solid ${rankColor};
+                        background: ${rankColor}15;
+                        color: ${rankColor};
                         font-size: 0.85rem;
-                        font-weight: 600;
+                        font-weight: 700;
                         text-align: center;
-                        min-width: 50px;
+                        min-width: 60px;
                     ">
-                    ランク ${score.level || 'C'}
+                    ${scoreValue}点
+                </span>
+                <span class="article-rank-display" data-article-id="${article.id}" 
+                    style="
+                        padding: 0.3rem 0.5rem;
+                        border-radius: 0.4rem;
+                        border: 2px solid ${rankColor};
+                        background: ${rankColor};
+                        color: white;
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        text-align: center;
+                        min-width: 40px;
+                    ">
+                    ${score.level || 'C'}
                 </span>
             </div>
         `;
@@ -2367,12 +2386,18 @@ class Dashboard {
                         value="${article.keyword || ''}" 
                         placeholder="キーワード"
                         style="width: 100%; padding: 0.4rem; border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.85rem;">
-                    <div style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #6b7280;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #6b7280;">
                         <span class="material-icons-round" style="font-size: 14px;">link</span>
                         <a href="${article.url || '#'}" target="_blank" rel="noopener noreferrer" 
-                            style="color: #3b82f6; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            class="article-url-link"
+                            style="color: #3b82f6; text-decoration: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
                             ${article.url || ''}
                         </a>
+                        <button type="button" class="open-article-btn" data-article-id="${article.id}"
+                            style="padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+                            <span class="material-icons-round" style="font-size: 14px;">edit</span>
+                            記事編集
+                        </button>
                     </div>
                     ${articleSlug ? `<div style="font-size: 0.75rem; color: #9ca3af; font-family: monospace;">${articleSlug}</div>` : ''}
                 </div>
@@ -2505,14 +2530,14 @@ class Dashboard {
             });
         }
         
-        // 記事を開くボタン（記事情報部分のダブルクリックで開く）
-        const articleInfo = item.querySelector('.article-info');
-        if (articleInfo) {
-            articleInfo.addEventListener('dblclick', async (e) => {
+        // 記事を開くボタンのイベントリスナー
+        const openArticleBtn = item.querySelector('.open-article-btn');
+        if (openArticleBtn) {
+            openArticleBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                console.log('記事がダブルクリックされました:', article.title);
+                console.log('記事を開くボタンがクリックされました:', article.title);
                 
                 // rewriteSystemが初期化されるまで最大3秒待つ
                 let retryCount = 0;
@@ -2534,6 +2559,51 @@ class Dashboard {
                         retryCount++;
                         if (retryCount < maxRetries) {
                             console.log(`rewriteSystemの初期化を待機中... (${retryCount}/${maxRetries})`);
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            return waitForRewriteSystem();
+                        } else {
+                            console.error('❌ rewriteSystemの初期化がタイムアウトしました');
+                            alert('システムの初期化に失敗しました。ページをリロードしてください。');
+                            return false;
+                        }
+                    }
+                };
+                
+                await waitForRewriteSystem();
+            });
+        }
+        
+        // URLリンクのクリックイベント（外部リンクとして開く場合はそのまま、編集モーダルを開く場合はpreventDefault）
+        const urlLink = item.querySelector('.article-url-link');
+        if (urlLink) {
+            urlLink.addEventListener('click', async (e) => {
+                // Ctrl/Cmdキーが押されている場合は外部リンクとして開く
+                if (e.ctrlKey || e.metaKey) {
+                    return; // デフォルトの動作（新しいタブで開く）を許可
+                }
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('URLリンクがクリックされました:', article.url);
+                
+                // rewriteSystemが初期化されるまで最大3秒待つ
+                let retryCount = 0;
+                const maxRetries = 30;
+                
+                const waitForRewriteSystem = async () => {
+                    if (typeof window.rewriteSystem !== 'undefined' && window.rewriteSystem && typeof window.rewriteSystem.openUrlModal === 'function') {
+                        console.log('✅ rewriteSystemが利用可能です');
+                        try {
+                            await window.rewriteSystem.openUrlModal(article);
+                        } catch (error) {
+                            console.error('記事を開く際にエラーが発生しました:', error);
+                            alert('記事を開く際にエラーが発生しました: ' + error.message);
+                        }
+                        return true;
+                    } else {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                             return waitForRewriteSystem();
                         } else {
