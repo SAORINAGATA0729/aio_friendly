@@ -3845,6 +3845,7 @@ class Dashboard {
         `;
 
         // 総評エリア
+        const total = articles.length;
         const score = total > 0 ? Math.round((improvedCount / total) * 100) : 0;
         let overallSymbol = '✕';
         let overallColor = '#2563eb';
