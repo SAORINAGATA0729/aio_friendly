@@ -1067,3 +1067,53 @@ tr:last-child td {
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
+
+/* 差分表示のスタイル */
+.diff-content del {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    text-decoration: line-through;
+    padding: 0 2px;
+}
+.diff-content ins {
+    background-color: #dcfce7;
+    color: #15803d;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0 2px;
+}
+
+
+/* フィルタボタン（ステータス切り替え） */
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    background: #f1f5f9;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+}
+
+.filter-btn {
+    padding: 0.4rem 0.8rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.filter-btn.active {
+    background: white;
+    color: var(--primary-color);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-weight: 600;
+}
+
