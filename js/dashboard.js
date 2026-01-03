@@ -650,7 +650,7 @@ class Dashboard {
             
             // プラン選択時のイベント
             if (freshPlanSelect) {
-                freshPlanSelect.addEventListener('change', (e) => {
+                freshPlanSelect.addEventListener('change', async (e) => {
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/5e579a2f-9640-4462-b017-57a5ca31c061',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dashboard.js:680',message:'planSelect change event fired',data:{planId:e.target.value,previousPlanId:this.selectedPlanId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
                 // #endregion
