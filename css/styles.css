@@ -948,6 +948,117 @@ tr:last-child td {
     margin-top: 1rem;
 }
 
+/* スコアコンテナ全体 */
+.checklist-score {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+/* 上部のスコアとランク表示エリア */
+.score-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+/* スコア表示部分 */
+.score-main {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.score-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+#scoreNumber {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.score-unit {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.score-separator, .score-total {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* ランク表示部分 */
+.score-rank-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f9fafb;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    min-width: 80px;
+}
+
+.rank-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.rank-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* ランクごとの色 */
+.rank-S { color: #10b981; } /* Emerald-500 */
+.rank-A { color: #3b82f6; } /* Blue-500 */
+.rank-B { color: #f59e0b; } /* Amber-500 */
+.rank-C { color: #ef4444; } /* Red-500 */
+.rank-D { color: #6b7280; } /* Gray-500 */
+
+/* プログレスバーエリア */
+.score-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.score-bar {
+    height: 8px;
+    background: #e5e7eb; /* Gray-200 */
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 999px;
+    transition: width 0.5s ease-out;
+}
+
+.score-text {
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
 .checklist-items {
     display: flex;
     flex-direction: column;
