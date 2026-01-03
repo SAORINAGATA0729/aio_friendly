@@ -3702,10 +3702,30 @@ class Dashboard {
 
         // 総評エリア
         const total = articles.length;
+        
+        // スコア計算 (改善数 / 総数 * 100)
+        const score = total > 0 ? Math.round((improvedCount / total) * 100) : 0;
+        
+        // 総合評価判定 (70点以上: ◯, 40点以上: △, それ未満: ✕)
+        let overallSymbol = '✕';
+        let overallColor = '#2563eb'; // Blue (Bad)
+        
+        if (score >= 70) {
+            overallSymbol = '◯';
+            overallColor = '#dc2626'; // Red (Good)
+        } else if (score >= 40) {
+            overallSymbol = '△';
+            overallColor = '#d97706'; // Orange
+        }
+
         const summaryHtml = `
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
                 <h4 style="font-weight: bold; margin-bottom: 0.5rem; color: #1e40af;">📊 記事パフォーマンス総評</h4>
-                <p>分析対象 <strong>${total}</strong> 記事中、<strong>${improvedCount}</strong> 記事で改善が見られました（評価: ◯）。</p>
+                <p>分析対象 <strong>${total}</strong> 記事中、<strong>${improvedCount}</strong> 記事で改善が見られました。</p>
+                <div style="margin-top: 0.5rem; font-size: 1.1rem; font-weight: bold;">
+                    総合スコア: <span style="font-size: 1.4rem; color: #111;">${score}</span> 点 
+                    （評価: <span style="font-size: 1.4rem; color: ${overallColor};">${overallSymbol}</span>）
+                </div>
                 <p style="font-size: 0.9rem; color: #4b5563; margin-top: 0.5rem;">
                     ※評価基準: クリック数、CTRの向上、および検索順位の改善を総合的に判定しています。<br>
                     改善が見られない記事（✕）については、キーワードの見直しやリライトの再実施を検討してください。
