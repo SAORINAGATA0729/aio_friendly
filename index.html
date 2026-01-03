@@ -850,23 +850,24 @@
                                     <span class="material-icons-round">close</span>
                                 </button>
                             </div>
-                            <button class="toolbar-btn" id="searchToggleBtn" title="検索 (⌘F)">
-                                <span class="material-icons-round">search</span>
-                                検索
-                            </button>
-                            <!-- プレビューボタンを追加 -->
-                            <button class="toolbar-btn" id="previewBtn" title="プレビュー">
-                                <span class="material-icons-round">preview</span>
-                                プレビュー
-                            </button>
-                            <button class="toolbar-btn" data-action="export" id="rewriteExportBtn">
-                                <span class="material-icons-round">download</span>
-                                エクスポート
-                            </button>
-                            <button class="toolbar-btn" data-action="save">
-                                <span class="material-icons-round">save</span>
-                                保存して完了
-                            </button>
+                            <div class="toolbar-group">
+                                <button class="toolbar-btn" id="searchToggleBtn" title="検索 (⌘F)">
+                                    <span class="material-icons-round">search</span>
+                                    検索
+                                </button>
+                                <button class="toolbar-btn" id="previewBtn" title="プレビュー">
+                                    <span class="material-icons-round">preview</span>
+                                    プレビュー
+                                </button>
+                                <button class="toolbar-btn" data-action="export" id="rewriteExportBtn">
+                                    <span class="material-icons-round">download</span>
+                                    ダウンロード
+                                </button>
+                                <button class="toolbar-btn primary" data-action="save">
+                                    <span class="material-icons-round">save</span>
+                                    保存
+                                </button>
+                            </div>
                         </div>
                         <!-- ビジュアルモード（Quill Rich Text Editor） -->
                         <div id="visualEditorContainer" class="editor-mode-container active">
