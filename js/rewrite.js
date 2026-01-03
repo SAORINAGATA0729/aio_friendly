@@ -3157,15 +3157,21 @@ ${article.keyword}について、重要なポイントをまとめました。
             checklistScore.innerHTML = `
                 <div class="score-status">
                     <div class="score-main">
-                        <span class="score-label">現状</span>
-                        <span id="scoreNumber">0</span>
-                        <span class="score-unit">点</span>
-                        <span class="score-separator">/</span>
-                        <span class="score-total">100点</span>
+                        <div class="score-label">現状</div>
+                        <div class="score-value-container">
+                            <div class="score-current">
+                                <span id="scoreNumber">0</span>
+                                <span class="score-unit">点</span>
+                                <span class="score-separator">/</span>
+                            </div>
+                            <div class="score-total">100点</div>
+                        </div>
                     </div>
                     <div class="score-rank-display">
-                        <span class="rank-label">RANK</span>
-                        <span id="scoreRank" class="rank-value">-</span>
+                        <div class="rank-label">RANK</div>
+                        <div class="rank-value-container">
+                            <span id="scoreRank" class="rank-value">-</span>
+                        </div>
                     </div>
                 </div>
                 <div class="score-progress">
@@ -3225,15 +3231,21 @@ ${article.keyword}について、重要なポイントをまとめました。
             checklistScore.innerHTML = `
                 <div class="score-status">
                     <div class="score-main">
-                        <span class="score-label">現状</span>
-                        <span id="scoreNumber">${score}</span>
-                        <span class="score-unit">点</span>
-                        <span class="score-separator">/</span>
-                        <span class="score-total">100点</span>
+                        <div class="score-label">現状</div>
+                        <div class="score-value-container">
+                            <div class="score-current">
+                                <span id="scoreNumber">${score}</span>
+                                <span class="score-unit">点</span>
+                                <span class="score-separator">/</span>
+                            </div>
+                            <div class="score-total">100点</div>
+                        </div>
                     </div>
                     <div class="score-rank-display">
-                        <span class="rank-label">RANK</span>
-                        <span id="scoreRank" class="rank-value rank-${rank}">${rank}</span>
+                        <div class="rank-label">RANK</div>
+                        <div class="rank-value-container">
+                            <span id="scoreRank" class="rank-value rank-${rank}">${rank}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="score-progress">
@@ -3273,15 +3285,21 @@ ${article.keyword}について、重要なポイントをまとめました。
                 checklistScore.innerHTML = `
                     <div class="score-status">
                         <div class="score-main">
-                            <span class="score-label">現状</span>
-                            <span id="scoreNumber">${currentScore}</span>
-                            <span class="score-unit">点</span>
-                            <span class="score-separator">/</span>
-                            <span class="score-total">100点</span>
+                            <div class="score-label">現状</div>
+                            <div class="score-value-container">
+                                <div class="score-current">
+                                    <span id="scoreNumber">${currentScore}</span>
+                                    <span class="score-unit">点</span>
+                                    <span class="score-separator">/</span>
+                                </div>
+                                <div class="score-total">100点</div>
+                            </div>
                         </div>
                         <div class="score-rank-display">
-                            <span class="rank-label">RANK</span>
-                            <span id="scoreRank" class="rank-value rank-${currentRank}">${currentRank}</span>
+                            <div class="rank-label">RANK</div>
+                            <div class="rank-value-container">
+                                <span id="scoreRank" class="rank-value rank-${currentRank}">${currentRank}</span>
+                            </div>
                         </div>
                     </div>
                     <div class="score-progress">

@@ -969,15 +969,27 @@ tr:last-child td {
 /* スコア表示部分 */
 .score-main {
     display: flex;
-    align-items: baseline;
-    gap: 0.25rem;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .score-label {
     font-size: 0.85rem;
     color: var(--text-secondary);
     font-weight: 600;
-    margin-right: 0.5rem;
+}
+
+.score-value-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.score-current {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    line-height: 1;
 }
 
 #scoreNumber {
@@ -993,9 +1005,15 @@ tr:last-child td {
     color: var(--text-primary);
 }
 
-.score-separator, .score-total {
+.score-separator {
     font-size: 0.9rem;
     color: var(--text-secondary);
+}
+
+.score-total {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding-left: 0.25rem;
 }
 
 /* ランク表示部分 */
@@ -1004,10 +1022,11 @@ tr:last-child td {
     flex-direction: column;
     align-items: center;
     background: #f9fafb;
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
     min-width: 80px;
+    gap: 0.5rem;
 }
 
 .rank-label {
@@ -1015,11 +1034,17 @@ tr:last-child td {
     color: var(--text-secondary);
     font-weight: 700;
     letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+}
+
+.rank-value-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2rem;
 }
 
 .rank-value {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 800;
     line-height: 1;
 }

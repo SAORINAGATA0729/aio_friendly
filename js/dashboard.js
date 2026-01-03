@@ -32,6 +32,7 @@ class Dashboard {
         this.setupEvidenceManagement();
         this.setupPlanManagement();
         this.setupPlanSelection();
+        this.setupBrandFilter();
         this.setupRecordTab();
         this.setupReportTab();
         
@@ -690,6 +691,31 @@ class Dashboard {
         }
     }
     
+    setupBrandFilter() {
+        const brandFilter = document.getElementById('brandFilter');
+        if (brandFilter) {
+            brandFilter.addEventListener('change', () => {
+                // 現在のフィルター状態を取得
+                const filterButtons = document.querySelectorAll('.filter-btn');
+                let currentFilter = 'all';
+                filterButtons.forEach(btn => {
+                    if (btn.classList.contains('active')) {
+                        currentFilter = btn.dataset.filter || 'all';
+                    }
+                });
+                
+                // 記事一覧を再表示
+                if (this.selectedPlanId) {
+                    // プランが選択されている場合はプランの記事一覧を再表示
+                    this.renderPlanArticleList(this.currentPlanArticles);
+                } else {
+                    // プランが選択されていない場合は通常の記事一覧を再表示
+                    this.renderArticleList(currentFilter);
+                }
+            });
+        }
+    }
+    
     updatePlanSelectOptions() {
         const planSelect = document.getElementById('selectedPlanId');
         // #region agent log
@@ -990,6 +1016,50 @@ class Dashboard {
         
         // フィルターボタンの動作も更新（イベント委譲で処理するため、ここでは何もしない）
         // this.updateFilterButtons(); // 削除
+        
+        // ブランドフィルターの適用
+        const brandFilter = document.getElementById('brandFilter');
+        const selectedBrand = brandFilter ? brandFilter.value : 'all';
+        
+        // URLからブランドを判定する関数
+        const getBrandFromUrl = (url) => {
+            if (!url) return 'unknown';
+            try {
+                const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+                const hostname = urlObj.hostname.toLowerCase();
+                if (hostname.includes('giftee')) return 'giftee';
+                if (hostname.includes('kaaan')) return 'KAAAN';
+                return 'unknown';
+            } catch {
+                return 'unknown';
+            }
+        };
+        
+        // ブランドフィルターを適用
+        if (selectedBrand !== 'all') {
+            const filteredItems = Array.from(articleList.children).filter(item => {
+                const articleId = item.dataset.articleId;
+                const article = articles.find(a => a.id === articleId);
+                if (!article) return false;
+                const articleBrand = getBrandFromUrl(article.url);
+                return articleBrand === selectedBrand;
+            });
+            
+            // フィルタリングされたアイテムのみ表示
+            Array.from(articleList.children).forEach(item => {
+                const articleId = item.dataset.articleId;
+                const article = articles.find(a => a.id === articleId);
+                if (article) {
+                    const articleBrand = getBrandFromUrl(article.url);
+                    item.style.display = articleBrand === selectedBrand ? '' : 'none';
+                }
+            });
+        } else {
+            // すべて表示
+            Array.from(articleList.children).forEach(item => {
+                item.style.display = '';
+            });
+        }
         
         // 進捗状況を更新（フィルタリング前のプランの全記事で計算）
         // 重要：articlesはフィルタリング済みだが、進捗は全記事で計算
@@ -2198,12 +2268,40 @@ class Dashboard {
         
         articleList.innerHTML = '';
 
+        // ブランドフィルターを取得
+        const brandFilter = document.getElementById('brandFilter');
+        const selectedBrand = brandFilter ? brandFilter.value : 'all';
+        
+        // URLからブランドを判定する関数
+        const getBrandFromUrl = (url) => {
+            if (!url) return 'unknown';
+            try {
+                const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+                const hostname = urlObj.hostname.toLowerCase();
+                if (hostname.includes('giftee')) return 'giftee';
+                if (hostname.includes('kaaan')) return 'KAAAN';
+                return 'unknown';
+            } catch {
+                return 'unknown';
+            }
+        };
+        
         const articles = this.progressData.articles.filter(article => {
-            if (filter === 'all') return true;
-            if (filter === 'notStarted') return article.status === '未着手';
-            if (filter === 'inProgress') return article.status === '進行中';
-            if (filter === 'completed') return article.status === '完了';
-            return true;
+            // ステータスフィルター
+            let statusMatch = true;
+            if (filter === 'all') statusMatch = true;
+            else if (filter === 'notStarted') statusMatch = article.status === '未着手';
+            else if (filter === 'inProgress') statusMatch = article.status === '進行中';
+            else if (filter === 'completed') statusMatch = article.status === '完了';
+            
+            // ブランドフィルター
+            let brandMatch = true;
+            if (selectedBrand !== 'all') {
+                const articleBrand = getBrandFromUrl(article.url);
+                brandMatch = articleBrand === selectedBrand;
+            }
+            
+            return statusMatch && brandMatch;
         });
 
         articles.forEach(article => {

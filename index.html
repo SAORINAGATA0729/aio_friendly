@@ -160,7 +160,17 @@
                 <div class="article-list-section">
                     <div class="section-header">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <h3>改修対象記事一覧</h3>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <h3>改修対象記事一覧</h3>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                                    <label style="font-size: 0.85rem; color: #6b7280; font-weight: 600;">ブランド:</label>
+                                    <select id="brandFilter" style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; font-size: 0.85rem; background: white; cursor: pointer;">
+                                        <option value="all">すべて</option>
+                                        <option value="giftee">giftee</option>
+                                        <option value="KAAAN">KAAAN</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div style="display: flex; align-items: center; gap: 1.5rem;">
                                 <!-- 進捗状況 -->
                                 <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 1rem; background: #f8fafc; border-radius: 0.5rem;">
