@@ -1177,6 +1177,164 @@ tr:last-child td {
     padding: 0 2px;
 }
 
+/* 提案モードの削除マーカー（取り消し線） */
+.suggestion-deletion {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    text-decoration: line-through;
+    padding: 0 2px;
+    position: relative;
+    cursor: pointer;
+}
+
+.suggestion-deletion:hover {
+    background-color: #fecaca;
+}
+
+.suggestion-deletion .comment-icon {
+    font-size: 12px !important;
+    vertical-align: middle;
+    margin-left: 4px;
+    color: #b91c1c !important;
+    cursor: pointer;
+    display: inline-block;
+}
+
+/* 提案モードの追加マーカー（赤背景） */
+.suggestion-addition {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-weight: 500;
+    padding: 0 2px;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.suggestion-addition:hover {
+    background-color: #fecaca;
+}
+
+.suggestion-addition .comment-icon {
+    font-size: 12px !important;
+    vertical-align: middle;
+    margin-left: 4px;
+    color: #b91c1c !important;
+    cursor: pointer;
+    display: inline-block;
+}
+
+/* コメントダイアログ */
+.comment-dialog {
+    position: fixed;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.3);
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comment-dialog-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.comment-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comment-dialog-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.comment-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+.comment-dialog-close:hover {
+    color: var(--text-primary);
+}
+
+.comment-dialog-body {
+    padding: 1rem;
+}
+
+.comment-input-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.comment-input-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.comment-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-cancel,
+.btn-save-comment {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.btn-cancel {
+    background: white;
+    color: var(--text-primary);
+}
+
+.btn-cancel:hover {
+    background: #f9fafb;
+}
+
+.btn-save-comment {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.btn-save-comment:hover {
+    background: var(--primary-dark);
+}
+
 /* 提案マーカーのスタイル */
 .suggestion-marker {
     background-color: #fef3c7;
