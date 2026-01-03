@@ -100,11 +100,41 @@ class EditHistoryManager {
             const docRef = await addDoc(collection(window.firebaseDb, 'articleSuggestions'), suggestionData);
             console.log('提案を保存しました:', docRef.id);
             
+            // 通知メールを送信（非同期で実行し、待機しない）
+            this.sendNotificationEmail({
+                articleId: articleId,
+                userName: userName,
+                userEmail: userEmail,
+                diffSummary: `追加: ${diff.addedLines}行, 削除: ${diff.deletedLines}行`
+            }).catch(e => console.error('メール通知エラー:', e));
+
             return docRef.id;
         } catch (error) {
             console.error('提案の保存エラー:', error);
             // エラー時はlocalStorageにフォールバック
             return this.saveSuggestionToLocalStorage(articleId, newContent, userId, userName, userEmail);
+        }
+    }
+
+    /**
+     * 通知メールを送信
+     */
+    async sendNotificationEmail(data) {
+        try {
+            const response = await fetch('/api/notify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.warn('通知メール送信失敗:', errorData);
+            }
+        } catch (error) {
+            console.warn('通知メール送信エラー:', error);
         }
     }
 
